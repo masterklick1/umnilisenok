@@ -25,58 +25,117 @@ export const VKAuthProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let initAttempts = 0;
+    const MAX_ATTEMPTS = 20;
+
+    // Set a safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      console.log('VK initialization timeout - showing login screen');
+      setIsLoading(false);
+    }, 5000);
+
     // Initialize VK SDK
     const initVK = () => {
+      initAttempts++;
+      
+      if (initAttempts > MAX_ATTEMPTS) {
+        console.log('Max VK init attempts reached - showing login screen');
+        clearTimeout(safetyTimeout);
+        setIsLoading(false);
+        return;
+      }
+
       if (typeof window.VK !== 'undefined') {
-        window.VK.init({
-          apiId: VK_APP_ID,
-          onlyWidgets: false
-        });
+        try {
+          window.VK.init({
+            apiId: VK_APP_ID,
+            onlyWidgets: false
+          });
 
-        console.log('VK SDK initialized');
+          console.log('VK SDK initialized successfully');
 
-        // Check login status
-        window.VK.Auth.getLoginStatus((response: any) => {
-          console.log('Login status:', response);
-          if (response.status === 'connected') {
-            loadUserData(response.session.user.id);
-          } else {
+          // Check login status with error handling
+          try {
+            window.VK.Auth.getLoginStatus((response: any) => {
+              clearTimeout(safetyTimeout);
+              console.log('Login status response:', response);
+              
+              if (response && response.status === 'connected') {
+                console.log('User is connected, loading data...');
+                loadUserData(response.session.user.id);
+              } else {
+                console.log('User not connected, showing login screen');
+                setIsLoading(false);
+              }
+            });
+          } catch (error) {
+            console.error('Error checking login status:', error);
+            clearTimeout(safetyTimeout);
             setIsLoading(false);
           }
-        });
+        } catch (error) {
+          console.error('Error initializing VK SDK:', error);
+          clearTimeout(safetyTimeout);
+          setIsLoading(false);
+        }
       } else {
-        console.log('VK SDK not loaded yet, retrying...');
-        setTimeout(initVK, 100);
+        console.log(`VK SDK not loaded yet, attempt ${initAttempts}/${MAX_ATTEMPTS}`);
+        timeoutId = setTimeout(initVK, 100);
       }
     };
 
     initVK();
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(safetyTimeout);
+    };
   }, []);
 
   const loadUserData = (userId: number) => {
-    window.VK.Api.call('users.get', {
-      user_ids: userId,
-      fields: 'photo_100,first_name,last_name,sex'
-    }, (r: any) => {
-      if (r.response) {
-        const userData = r.response[0];
-        console.log('User data loaded:', userData);
-        setUser(userData);
-        localStorage.setItem('vk_user', JSON.stringify(userData));
-      }
+    try {
+      window.VK.Api.call('users.get', {
+        user_ids: userId,
+        fields: 'photo_100,first_name,last_name,sex'
+      }, (r: any) => {
+        if (r.response && r.response[0]) {
+          const userData = r.response[0];
+          console.log('User data loaded successfully:', userData);
+          setUser(userData);
+          localStorage.setItem('vk_user', JSON.stringify(userData));
+        } else {
+          console.error('Failed to load user data:', r);
+        }
+        setIsLoading(false);
+      });
+    } catch (error) {
+      console.error('Error loading user data:', error);
       setIsLoading(false);
-    });
+    }
   };
 
   const login = () => {
-    window.VK.Auth.login((response: any) => {
-      console.log('Auth response:', response);
-      if (response.session) {
-        loadUserData(response.session.user.id);
-      } else {
-        console.log('Authorization failed or canceled');
+    try {
+      if (typeof window.VK === 'undefined') {
+        console.error('VK SDK not loaded');
+        alert('VK SDK не загружен. Пожалуйста, перезагрузите страницу.');
+        return;
       }
-    }, 4); // Permission for basic info
+
+      window.VK.Auth.login((response: any) => {
+        console.log('Auth response:', response);
+        if (response && response.session) {
+          console.log('Login successful');
+          loadUserData(response.session.user.id);
+        } else {
+          console.log('Authorization failed or canceled by user');
+        }
+      }, 4); // Permission for basic info
+    } catch (error) {
+      console.error('Error during login:', error);
+      alert('Ошибка при входе. Пожалуйста, попробуйте снова.');
+    }
   };
 
   const logout = () => {

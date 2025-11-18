@@ -1,14 +1,26 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useVKAuth } from "@/contexts/VKAuthContext";
+import { AuthScreen } from "@/components/AuthScreen";
+import { MainApp } from "./MainApp";
 
 const Index = () => {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+  const { isAuthenticated, isLoading } = useVKAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-secondary/5">
+        <div className="text-center space-y-4">
+          <div className="text-8xl animate-bounce-gentle">🦊</div>
+          <p className="text-xl text-muted-foreground">Загрузка...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
+
+  return <MainApp />;
 };
 
 export default Index;

@@ -3,9 +3,11 @@ import { SubjectCard } from "@/components/SubjectCard";
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export const MainApp = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubjectClick = (subject: string) => {
     toast({
@@ -41,7 +43,7 @@ export const MainApp = () => {
           <SubjectCard
             emoji="🔢"
             title="Математика"
-            onClick={() => handleSubjectClick("Математика")}
+            onClick={() => navigate("/math")}
           />
           <SubjectCard
             emoji="📚"

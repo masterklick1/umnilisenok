@@ -25,19 +25,24 @@ export const VKAuthProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    console.log('VKAuthProvider: Component mounted, starting initialization');
+    console.log('VK SDK loaded:', typeof window.VK !== 'undefined');
+    
     let timeoutId: NodeJS.Timeout;
     let initAttempts = 0;
-    const MAX_ATTEMPTS = 20;
+    const MAX_ATTEMPTS = 15;
 
-    // Set a safety timeout to prevent infinite loading
+    // Set a safety timeout to prevent infinite loading (reduced to 3 seconds)
     const safetyTimeout = setTimeout(() => {
-      console.log('VK initialization timeout - showing login screen');
+      console.log('VK initialization timeout (3s) - showing login screen');
+      console.log('VK SDK status at timeout:', typeof window.VK !== 'undefined');
       setIsLoading(false);
-    }, 5000);
+    }, 3000);
 
     // Initialize VK SDK
     const initVK = () => {
       initAttempts++;
+      console.log(`VK init attempt ${initAttempts}/${MAX_ATTEMPTS}`);
       
       if (initAttempts > MAX_ATTEMPTS) {
         console.log('Max VK init attempts reached - showing login screen');
@@ -48,6 +53,7 @@ export const VKAuthProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (typeof window.VK !== 'undefined') {
         try {
+          console.log('VK SDK found, initializing...');
           window.VK.init({
             apiId: VK_APP_ID,
             onlyWidgets: false
@@ -80,7 +86,7 @@ export const VKAuthProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setIsLoading(false);
         }
       } else {
-        console.log(`VK SDK not loaded yet, attempt ${initAttempts}/${MAX_ATTEMPTS}`);
+        console.log(`VK SDK not loaded yet, retrying in 100ms...`);
         timeoutId = setTimeout(initVK, 100);
       }
     };

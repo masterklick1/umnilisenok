@@ -12,12 +12,14 @@ type Exercise = {
 };
 
 const generateExercise = (level: number): Exercise => {
+  const mathRandom = Math.random;
+  const mathFloor = Math.floor;
   let num1: number, num2: number, answer: number;
   
   if (level === 1) {
     // Простое сложение (1-5)
-    num1 = Math.floor(Math.random() * 5) + 1;
-    num2 = Math.floor(Math.random() * 5) + 1;
+    num1 = mathFloor(mathRandom() * 5) + 1;
+    num2 = mathFloor(mathRandom() * 5) + 1;
     answer = num1 + num2;
     return {
       question: `${num1} + ${num2} = ?`,
@@ -26,8 +28,8 @@ const generateExercise = (level: number): Exercise => {
     };
   } else {
     // Вычитание (1-10)
-    num1 = Math.floor(Math.random() * 10) + 1;
-    num2 = Math.floor(Math.random() * num1) + 1;
+    num1 = mathFloor(mathRandom() * 10) + 1;
+    num2 = mathFloor(mathRandom() * num1) + 1;
     answer = num1 - num2;
     return {
       question: `${num1} - ${num2} = ?`,
@@ -38,12 +40,14 @@ const generateExercise = (level: number): Exercise => {
 };
 
 const generateOptions = (correct: number, max: number): number[] => {
+  const mathRandom = Math.random;
+  const mathFloor = Math.floor;
   const options = new Set([correct]);
   while (options.size < 4) {
-    const opt = Math.floor(Math.random() * max);
+    const opt = mathFloor(mathRandom() * max);
     if (opt >= 0) options.add(opt);
   }
-  return Array.from(options).sort(() => Math.random() - 0.5);
+  return Array.from(options).sort(() => mathRandom() - 0.5);
 };
 
 export default function MathPage() {

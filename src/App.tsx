@@ -7,6 +7,7 @@ import { VKAuthProvider } from "@/contexts/VKAuthContext";
 import Index from "./pages/Index";
 import MathPage from "./pages/MathPage";
 import AlphabetPage from "./pages/AlphabetPage";
+import WorldPage from "./pages/WorldPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/math" element={<MathPage />} />
             <Route path="/alphabet" element={<AlphabetPage />} />
+            <Route path="/world" element={<WorldPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

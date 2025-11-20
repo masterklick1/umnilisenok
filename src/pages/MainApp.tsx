@@ -48,7 +48,7 @@ export const MainApp = () => {
           <SubjectCard
             emoji="📚"
             title="Алфавит"
-            onClick={() => handleSubjectClick("Алфавит")}
+            onClick={() => navigate("/alphabet")}
           />
           <SubjectCard
             emoji="🌍"

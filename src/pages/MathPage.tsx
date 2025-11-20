@@ -67,6 +67,16 @@ export default function MathPage() {
     setShowResult(null);
   };
 
+  const speak = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ru-RU';
+      utterance.rate = 0.8;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const checkAnswer = (selected: number) => {
     if (!exercise) return;
     
@@ -76,11 +86,13 @@ export default function MathPage() {
     
     if (correct) {
       setScore(score + 1);
+      speak("Правильно! Молодец!");
       toast({
         title: "Правильно! 🎉",
         description: "Отличная работа!",
       });
     } else {
+      speak("Не правильно. Ещё раз подумай!");
       toast({
         title: "Попробуй ещё раз! 💪",
         description: `Правильный ответ: ${exercise.answer}`,

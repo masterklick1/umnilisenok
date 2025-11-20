@@ -53,7 +53,7 @@ export const MainApp = () => {
           <SubjectCard
             emoji="🌍"
             title="Окружающий мир"
-            onClick={() => handleSubjectClick("Окружающий мир")}
+            onClick={() => navigate("/world")}
           />
           <SubjectCard
             emoji="🎨"

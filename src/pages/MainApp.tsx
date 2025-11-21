@@ -70,7 +70,7 @@ export const MainApp = () => {
             icon={<Palette className="w-7 h-7 text-purple-600" />}
             title="Творчество"
             subtitle="Рисуем и красим"
-            onClick={() => handleSubjectClick("Творчество")}
+            onClick={() => navigate("/creativity")}
             bgColor="bg-purple-100"
             decorativeElements="🎨"
           />

@@ -20,30 +20,30 @@ export const FreeDrawing = () => {
       backgroundColor: "#ffffff",
     });
 
+    // Enable drawing mode and configure brush
+    canvas.isDrawingMode = true;
+    canvas.freeDrawingBrush.color = activeColor;
+    canvas.freeDrawingBrush.width = 5;
+
     setFabricCanvas(canvas);
 
     return () => {
       canvas.dispose();
     };
-  }, []);
+  }, [activeColor]);
 
   useEffect(() => {
-    if (!fabricCanvas) return;
+    if (!fabricCanvas || !fabricCanvas.freeDrawingBrush) return;
 
     fabricCanvas.isDrawingMode = true;
-
-    // Wait for next tick to ensure brush is initialized
-    setTimeout(() => {
-      if (!fabricCanvas.freeDrawingBrush) return;
-      
-      if (activeTool === "draw") {
-        fabricCanvas.freeDrawingBrush.color = activeColor;
-        fabricCanvas.freeDrawingBrush.width = 5;
-      } else if (activeTool === "eraser") {
-        fabricCanvas.freeDrawingBrush.color = "#ffffff";
-        fabricCanvas.freeDrawingBrush.width = 20;
-      }
-    }, 0);
+    
+    if (activeTool === "draw") {
+      fabricCanvas.freeDrawingBrush.color = activeColor;
+      fabricCanvas.freeDrawingBrush.width = 5;
+    } else if (activeTool === "eraser") {
+      fabricCanvas.freeDrawingBrush.color = "#ffffff";
+      fabricCanvas.freeDrawingBrush.width = 20;
+    }
   }, [activeTool, activeColor, fabricCanvas]);
 
   const handleColorChange = (color: string) => {

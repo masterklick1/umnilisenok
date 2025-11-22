@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 export const FreeDrawing = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
+  const fabricCanvasRef = useRef<FabricCanvas | null>(null);
   const [activeColor, setActiveColor] = useState("#000000");
   const [activeTool, setActiveTool] = useState<"draw" | "eraser">("draw");
 
@@ -20,46 +20,48 @@ export const FreeDrawing = () => {
       backgroundColor: "#ffffff",
     });
 
-    // Enable drawing mode first
     canvas.isDrawingMode = true;
     
-    // Then configure brush
+    // Initialize brush properties
     if (canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.color = "#000000";
       canvas.freeDrawingBrush.width = 5;
+      canvas.freeDrawingBrush.color = activeColor;
     }
 
-    setFabricCanvas(canvas);
+    fabricCanvasRef.current = canvas;
 
     return () => {
       canvas.dispose();
+      fabricCanvasRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (!fabricCanvas?.freeDrawingBrush) return;
+    const canvas = fabricCanvasRef.current;
+    if (!canvas?.freeDrawingBrush) return;
     
     if (activeTool === "draw") {
-      fabricCanvas.freeDrawingBrush.color = activeColor;
-      fabricCanvas.freeDrawingBrush.width = 5;
+      canvas.freeDrawingBrush.color = activeColor;
+      canvas.freeDrawingBrush.width = 5;
     } else if (activeTool === "eraser") {
-      fabricCanvas.freeDrawingBrush.color = "#ffffff";
-      fabricCanvas.freeDrawingBrush.width = 20;
+      canvas.freeDrawingBrush.color = "#ffffff";
+      canvas.freeDrawingBrush.width = 20;
     }
-  }, [activeTool, activeColor, fabricCanvas]);
+  }, [activeTool, activeColor]);
 
   const handleColorChange = (color: string) => {
     setActiveColor(color);
-    if (activeTool === "draw") {
+    if (activeTool !== "draw") {
       setActiveTool("draw");
     }
   };
 
   const handleClear = () => {
-    if (!fabricCanvas) return;
-    fabricCanvas.clear();
-    fabricCanvas.backgroundColor = "#ffffff";
-    fabricCanvas.renderAll();
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    canvas.clear();
+    canvas.backgroundColor = "#ffffff";
+    canvas.renderAll();
     toast.success("Холст очищен!");
   };
 

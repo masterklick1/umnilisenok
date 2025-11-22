@@ -20,22 +20,24 @@ export const FreeDrawing = () => {
       backgroundColor: "#ffffff",
     });
 
-    // Enable drawing mode and configure brush
+    // Enable drawing mode first
     canvas.isDrawingMode = true;
-    canvas.freeDrawingBrush.color = activeColor;
-    canvas.freeDrawingBrush.width = 5;
+    
+    // Then configure brush
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = "#000000";
+      canvas.freeDrawingBrush.width = 5;
+    }
 
     setFabricCanvas(canvas);
 
     return () => {
       canvas.dispose();
     };
-  }, [activeColor]);
+  }, []);
 
   useEffect(() => {
-    if (!fabricCanvas || !fabricCanvas.freeDrawingBrush) return;
-
-    fabricCanvas.isDrawingMode = true;
+    if (!fabricCanvas?.freeDrawingBrush) return;
     
     if (activeTool === "draw") {
       fabricCanvas.freeDrawingBrush.color = activeColor;

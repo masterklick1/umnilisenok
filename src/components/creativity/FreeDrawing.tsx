@@ -21,8 +21,12 @@ export const FreeDrawing = () => {
     });
 
     canvas.isDrawingMode = true;
-    canvas.freeDrawingBrush.color = activeColor;
-    canvas.freeDrawingBrush.width = 5;
+    
+    // Initialize brush properties after enabling drawing mode
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = activeColor;
+      canvas.freeDrawingBrush.width = 5;
+    }
 
     setFabricCanvas(canvas);
 
@@ -32,7 +36,7 @@ export const FreeDrawing = () => {
   }, []);
 
   useEffect(() => {
-    if (!fabricCanvas) return;
+    if (!fabricCanvas || !fabricCanvas.freeDrawingBrush) return;
 
     if (activeTool === "draw") {
       fabricCanvas.freeDrawingBrush.color = activeColor;

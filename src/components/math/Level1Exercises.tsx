@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUserProgress } from "@/hooks/useUserProgress";
 
 type ExerciseType = "count" | "shapes" | "sort" | "compare";
 
@@ -12,6 +13,7 @@ interface Level1ExercisesProps {
 
 export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const { toast } = useToast();
+  const { addStars } = useUserProgress();
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);
@@ -41,10 +43,11 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
     if (correct) {
       setScore(score + 1);
+      addStars(1);
       speak("Правильно! Молодец!");
       toast({
         title: "Отлично! 🎉",
-        description: "Ты правильно покормил животных!",
+        description: "Ты правильно покормил животных! +1 ⭐",
       });
     } else {
       speak("Попробуй ещё раз посчитать!");
@@ -219,7 +222,8 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                   className="text-6xl h-24"
                   onClick={() => {
                     if (shape === currentShape) {
-                      toast({ title: "Правильно! 🎉" });
+                      addStars(1);
+                      toast({ title: "Правильно! 🎉 +1 ⭐" });
                       speak("Правильно! Молодец!");
                       setScore(score + 1);
                     } else {

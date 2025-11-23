@@ -3,13 +3,18 @@ import { SubjectCard } from "@/components/SubjectCard";
 import { ScoreDisplay } from "@/components/ScoreDisplay";
 import { UserAvatar } from "@/components/UserAvatar";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { Calculator, BookOpen, Leaf, Palette, Brain } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calculator, BookOpen, Leaf, Palette, Brain, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserProgress } from "@/hooks/useUserProgress";
 
 export const MainApp = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
+  const { progress, loading } = useUserProgress();
 
   const handleSubjectClick = (subject: string) => {
     toast({
@@ -18,13 +23,43 @@ export const MainApp = () => {
     });
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-4xl">🦊</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 pb-32">
       <div className="container mx-auto px-4 py-6 max-w-2xl">
-        {/* Header with Score and Avatar */}
+        {/* Header with Score, Level, Avatar and Logout */}
         <div className="flex items-center justify-between mb-6">
-          <ScoreDisplay score={125} />
-          <UserAvatar fallback="👤" />
+          <div className="flex items-center gap-3">
+            <ScoreDisplay score={progress?.stars || 0} />
+            <div className="bg-card rounded-full px-4 py-2 shadow-md">
+              <span className="text-sm font-bold text-primary">
+                Уровень {progress?.level || 1}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <UserAvatar fallback={user?.email?.[0].toUpperCase() || "👤"} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSignOut}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Welcome Message */}

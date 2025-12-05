@@ -9,6 +9,7 @@ import MathPage from "./pages/MathPage";
 import AlphabetPage from "./pages/AlphabetPage";
 import WorldPage from "./pages/WorldPage";
 import CreativityPage from "./pages/CreativityPage";
+import VirtualHomePage from "./pages/VirtualHomePage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 
@@ -79,6 +80,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <CreativityPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <VirtualHomePage />
                 </ProtectedRoute>
               }
             />

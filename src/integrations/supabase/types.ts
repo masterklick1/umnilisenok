@@ -50,6 +50,68 @@ export type Database = {
         }
         Relationships: []
       }
+      gallery_items: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          image_data: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          image_data: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          image_data?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gallery_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pets: {
+        Row: {
+          created_at: string | null
+          icon: string
+          id: string
+          name: string
+          price_stars: number
+          species: string
+        }
+        Insert: {
+          created_at?: string | null
+          icon: string
+          id?: string
+          name: string
+          price_stars?: number
+          species: string
+        }
+        Update: {
+          created_at?: string | null
+          icon?: string
+          id?: string
+          name?: string
+          price_stars?: number
+          species?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -73,6 +135,53 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      room_items: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          height: number
+          icon: string
+          id: string
+          name: string
+          price_stars: number
+          unlock_achievement_id: string | null
+          width: number
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          height?: number
+          icon: string
+          id?: string
+          name: string
+          price_stars?: number
+          unlock_achievement_id?: string | null
+          width?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          height?: number
+          icon?: string
+          id?: string
+          name?: string
+          price_stars?: number
+          unlock_achievement_id?: string | null
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_items_unlock_achievement_id_fkey"
+            columns: ["unlock_achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_achievements: {
         Row: {
@@ -103,6 +212,60 @@ export type Database = {
           },
           {
             foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_pets: {
+        Row: {
+          adopted_at: string | null
+          energy: number
+          happiness: number
+          hunger: number
+          id: string
+          last_fed_at: string | null
+          last_played_at: string | null
+          pet_id: string
+          pet_name: string
+          user_id: string
+        }
+        Insert: {
+          adopted_at?: string | null
+          energy?: number
+          happiness?: number
+          hunger?: number
+          id?: string
+          last_fed_at?: string | null
+          last_played_at?: string | null
+          pet_id: string
+          pet_name: string
+          user_id: string
+        }
+        Update: {
+          adopted_at?: string | null
+          energy?: number
+          happiness?: number
+          hunger?: number
+          id?: string
+          last_fed_at?: string | null
+          last_played_at?: string | null
+          pet_id?: string
+          pet_name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_pets_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_pets_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -149,6 +312,51 @@ export type Database = {
             foreignKeyName: "user_progress_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_room_items: {
+        Row: {
+          id: string
+          is_placed: boolean | null
+          item_id: string
+          position_x: number | null
+          position_y: number | null
+          purchased_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_placed?: boolean | null
+          item_id: string
+          position_x?: number | null
+          position_y?: number | null
+          purchased_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_placed?: boolean | null
+          item_id?: string
+          position_x?: number | null
+          position_y?: number | null
+          purchased_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_room_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "room_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_room_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },

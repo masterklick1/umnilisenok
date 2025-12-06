@@ -50,6 +50,79 @@ export type Database = {
         }
         Relationships: []
       }
+      child_activity: {
+        Row: {
+          activity_type: string
+          child_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          page_path: string | null
+        }
+        Insert: {
+          activity_type: string
+          child_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          page_path?: string | null
+        }
+        Update: {
+          activity_type?: string
+          child_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          page_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_activity_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      child_analysis: {
+        Row: {
+          child_id: string
+          id: string
+          last_analyzed_at: string | null
+          recommendations: string | null
+          strengths: Json | null
+          updated_at: string | null
+          weaknesses: Json | null
+        }
+        Insert: {
+          child_id: string
+          id?: string
+          last_analyzed_at?: string | null
+          recommendations?: string | null
+          strengths?: Json | null
+          updated_at?: string | null
+          weaknesses?: Json | null
+        }
+        Update: {
+          child_id?: string
+          id?: string
+          last_analyzed_at?: string | null
+          recommendations?: string | null
+          strengths?: Json | null
+          updated_at?: string | null
+          weaknesses?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_analysis_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gallery_items: {
         Row: {
           category: string
@@ -85,6 +158,103 @@ export type Database = {
           },
         ]
       }
+      game_sessions: {
+        Row: {
+          child_id: string
+          created_at: string | null
+          current_turn: string | null
+          game_state: Json
+          game_type: string
+          id: string
+          parent_id: string
+          status: string | null
+          updated_at: string | null
+          winner_id: string | null
+        }
+        Insert: {
+          child_id: string
+          created_at?: string | null
+          current_turn?: string | null
+          game_state: Json
+          game_type: string
+          id?: string
+          parent_id: string
+          status?: string | null
+          updated_at?: string | null
+          winner_id?: string | null
+        }
+        Update: {
+          child_id?: string
+          created_at?: string | null
+          current_turn?: string | null
+          game_state?: Json
+          game_type?: string
+          id?: string
+          parent_id?: string
+          status?: string | null
+          updated_at?: string | null
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_sessions_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_sessions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_sessions_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_child_links: {
+        Row: {
+          child_id: string
+          created_at: string | null
+          id: string
+          parent_id: string
+        }
+        Insert: {
+          child_id: string
+          created_at?: string | null
+          id?: string
+          parent_id: string
+        }
+        Update: {
+          child_id?: string
+          created_at?: string | null
+          id?: string
+          parent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_child_links_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_child_links_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pets: {
         Row: {
           created_at: string | null
@@ -114,24 +284,30 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
           id: string
+          role: Database["public"]["Enums"]["user_role"] | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
           id: string
+          role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
           id?: string
+          role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -367,10 +543,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_children_with_progress: {
+        Args: { p_parent_id: string }
+        Returns: {
+          avatar_url: string
+          child_id: string
+          daily_streak: number
+          experience: number
+          first_name: string
+          level: number
+          stars: number
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "parent" | "child"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -497,6 +684,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["parent", "child"],
+    },
   },
 } as const

@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import { TicTacToe } from "@/components/games/TicTacToe";
 import { Checkers } from "@/components/games/Checkers";
-import { Chess } from "@/components/games/Chess";
+import { Chess, type ChessPiece } from "@/components/games/Chess";
+import type { Json } from "@/integrations/supabase/types";
 
 interface GameSession {
   id: string;
@@ -98,15 +99,19 @@ export default function GamePage() {
       ? session.child_id 
       : session.parent_id;
 
-    const updates = {
-      game_state: newState,
+    const updates: { game_state: Json; current_turn: string; status?: string; winner_id?: string } = {
+      game_state: newState as Json,
       current_turn: nextTurn,
-      ...(winnerId && { status: "finished", winner_id: winnerId }),
     };
+    
+    if (winnerId) {
+      updates.status = "finished";
+      updates.winner_id = winnerId;
+    }
 
     await supabase
       .from("game_sessions")
-      .update(updates as unknown as Record<string, unknown>)
+      .update(updates)
       .eq("id", session.id);
   };
 
@@ -117,11 +122,11 @@ export default function GamePage() {
     await supabase
       .from("game_sessions")
       .update({
-        game_state: initialState as unknown as Record<string, unknown>,
+        game_state: initialState as Json,
         current_turn: session.parent_id,
         status: "active",
         winner_id: null,
-      } as unknown as Record<string, unknown>)
+      })
       .eq("id", session.id);
   };
 
@@ -206,7 +211,7 @@ export default function GamePage() {
             )}
             {session.game_type === "chess" && (
               <Chess
-                gameState={session.game_state as unknown as { board: { type: string; color: "white" | "black" }[][]; currentPlayer: string }}
+                gameState={session.game_state as unknown as { board: (ChessPiece | null)[][]; currentPlayer: string }}
                 isMyTurn={isMyTurn}
                 myColor={amIParent ? "white" : "black"}
                 onMove={updateGame}

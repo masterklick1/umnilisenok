@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-interface ChessPiece {
+export interface ChessPiece {
   type: "king" | "queen" | "rook" | "bishop" | "knight" | "pawn";
   color: "white" | "black";
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import type { Json } from "@/integrations/supabase/types";
 
 export const useActivityTracker = () => {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ export const useActivityTracker = () => {
           child_id: user.id,
           activity_type: activityType,
           page_path: location.pathname,
-          details: details as unknown as Record<string, unknown> || null,
+          details: (details ?? null) as Json,
         }]);
       } catch (error) {
         // Silently fail - don't interrupt user experience

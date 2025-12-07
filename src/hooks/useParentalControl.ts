@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-
+import type { Json } from "@/integrations/supabase/types";
 interface ChildProfile {
   child_id: string;
   first_name: string | null;
@@ -250,7 +250,7 @@ export const useParentalControl = () => {
           parent_id: user.id,
           child_id: childId,
           game_type: gameType,
-          game_state: initialState as unknown as Record<string, unknown>,
+          game_state: initialState as Json,
           current_turn: user.id,
           status: "active",
         }])
@@ -267,10 +267,15 @@ export const useParentalControl = () => {
 
   const updateGameSession = async (sessionId: string, updates: Partial<Omit<GameSession, 'game_state'>> & { game_state?: Record<string, unknown> }) => {
     try {
-      const updateData = { ...updates, updated_at: new Date().toISOString() };
+      const { game_state, ...rest } = updates;
+      const updateData = { 
+        ...rest, 
+        updated_at: new Date().toISOString(),
+        ...(game_state && { game_state: game_state as Json }),
+      };
       const { error } = await supabase
         .from("game_sessions")
-        .update(updateData as unknown as Record<string, unknown>)
+        .update(updateData)
         .eq("id", sessionId);
 
       if (error) throw error;

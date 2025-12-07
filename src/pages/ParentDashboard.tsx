@@ -35,9 +35,10 @@ export default function ParentDashboard() {
     navigate("/auth");
   };
 
-  const handleStartChildSession = (childId: string) => {
+  const handleStartChildSession = (childId: string, childName: string) => {
     // Store child session info and navigate to main app
     sessionStorage.setItem("activeChildId", childId);
+    sessionStorage.setItem("activeChildName", childName);
     navigate("/");
   };
 
@@ -123,7 +124,7 @@ export default function ParentDashboard() {
                     child={child}
                     isSelected={selectedChild === child.child_id}
                     onSelect={() => setSelectedChild(child.child_id)}
-                    onStartSession={() => handleStartChildSession(child.child_id)}
+                    onStartSession={() => handleStartChildSession(child.child_id, child.first_name || "Ребёнок")}
                   />
                 ))}
               </div>

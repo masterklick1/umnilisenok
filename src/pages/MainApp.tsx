@@ -4,17 +4,33 @@ import { ScoreDisplay } from "@/components/ScoreDisplay";
 import { UserAvatar } from "@/components/UserAvatar";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calculator, BookOpen, Leaf, Palette, Brain, LogOut } from "lucide-react";
+import { Calculator, BookOpen, Leaf, Palette, Brain, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { useUserProgress } from "@/hooks/useUserProgress";
+import { useEffect, useState } from "react";
 
 export const MainApp = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signOut, user } = useAuth();
   const { progress, loading } = useUserProgress();
+  const [childName, setChildName] = useState<string>("");
+
+  useEffect(() => {
+    // Check if we're in child session mode
+    const activeChildId = sessionStorage.getItem("activeChildId");
+    const activeChildName = sessionStorage.getItem("activeChildName");
+    
+    if (!activeChildId) {
+      // No child session - redirect to parent dashboard
+      navigate("/parent");
+      return;
+    }
+    
+    if (activeChildName) {
+      setChildName(activeChildName);
+    }
+  }, [navigate]);
 
   const handleSubjectClick = (subject: string) => {
     toast({
@@ -23,9 +39,10 @@ export const MainApp = () => {
     });
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/auth");
+  const handleBackToParent = () => {
+    sessionStorage.removeItem("activeChildId");
+    sessionStorage.removeItem("activeChildName");
+    navigate("/parent");
   };
 
   if (loading) {
@@ -39,7 +56,7 @@ export const MainApp = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 pb-32">
       <div className="container mx-auto px-4 py-6 max-w-2xl">
-        {/* Header with Score, Level, Avatar and Logout */}
+        {/* Header with Score, Level, Avatar and Parent Button */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <ScoreDisplay score={progress?.stars || 0} />
@@ -50,20 +67,21 @@ export const MainApp = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <UserAvatar fallback={user?.email?.[0].toUpperCase() || "👤"} />
+            <UserAvatar fallback={childName?.[0]?.toUpperCase() || "👤"} />
             <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSignOut}
-              className="text-muted-foreground hover:text-destructive"
+              variant="outline"
+              size="sm"
+              onClick={handleBackToParent}
+              className="gap-2"
             >
-              <LogOut className="w-5 h-5" />
+              <Users className="w-4 h-4" />
+              Родителям
             </Button>
           </div>
         </div>
 
         {/* Welcome Message */}
-        <UserWelcome />
+        <UserWelcome name={childName} />
 
         {/* Fox Avatar */}
         <div className="flex justify-center my-8">

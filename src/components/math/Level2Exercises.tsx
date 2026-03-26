@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 type ExerciseType = "abacus" | "building" | "3dshapes" | "patterns";
 
@@ -14,6 +15,7 @@ interface Level2ExercisesProps {
 export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   const { toast } = useToast();
   const { addStars } = useUserProgress();
+  const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);
@@ -63,12 +65,14 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     if (isCorrect) {
       setScore(score + 1);
       addStars(1);
+      logCorrectAnswer({ section: "math", level: 2, answer: selected });
       speak("Правильно! Отлично!");
       toast({
         title: "Правильно! 🎉",
         description: "Ты молодец! +1 ⭐",
       });
     } else {
+      logWrongAnswer({ section: "math", level: 2, answer: selected, correct });
       speak("Не правильно. Попробуй ещё раз!");
       toast({
         title: "Попробуй ещё раз! 💪",

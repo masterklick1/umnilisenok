@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useNavigate } from "react-router-dom";
 import { Level1Exercises } from "@/components/math/Level1Exercises";
 import { Level2Exercises } from "@/components/math/Level2Exercises";
@@ -49,6 +50,7 @@ const levels = [
 
 export default function MathPage() {
   const navigate = useNavigate();
+  const { logActivity } = useActivityTracker();
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
 
   const renderLevelContent = () => {
@@ -97,7 +99,10 @@ export default function MathPage() {
             <Card
               key={level.level}
               className={`p-6 cursor-pointer hover:shadow-xl transition-all bg-gradient-to-br ${level.gradient} border-2 ${level.border} group`}
-              onClick={() => setSelectedLevel(level.level)}
+              onClick={() => {
+                logActivity("select_level", { section: "math", level: level.level });
+                setSelectedLevel(level.level);
+              }}
             >
               <div className="text-5xl mb-3 group-hover:scale-110 transition-transform">
                 {level.emoji}

@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 type ExerciseType = "count" | "shapes" | "sort" | "compare";
 
@@ -14,6 +15,7 @@ interface Level1ExercisesProps {
 export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const { toast } = useToast();
   const { addStars } = useUserProgress();
+  const { logCorrectAnswer, logWrongAnswer, logActivity } = useActivityTracker();
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);
@@ -44,12 +46,14 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     if (correct) {
       setScore(score + 1);
       addStars(1);
+      logCorrectAnswer({ section: "math", level: 1, exercise: "counting", answer: count });
       speak("Правильно! Молодец!");
       toast({
         title: "Отлично! 🎉",
         description: "Ты правильно покормил животных! +1 ⭐",
       });
     } else {
+      logWrongAnswer({ section: "math", level: 1, exercise: "counting", answer: count, correct: feedingAnimals });
       speak("Попробуй ещё раз посчитать!");
       toast({
         title: "Попробуй ещё! 💪",
@@ -223,10 +227,12 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                   onClick={() => {
                     if (shape === currentShape) {
                       addStars(1);
+                      logCorrectAnswer({ section: "math", level: 1, exercise: "shapes", shape });
                       toast({ title: "Правильно! 🎉 +1 ⭐" });
                       speak("Правильно! Молодец!");
                       setScore(score + 1);
                     } else {
+                      logWrongAnswer({ section: "math", level: 1, exercise: "shapes", shape, correct: currentShape });
                       toast({ title: "Попробуй ещё! 💪", variant: "destructive" });
                       speak("Попробуй ещё раз!");
                     }

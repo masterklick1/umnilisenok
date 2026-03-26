@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 type Letter = {
   letter: string;
@@ -75,6 +76,7 @@ const generateQuizOptions = (correctLetter: Letter): Letter[] => {
 export default function AlphabetPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logCorrectAnswer, logWrongAnswer, logActivity } = useActivityTracker();
   const [mode, setMode] = useState<"learn" | "quiz" | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [quizOptions, setQuizOptions] = useState<Letter[]>([]);
@@ -85,6 +87,7 @@ export default function AlphabetPage() {
   const startLearning = () => {
     setMode("learn");
     setCurrentIndex(0);
+    logActivity("start_learning", { section: "alphabet", mode: "learn" });
   };
 
   const startQuiz = () => {
@@ -93,6 +96,7 @@ export default function AlphabetPage() {
     setScore(0);
     setTotal(0);
     setShowResult(null);
+    logActivity("start_learning", { section: "alphabet", mode: "quiz" });
     generateNewQuestion();
   };
 
@@ -125,12 +129,14 @@ export default function AlphabetPage() {
     
     if (correct) {
       setScore(score + 1);
+      logCorrectAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter });
       speak("Правильно! Молодец!");
       toast({
         title: "Правильно! 🎉",
         description: "Отличная работа!",
       });
     } else {
+      logWrongAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter, selected: selected.letter });
       speak("Не правильно. Ещё раз подумай!");
       toast({
         title: "Попробуй ещё раз! 💪",

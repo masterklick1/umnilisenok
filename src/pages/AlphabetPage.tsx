@@ -136,6 +136,7 @@ export default function AlphabetPage() {
         description: "Отличная работа!",
       });
     } else {
+      logWrongAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter, selected: selected.letter });
       speak("Не правильно. Ещё раз подумай!");
       toast({
         title: "Попробуй ещё раз! 💪",

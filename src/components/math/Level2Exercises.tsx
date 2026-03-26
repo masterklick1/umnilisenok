@@ -72,6 +72,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
         description: "Ты молодец! +1 ⭐",
       });
     } else {
+      logWrongAnswer({ section: "math", level: 2, answer: selected, correct });
       speak("Не правильно. Попробуй ещё раз!");
       toast({
         title: "Попробуй ещё раз! 💪",

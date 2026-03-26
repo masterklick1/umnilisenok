@@ -227,10 +227,12 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                   onClick={() => {
                     if (shape === currentShape) {
                       addStars(1);
+                      logCorrectAnswer({ section: "math", level: 1, exercise: "shapes", shape });
                       toast({ title: "Правильно! 🎉 +1 ⭐" });
                       speak("Правильно! Молодец!");
                       setScore(score + 1);
                     } else {
+                      logWrongAnswer({ section: "math", level: 1, exercise: "shapes", shape, correct: currentShape });
                       toast({ title: "Попробуй ещё! 💪", variant: "destructive" });
                       speak("Попробуй ещё раз!");
                     }

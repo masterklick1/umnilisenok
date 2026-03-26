@@ -99,7 +99,10 @@ export default function MathPage() {
             <Card
               key={level.level}
               className={`p-6 cursor-pointer hover:shadow-xl transition-all bg-gradient-to-br ${level.gradient} border-2 ${level.border} group`}
-              onClick={() => setSelectedLevel(level.level)}
+              onClick={() => {
+                logActivity("select_level", { section: "math", level: level.level });
+                setSelectedLevel(level.level);
+              }}
             >
               <div className="text-5xl mb-3 group-hover:scale-110 transition-transform">
                 {level.emoji}

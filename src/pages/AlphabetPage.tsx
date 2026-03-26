@@ -96,6 +96,7 @@ export default function AlphabetPage() {
     setScore(0);
     setTotal(0);
     setShowResult(null);
+    logActivity("start_learning", { section: "alphabet", mode: "quiz" });
     generateNewQuestion();
   };
 

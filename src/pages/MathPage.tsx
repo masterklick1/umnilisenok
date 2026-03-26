@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useNavigate } from "react-router-dom";
 import { Level1Exercises } from "@/components/math/Level1Exercises";
 import { Level2Exercises } from "@/components/math/Level2Exercises";

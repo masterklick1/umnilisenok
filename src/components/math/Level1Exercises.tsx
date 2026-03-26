@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 type ExerciseType = "count" | "shapes" | "sort" | "compare";
 

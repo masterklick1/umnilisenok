@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 type ExerciseType = "abacus" | "building" | "3dshapes" | "patterns";
 

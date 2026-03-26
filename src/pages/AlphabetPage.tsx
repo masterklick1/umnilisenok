@@ -76,6 +76,7 @@ const generateQuizOptions = (correctLetter: Letter): Letter[] => {
 export default function AlphabetPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logCorrectAnswer, logWrongAnswer, logActivity } = useActivityTracker();
   const [mode, setMode] = useState<"learn" | "quiz" | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [quizOptions, setQuizOptions] = useState<Letter[]>([]);

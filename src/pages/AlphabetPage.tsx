@@ -87,6 +87,7 @@ export default function AlphabetPage() {
   const startLearning = () => {
     setMode("learn");
     setCurrentIndex(0);
+    logActivity("start_learning", { section: "alphabet", mode: "learn" });
   };
 
   const startQuiz = () => {

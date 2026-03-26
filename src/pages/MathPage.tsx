@@ -50,6 +50,7 @@ const levels = [
 
 export default function MathPage() {
   const navigate = useNavigate();
+  const { logActivity } = useActivityTracker();
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
 
   const renderLevelContent = () => {

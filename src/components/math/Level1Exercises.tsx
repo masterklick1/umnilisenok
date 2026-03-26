@@ -46,6 +46,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     if (correct) {
       setScore(score + 1);
       addStars(1);
+      logCorrectAnswer({ section: "math", level: 1, exercise: "counting", answer: count });
       speak("Правильно! Молодец!");
       toast({
         title: "Отлично! 🎉",

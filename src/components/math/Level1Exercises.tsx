@@ -53,6 +53,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
         description: "Ты правильно покормил животных! +1 ⭐",
       });
     } else {
+      logWrongAnswer({ section: "math", level: 1, exercise: "counting", answer: count, correct: feedingAnimals });
       speak("Попробуй ещё раз посчитать!");
       toast({
         title: "Попробуй ещё! 💪",

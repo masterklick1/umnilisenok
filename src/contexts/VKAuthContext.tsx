@@ -28,7 +28,7 @@ export const VKAuthProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     console.log('VKAuthProvider: Component mounted, starting initialization');
     console.log('VK SDK loaded:', typeof window.VK !== 'undefined');
     
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: ReturnType<typeof setTimeout>;
     let initAttempts = 0;
     const MAX_ATTEMPTS = 15;
 

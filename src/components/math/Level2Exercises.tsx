@@ -65,6 +65,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     if (isCorrect) {
       setScore(score + 1);
       addStars(1);
+      logCorrectAnswer({ section: "math", level: 2, answer: selected });
       speak("Правильно! Отлично!");
       toast({
         title: "Правильно! 🎉",

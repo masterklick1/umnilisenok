@@ -129,6 +129,7 @@ export default function AlphabetPage() {
     
     if (correct) {
       setScore(score + 1);
+      logCorrectAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter });
       speak("Правильно! Молодец!");
       toast({
         title: "Правильно! 🎉",

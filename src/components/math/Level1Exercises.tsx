@@ -15,6 +15,7 @@ interface Level1ExercisesProps {
 export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const { toast } = useToast();
   const { addStars } = useUserProgress();
+  const { logCorrectAnswer, logWrongAnswer, logActivity } = useActivityTracker();
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);

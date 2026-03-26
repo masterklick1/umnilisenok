@@ -555,6 +555,10 @@ export type Database = {
           stars: number
         }[]
       }
+      link_parent_child: {
+        Args: { p_child_id: string; p_parent_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       user_role: "parent" | "child"

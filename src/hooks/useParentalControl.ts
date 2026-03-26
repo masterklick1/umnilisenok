@@ -80,9 +80,15 @@ export const useParentalControl = () => {
     if (!user?.id) return { error: new Error("Not authenticated") };
 
     try {
+      // Save current parent session
+      const { data: sessionData } = await supabase.auth.getSession();
+      const parentSession = sessionData.session;
+
       // Create a unique email for the child
       const childEmail = `child_${Date.now()}_${Math.random().toString(36).slice(2)}@internal.app`;
       const childPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
+      const parentId = user.id;
 
       // Sign up the child
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -99,6 +105,8 @@ export const useParentalControl = () => {
       if (signUpError) throw signUpError;
       if (!signUpData.user) throw new Error("Failed to create child account");
 
+      const childId = signUpData.user.id;
+
       // Update child's profile with avatar and role
       const { error: profileError } = await supabase
         .from("profiles")
@@ -107,19 +115,25 @@ export const useParentalControl = () => {
           role: "child" as const,
           first_name: firstName,
         })
-        .eq("id", signUpData.user.id);
+        .eq("id", childId);
 
-      if (profileError) throw profileError;
+      if (profileError) console.error("Profile update error:", profileError);
 
-      // Create parent-child link
-      const { error: linkError } = await supabase
-        .from("parent_child_links")
-        .insert({
-          parent_id: user.id,
-          child_id: signUpData.user.id,
-        });
+      // Link parent-child using SECURITY DEFINER function
+      const { error: linkError } = await supabase.rpc("link_parent_child", {
+        p_parent_id: parentId,
+        p_child_id: childId,
+      });
 
       if (linkError) throw linkError;
+
+      // Restore parent session
+      if (parentSession) {
+        await supabase.auth.setSession({
+          access_token: parentSession.access_token,
+          refresh_token: parentSession.refresh_token,
+        });
+      }
 
       toast({
         title: "Аккаунт создан! 🎉",
@@ -127,9 +141,15 @@ export const useParentalControl = () => {
       });
 
       await fetchChildren();
-      return { error: null, childId: signUpData.user.id };
+      return { error: null, childId };
     } catch (error) {
       console.error("Error creating child:", error);
+      // Try to restore parent session on error too
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session || sessionData.session.user.id !== user.id) {
+        // Session was switched, reload to recover
+        window.location.reload();
+      }
       toast({
         title: "Ошибка",
         description: "Не удалось создать аккаунт ребёнка",

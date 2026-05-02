@@ -106,6 +106,7 @@ const getStatusBadge = (status: string) => {
 export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: GamesListProps) => {
   const [isCreating, setIsCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [chosenChild, setChosenChild] = useState<string | null>(selectedChild);
   const navigate = useNavigate();
 
   const handleCreateGame = async (childId: string, gameType: string) => {
@@ -149,9 +150,9 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
                   {children.map((child) => (
                     <Button
                       key={child.child_id}
-                      variant={selectedChild === child.child_id ? "default" : "outline"}
+                      variant={chosenChild === child.child_id ? "default" : "outline"}
                       className="justify-start"
-                      onClick={() => {}}
+                      onClick={() => setChosenChild(child.child_id)}
                     >
                       <span className="text-xl mr-2">{child.avatar_url || "👶"}</span>
                       {child.first_name || "Ребёнок"}
@@ -168,8 +169,8 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
                       key={game.id}
                       variant="outline"
                       className="w-full justify-start h-auto py-3"
-                      disabled={!selectedChild || isCreating}
-                      onClick={() => selectedChild && handleCreateGame(selectedChild, game.id)}
+                      disabled={!chosenChild || isCreating}
+                      onClick={() => chosenChild && handleCreateGame(chosenChild, game.id)}
                     >
                       <span className="text-2xl mr-3">{game.icon}</span>
                       <div className="text-left">

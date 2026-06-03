@@ -132,7 +132,7 @@ export const MainApp = () => {
             icon={<Brain className="w-7 h-7 text-orange-600" />}
             title="Интеллект"
             subtitle="Пазлы и логика"
-            onClick={() => handleSubjectClick("Интеллект")}
+            onClick={() => navigate("/intellect")}
             bgColor="bg-yellow-100"
             decorativeElements="🧩"
           />

@@ -15,6 +15,7 @@ import ParentDashboard from "./pages/ParentDashboard";
 import GamePage from "./pages/GamePage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
+import JoinPage from "./pages/JoinPage";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/join" element={<JoinPage />} />
             <Route
               path="/"
               element={

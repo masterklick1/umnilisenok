@@ -123,6 +123,39 @@ export type Database = {
           },
         ]
       }
+      child_invites: {
+        Row: {
+          child_first_name: string
+          child_id: string | null
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          parent_id: string
+          used_at: string | null
+        }
+        Insert: {
+          child_first_name: string
+          child_id?: string | null
+          code: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          parent_id: string
+          used_at?: string | null
+        }
+        Update: {
+          child_first_name?: string
+          child_id?: string | null
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          parent_id?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       child_locations: {
         Row: {
           accuracy: number | null
@@ -657,8 +690,20 @@ export type Database = {
           stars: number
         }[]
       }
+      get_invite_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          child_first_name: string
+          expires_at: string
+          parent_id: string
+        }[]
+      }
       link_parent_child: {
         Args: { p_child_id: string; p_parent_id: string }
+        Returns: undefined
+      }
+      redeem_child_invite: {
+        Args: { p_child_id: string; p_code: string }
         Returns: undefined
       }
     }

@@ -75,3 +75,62 @@ export const unsubscribeFromPush = async () => {
     await sub.unsubscribe();
   }
 };
+
+export interface PushStatus {
+  supported: boolean;
+  permission: NotificationPermission | "unsupported";
+  subscribed: boolean;
+  endpoint: string | null;
+  lastSyncedAt: string | null;
+  matchesCurrentUser: boolean;
+}
+
+export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
+  if (!isPushSupported()) {
+    return {
+      supported: false,
+      permission: "unsupported",
+      subscribed: false,
+      endpoint: null,
+      lastSyncedAt: null,
+      matchesCurrentUser: false,
+    };
+  }
+
+  const permission = Notification.permission;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = await reg?.pushManager.getSubscription();
+
+  if (!sub) {
+    return {
+      supported: true,
+      permission,
+      subscribed: false,
+      endpoint: null,
+      lastSyncedAt: null,
+      matchesCurrentUser: false,
+    };
+  }
+
+  let lastSyncedAt: string | null = null;
+  let matchesCurrentUser = false;
+  if (userId) {
+    const { data } = await supabase
+      .from("push_subscriptions")
+      .select("created_at, user_id")
+      .eq("endpoint", sub.endpoint)
+      .maybeSingle();
+    lastSyncedAt = data?.created_at ?? null;
+    matchesCurrentUser = data?.user_id === userId;
+  }
+
+  return {
+    supported: true,
+    permission,
+    subscribed: true,
+    endpoint: sub.endpoint,
+    lastSyncedAt,
+    matchesCurrentUser,
+  };
+};
+

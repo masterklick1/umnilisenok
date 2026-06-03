@@ -12,11 +12,11 @@ import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff } from "lucide-react";
+import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorker } from "@/lib/push";
+import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorker, getPushStatus, unsubscribeFromPush, type PushStatus } from "@/lib/push";
 
 export default function ParentDashboard() {
   const navigate = useNavigate();
@@ -39,25 +39,52 @@ export default function ParentDashboard() {
   const [pushPerm, setPushPerm] = useState<NotificationPermission | "unsupported">(
     isPushSupported() ? getPushPermission() : "unsupported"
   );
+  const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
+
+  const refreshPushStatus = async () => {
+    if (!user?.id) return;
+    const s = await getPushStatus(user.id);
+    setPushStatus(s);
+    setPushPerm(s.permission);
+  };
 
   // Auto-register SW + try to silently reuse subscription
   useEffect(() => {
     if (!user?.id || !isPushSupported()) return;
-    ensureServiceWorker();
-    if (Notification.permission === "granted") {
-      subscribeToPush(user.id).catch(() => {});
-    }
+    (async () => {
+      await ensureServiceWorker();
+      if (Notification.permission === "granted") {
+        await subscribeToPush(user.id).catch(() => {});
+      }
+      await refreshPushStatus();
+    })();
   }, [user?.id]);
 
   const enablePush = async () => {
     if (!user?.id) return;
     const ok = await subscribeToPush(user.id);
-    setPushPerm(getPushPermission());
+    await refreshPushStatus();
     toast({
       title: ok ? "Уведомления включены" : "Не удалось включить уведомления",
       description: ok
         ? "Вы будете получать оповещения о геозоне даже вне приложения."
         : "Проверьте разрешения браузера для этого сайта.",
+      variant: ok ? "default" : "destructive",
+    });
+  };
+
+  const disablePush = async () => {
+    await unsubscribeFromPush();
+    await refreshPushStatus();
+    toast({ title: "Уведомления отключены на этом устройстве" });
+  };
+
+  const resyncPush = async () => {
+    if (!user?.id) return;
+    const ok = await subscribeToPush(user.id);
+    await refreshPushStatus();
+    toast({
+      title: ok ? "Подписка обновлена" : "Не удалось обновить подписку",
       variant: ok ? "default" : "destructive",
     });
   };
@@ -175,6 +202,59 @@ export default function ParentDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* Push subscription status card */}
+        {pushPerm !== "unsupported" && (
+          <Card className="mb-6">
+            <CardContent className="py-3 px-4 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-3 min-w-0">
+                {pushStatus?.subscribed && pushStatus?.matchesCurrentUser ? (
+                  <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-muted-foreground shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">
+                    {pushStatus?.subscribed && pushStatus?.matchesCurrentUser
+                      ? "Подписка активна на этом устройстве"
+                      : pushStatus?.subscribed
+                      ? "Подписка есть, но привязана к другому аккаунту"
+                      : pushPerm === "denied"
+                      ? "Уведомления заблокированы в браузере"
+                      : "Не подписаны"}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {pushStatus?.lastSyncedAt
+                      ? `Синхронизировано: ${new Date(pushStatus.lastSyncedAt).toLocaleString("ru-RU")}`
+                      : "Нет данных о синхронизации"}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={refreshPushStatus} className="gap-1">
+                  <RefreshCw className="w-4 h-4" />
+                  <span className="hidden sm:inline">Обновить</span>
+                </Button>
+                {pushStatus?.subscribed ? (
+                  <>
+                    <Button size="sm" variant="outline" onClick={resyncPush}>
+                      Пересинхронизировать
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={disablePush} className="text-destructive">
+                      Отписаться
+                    </Button>
+                  </>
+                ) : (
+                  pushPerm !== "denied" && (
+                    <Button size="sm" onClick={enablePush} className="gap-1">
+                      <Bell className="w-4 h-4" /> Подписаться
+                    </Button>
+                  )
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="children" className="space-y-6">
           <TabsList className="grid grid-cols-6 w-full">

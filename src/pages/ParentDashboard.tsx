@@ -173,6 +173,22 @@ export default function ParentDashboard() {
               </div>
             )}
           </TabsContent>
+          {/* Safety Tab */}
+          <TabsContent value="safety">
+            {selectedChildData ? (
+              <SafetyPanel
+                childId={selectedChildData.child_id}
+                childName={selectedChildData.first_name || "Ребёнок"}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">Выберите ребёнка</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
 
           {/* Mirror Tab */}
           <TabsContent value="mirror">

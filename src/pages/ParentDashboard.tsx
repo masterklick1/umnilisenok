@@ -11,7 +11,8 @@ import { ActivityMirror } from "@/components/parental/ActivityMirror";
 import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield } from "lucide-react";
+import { InvitePanel } from "@/components/parental/InvitePanel";
+import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -109,10 +110,14 @@ export default function ParentDashboard() {
         </div>
 
         <Tabs defaultValue="children" className="space-y-6">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="children" className="gap-1">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Дети</span>
+            </TabsTrigger>
+            <TabsTrigger value="invite" className="gap-1">
+              <Link2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Привязка</span>
             </TabsTrigger>
             <TabsTrigger value="safety" className="gap-1" disabled={!selectedChild}>
               <Shield className="w-4 h-4" />
@@ -131,6 +136,10 @@ export default function ParentDashboard() {
               <span className="hidden sm:inline">Игры</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="invite">
+            <InvitePanel />
+          </TabsContent>
 
           {/* Children Tab */}
           <TabsContent value="children" className="space-y-4">

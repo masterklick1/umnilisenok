@@ -3,12 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2 } from "lucide-react";
+import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
+import { LocationMap } from "@/components/LocationMap";
 
 interface Props {
   childId: string;
@@ -49,6 +53,39 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [requests, setRequests] = useState<MonitoringReq[]>([]);
   const [requesting, setRequesting] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [settings, setSettings] = useState<{ location_enabled: boolean; location_interval_seconds: number } | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  const loadSettings = useCallback(async () => {
+    const { data } = await supabase
+      .from("child_settings")
+      .select("location_enabled, location_interval_seconds")
+      .eq("child_id", childId)
+      .maybeSingle();
+    setSettings(data ?? { location_enabled: true, location_interval_seconds: 60 });
+  }, [childId]);
+
+  const saveSettings = async (patch: Partial<{ location_enabled: boolean; location_interval_seconds: number }>) => {
+    if (!user) return;
+    setSavingSettings(true);
+    const next = { ...(settings ?? { location_enabled: true, location_interval_seconds: 60 }), ...patch };
+    setSettings(next);
+    const { error } = await supabase
+      .from("child_settings")
+      .upsert(
+        {
+          child_id: childId,
+          location_enabled: next.location_enabled,
+          location_interval_seconds: next.location_interval_seconds,
+          updated_by: user.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "child_id" }
+      );
+    setSavingSettings(false);
+    if (error) toast({ title: "Не удалось сохранить", description: error.message, variant: "destructive" });
+  };
+
 
   const loadData = useCallback(async () => {
     const [loc, sos, req] = await Promise.all([

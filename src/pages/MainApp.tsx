@@ -192,6 +192,9 @@ export const MainApp = () => {
         </div>
       </div>
 
+      {/* SOS for emergencies */}
+      <SOSButton />
+
       {/* Bottom Navigation */}
       <BottomNavigation />
     </div>

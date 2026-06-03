@@ -9,10 +9,12 @@ import { PetCare } from "@/components/virtual-home/PetCare";
 import { Gallery } from "@/components/virtual-home/Gallery";
 import { ScoreDisplay } from "@/components/ScoreDisplay";
 import { useUserProgress } from "@/hooks/useUserProgress";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 const VirtualHomePage = () => {
   const navigate = useNavigate();
   const { progress } = useUserProgress();
+  useActivityTracker();
   const [activeTab, setActiveTab] = useState("room");
 
   return (

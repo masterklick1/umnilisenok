@@ -20,7 +20,7 @@ import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorke
 
 export default function ParentDashboard() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const {
     children,
     loading,
@@ -36,6 +36,31 @@ export default function ParentDashboard() {
   } = useParentalControl();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { toast } = useToast();
+  const [pushPerm, setPushPerm] = useState<NotificationPermission | "unsupported">(
+    isPushSupported() ? getPushPermission() : "unsupported"
+  );
+
+  // Auto-register SW + try to silently reuse subscription
+  useEffect(() => {
+    if (!user?.id || !isPushSupported()) return;
+    ensureServiceWorker();
+    if (Notification.permission === "granted") {
+      subscribeToPush(user.id).catch(() => {});
+    }
+  }, [user?.id]);
+
+  const enablePush = async () => {
+    if (!user?.id) return;
+    const ok = await subscribeToPush(user.id);
+    setPushPerm(getPushPermission());
+    toast({
+      title: ok ? "Уведомления включены" : "Не удалось включить уведомления",
+      description: ok
+        ? "Вы будете получать оповещения о геозоне даже вне приложения."
+        : "Проверьте разрешения браузера для этого сайта.",
+      variant: ok ? "default" : "destructive",
+    });
+  };
 
   // Realtime SOS notification across all linked children
   useEffect(() => {

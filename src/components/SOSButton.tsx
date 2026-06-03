@@ -86,7 +86,7 @@ export const SOSButton = () => {
         <Button
           variant="destructive"
           size="lg"
-          className="fixed bottom-24 right-4 z-50 rounded-full h-16 w-16 p-0 shadow-2xl animate-pulse-slow"
+          className="fixed bottom-24 right-4 z-50 rounded-full h-16 w-16 p-0 shadow-2xl animate-pulse"
           aria-label="SOS"
         >
           <AlertOctagon className="h-8 w-8" />

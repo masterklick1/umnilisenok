@@ -126,7 +126,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
 
 
   const loadData = useCallback(async () => {
-    const [loc, sos, req] = await Promise.all([
+    const [loc, sos, req, geo] = await Promise.all([
       supabase
         .from("child_locations")
         .select("*")
@@ -146,10 +146,17 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         .eq("child_id", childId)
         .order("created_at", { ascending: false })
         .limit(10),
+      supabase
+        .from("geofence_events" as any)
+        .select("*")
+        .eq("child_id", childId)
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
     if (loc.data) setLocation(loc.data as Location);
     if (sos.data) setAlerts(sos.data as SosAlert[]);
     if (req.data) setRequests(req.data as MonitoringReq[]);
+    if (geo.data) setGeoEvents(geo.data as unknown as GeofenceEvent[]);
   }, [childId]);
 
   useEffect(() => {
@@ -173,12 +180,26 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         { event: "*", schema: "public", table: "monitoring_requests", filter: `child_id=eq.${childId}` },
         () => loadData()
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "geofence_events", filter: `child_id=eq.${childId}` },
+        (payload) => {
+          const ev = payload.new as any as GeofenceEvent;
+          loadData();
+          toast({
+            title: ev.event_type === "exit" ? "⚠️ Ребёнок вышел из зоны" : "✅ Ребёнок вернулся в зону",
+            description: `${childName} · ${ev.distance_m ? Math.round(ev.distance_m) + "м от центра" : ""}`,
+            variant: ev.event_type === "exit" ? "destructive" : "default",
+            duration: 30000,
+          });
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [childId, loadData, loadSettings]);
+  }, [childId, childName, loadData, loadSettings, toast]);
 
   // Sign URLs for fulfilled monitoring results
   useEffect(() => {

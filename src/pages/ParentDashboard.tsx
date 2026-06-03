@@ -393,6 +393,22 @@ export default function ParentDashboard() {
             )}
           </TabsContent>
 
+          {/* Child Room Tab */}
+          <TabsContent value="room">
+            {selectedChildData ? (
+              <ChildRoomViewer
+                childId={selectedChildData.child_id}
+                childName={selectedChildData.first_name || "Ребёнок"}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">Выберите ребёнка на вкладке "Дети"</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
           {/* AI Analysis Tab */}
           <TabsContent value="analysis">
             {selectedChildData ? (

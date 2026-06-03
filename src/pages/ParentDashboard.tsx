@@ -282,7 +282,7 @@ export default function ParentDashboard() {
         )}
 
         <Tabs defaultValue="children" className="space-y-6">
-          <TabsList className="grid grid-cols-6 w-full">
+          <TabsList className="grid grid-cols-7 w-full">
             <TabsTrigger value="children" className="gap-1">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Дети</span>
@@ -298,6 +298,10 @@ export default function ParentDashboard() {
             <TabsTrigger value="mirror" className="gap-1" disabled={!selectedChild}>
               <Eye className="w-4 h-4" />
               <span className="hidden sm:inline">Зеркало</span>
+            </TabsTrigger>
+            <TabsTrigger value="room" className="gap-1" disabled={!selectedChild}>
+              <House className="w-4 h-4" />
+              <span className="hidden sm:inline">Домик</span>
             </TabsTrigger>
             <TabsTrigger value="analysis" className="gap-1" disabled={!selectedChild}>
               <Brain className="w-4 h-4" />

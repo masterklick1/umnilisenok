@@ -118,6 +118,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      // IMPORTANT: unsubscribe BEFORE auth.signOut() so RLS (auth.uid() = user_id)
+      // still allows deleting the push_subscriptions row for this device.
+      try {
+        await unsubscribeFromPush();
+      } catch (e) {
+        console.warn("push unsubscribe failed", e);
+      }
+
       await supabase.auth.signOut();
       toast({
         title: "До скорой встречи! 👋",

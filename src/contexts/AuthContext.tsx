@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { unsubscribeFromPush, subscribeToPush, isPushSupported } from "@/lib/push";
 
 interface AuthContextType {
   user: User | null;
@@ -27,6 +28,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // On login/token refresh — re-bind existing browser push subscription
+        // to the current user (handles mom↔dad switch on the same device).
+        if (event === "SIGNED_IN" && session?.user && isPushSupported() && Notification.permission === "granted") {
+          subscribeToPush(session.user.id).catch(() => {});
+        }
       }
     );
 
@@ -111,6 +118,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      // IMPORTANT: unsubscribe BEFORE auth.signOut() so RLS (auth.uid() = user_id)
+      // still allows deleting the push_subscriptions row for this device.
+      try {
+        await unsubscribeFromPush();
+      } catch (e) {
+        console.warn("push unsubscribe failed", e);
+      }
+
       await supabase.auth.signOut();
       toast({
         title: "До скорой встречи! 👋",

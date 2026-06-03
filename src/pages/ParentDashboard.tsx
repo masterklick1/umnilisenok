@@ -150,10 +150,30 @@ export default function ParentDashboard() {
             </Button>
             <h1 className="text-2xl font-bold text-foreground">Родительский кабинет</h1>
           </div>
-          <Button variant="ghost" onClick={handleSignOut}>
-            <LogOut className="w-5 h-5 mr-2" />
-            Выйти
-          </Button>
+          <div className="flex items-center gap-1">
+            {pushPerm !== "unsupported" && pushPerm !== "granted" && (
+              <Button variant="outline" size="sm" onClick={enablePush} className="gap-1">
+                <Bell className="w-4 h-4" />
+                <span className="hidden sm:inline">Включить уведомления</span>
+              </Button>
+            )}
+            {pushPerm === "granted" && (
+              <Button variant="ghost" size="sm" disabled className="gap-1 text-muted-foreground">
+                <Bell className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">Уведомления вкл.</span>
+              </Button>
+            )}
+            {pushPerm === "denied" && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <BellOff className="w-4 h-4" />
+                <span className="hidden sm:inline">Заблокировано в браузере</span>
+              </span>
+            )}
+            <Button variant="ghost" onClick={handleSignOut}>
+              <LogOut className="w-5 h-5 mr-2" />
+              Выйти
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="children" className="space-y-6">

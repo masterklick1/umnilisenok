@@ -116,6 +116,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
 
   useEffect(() => {
     loadData();
+    loadSettings();
 
     const channel = supabase
       .channel(`safety-${childId}`)
@@ -139,7 +140,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [childId, loadData]);
+  }, [childId, loadData, loadSettings]);
 
   // Sign URLs for fulfilled monitoring results
   useEffect(() => {

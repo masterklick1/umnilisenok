@@ -59,6 +59,7 @@ export const subscribeToPush = async (userId: string): Promise<boolean> => {
       p256dh: json.keys.p256dh!,
       auth: json.keys.auth!,
       user_agent: navigator.userAgent,
+      last_synced_at: new Date().toISOString(),
     },
     { onConflict: "endpoint" }
   );

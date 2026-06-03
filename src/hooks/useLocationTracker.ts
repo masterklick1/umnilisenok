@@ -153,6 +153,12 @@ export const useLocationTracker = (enabled = true) => {
         longitude: lng,
         distance_m: d,
       });
+      // Fire system push notification to parents
+      supabase.functions
+        .invoke("notify-geofence", {
+          body: { event_type: inside ? "enter" : "exit", distance_m: d },
+        })
+        .catch((e) => console.error("notify-geofence failed", e));
     };
 
     const tick = async () => {

@@ -12,14 +12,15 @@ import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2 } from "lucide-react";
+import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorker } from "@/lib/push";
 
 export default function ParentDashboard() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const {
     children,
     loading,
@@ -35,6 +36,31 @@ export default function ParentDashboard() {
   } = useParentalControl();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { toast } = useToast();
+  const [pushPerm, setPushPerm] = useState<NotificationPermission | "unsupported">(
+    isPushSupported() ? getPushPermission() : "unsupported"
+  );
+
+  // Auto-register SW + try to silently reuse subscription
+  useEffect(() => {
+    if (!user?.id || !isPushSupported()) return;
+    ensureServiceWorker();
+    if (Notification.permission === "granted") {
+      subscribeToPush(user.id).catch(() => {});
+    }
+  }, [user?.id]);
+
+  const enablePush = async () => {
+    if (!user?.id) return;
+    const ok = await subscribeToPush(user.id);
+    setPushPerm(getPushPermission());
+    toast({
+      title: ok ? "Уведомления включены" : "Не удалось включить уведомления",
+      description: ok
+        ? "Вы будете получать оповещения о геозоне даже вне приложения."
+        : "Проверьте разрешения браузера для этого сайта.",
+      variant: ok ? "default" : "destructive",
+    });
+  };
 
   // Realtime SOS notification across all linked children
   useEffect(() => {
@@ -124,10 +150,30 @@ export default function ParentDashboard() {
             </Button>
             <h1 className="text-2xl font-bold text-foreground">Родительский кабинет</h1>
           </div>
-          <Button variant="ghost" onClick={handleSignOut}>
-            <LogOut className="w-5 h-5 mr-2" />
-            Выйти
-          </Button>
+          <div className="flex items-center gap-1">
+            {pushPerm !== "unsupported" && pushPerm !== "granted" && (
+              <Button variant="outline" size="sm" onClick={enablePush} className="gap-1">
+                <Bell className="w-4 h-4" />
+                <span className="hidden sm:inline">Включить уведомления</span>
+              </Button>
+            )}
+            {pushPerm === "granted" && (
+              <Button variant="ghost" size="sm" disabled className="gap-1 text-muted-foreground">
+                <Bell className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">Уведомления вкл.</span>
+              </Button>
+            )}
+            {pushPerm === "denied" && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <BellOff className="w-4 h-4" />
+                <span className="hidden sm:inline">Заблокировано в браузере</span>
+              </span>
+            )}
+            <Button variant="ghost" onClick={handleSignOut}>
+              <LogOut className="w-5 h-5 mr-2" />
+              Выйти
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="children" className="space-y-6">

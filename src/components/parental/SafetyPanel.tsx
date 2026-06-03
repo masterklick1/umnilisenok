@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer } from "lucide-react";
+import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer, Shield, ShieldAlert, Crosshair } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,6 +51,33 @@ const formatInterval = (sec: number) => {
   return m < 60 ? `${m} мин` : `${Math.round(m / 60)} ч`;
 };
 
+interface Settings {
+  location_enabled: boolean;
+  location_interval_seconds: number;
+  geofence_enabled: boolean;
+  geofence_lat: number | null;
+  geofence_lng: number | null;
+  geofence_radius_m: number;
+}
+
+interface GeofenceEvent {
+  id: string;
+  event_type: string;
+  latitude: number;
+  longitude: number;
+  distance_m: number | null;
+  created_at: string;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  location_enabled: true,
+  location_interval_seconds: 60,
+  geofence_enabled: false,
+  geofence_lat: null,
+  geofence_lng: null,
+  geofence_radius_m: 300,
+};
+
 export const SafetyPanel = ({ childId, childName }: Props) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -59,22 +86,23 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [requests, setRequests] = useState<MonitoringReq[]>([]);
   const [requesting, setRequesting] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
-  const [settings, setSettings] = useState<{ location_enabled: boolean; location_interval_seconds: number } | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [geoEvents, setGeoEvents] = useState<GeofenceEvent[]>([]);
 
   const loadSettings = useCallback(async () => {
     const { data } = await supabase
       .from("child_settings")
-      .select("location_enabled, location_interval_seconds")
+      .select("location_enabled, location_interval_seconds, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m")
       .eq("child_id", childId)
       .maybeSingle();
-    setSettings(data ?? { location_enabled: true, location_interval_seconds: 60 });
+    setSettings({ ...DEFAULT_SETTINGS, ...((data as any) ?? {}) });
   }, [childId]);
 
-  const saveSettings = async (patch: Partial<{ location_enabled: boolean; location_interval_seconds: number }>) => {
+  const saveSettings = async (patch: Partial<Settings>) => {
     if (!user) return;
     setSavingSettings(true);
-    const next = { ...(settings ?? { location_enabled: true, location_interval_seconds: 60 }), ...patch };
+    const next = { ...(settings ?? DEFAULT_SETTINGS), ...patch };
     setSettings(next);
     const { error } = await supabase
       .from("child_settings")
@@ -83,9 +111,13 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
           child_id: childId,
           location_enabled: next.location_enabled,
           location_interval_seconds: next.location_interval_seconds,
+          geofence_enabled: next.geofence_enabled,
+          geofence_lat: next.geofence_lat,
+          geofence_lng: next.geofence_lng,
+          geofence_radius_m: next.geofence_radius_m,
           updated_by: user.id,
           updated_at: new Date().toISOString(),
-        },
+        } as any,
         { onConflict: "child_id" }
       );
     setSavingSettings(false);
@@ -94,7 +126,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
 
 
   const loadData = useCallback(async () => {
-    const [loc, sos, req] = await Promise.all([
+    const [loc, sos, req, geo] = await Promise.all([
       supabase
         .from("child_locations")
         .select("*")
@@ -114,10 +146,17 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         .eq("child_id", childId)
         .order("created_at", { ascending: false })
         .limit(10),
+      supabase
+        .from("geofence_events" as any)
+        .select("*")
+        .eq("child_id", childId)
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
     if (loc.data) setLocation(loc.data as Location);
     if (sos.data) setAlerts(sos.data as SosAlert[]);
     if (req.data) setRequests(req.data as MonitoringReq[]);
+    if (geo.data) setGeoEvents(geo.data as unknown as GeofenceEvent[]);
   }, [childId]);
 
   useEffect(() => {
@@ -141,12 +180,26 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         { event: "*", schema: "public", table: "monitoring_requests", filter: `child_id=eq.${childId}` },
         () => loadData()
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "geofence_events", filter: `child_id=eq.${childId}` },
+        (payload) => {
+          const ev = payload.new as any as GeofenceEvent;
+          loadData();
+          toast({
+            title: ev.event_type === "exit" ? "⚠️ Ребёнок вышел из зоны" : "✅ Ребёнок вернулся в зону",
+            description: `${childName} · ${ev.distance_m ? Math.round(ev.distance_m) + "м от центра" : ""}`,
+            variant: ev.event_type === "exit" ? "destructive" : "default",
+            duration: 30000,
+          });
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [childId, loadData, loadSettings]);
+  }, [childId, childName, loadData, loadSettings, toast]);
 
   // Sign URLs for fulfilled monitoring results
   useEffect(() => {
@@ -245,7 +298,20 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 longitude={location.longitude}
                 accuracy={location.accuracy}
                 label={childName}
+                geofence={
+                  settings?.geofence_enabled && settings.geofence_lat != null && settings.geofence_lng != null
+                    ? { lat: settings.geofence_lat, lng: settings.geofence_lng, radius: settings.geofence_radius_m }
+                    : null
+                }
+                onMapClick={(lat, lng) =>
+                  saveSettings({ geofence_lat: lat, geofence_lng: lng, geofence_enabled: true })
+                }
               />
+              {settings?.geofence_enabled && (
+                <p className="text-xs text-muted-foreground">
+                  💡 Кликните на карте, чтобы переместить центр безопасной зоны
+                </p>
+              )}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <p className="text-sm text-muted-foreground">
@@ -337,7 +403,113 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Quick monitoring actions */}
+      {/* Geofence settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Shield className="w-5 h-5" /> Безопасная зона (геозона)
+          </CardTitle>
+          <CardDescription>
+            Уведомление, если ребёнок выходит за пределы заданного круга.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="geofence-enabled" className="cursor-pointer">
+              Включить геозону
+            </Label>
+            <Switch
+              id="geofence-enabled"
+              checked={settings?.geofence_enabled ?? false}
+              disabled={savingSettings}
+              onCheckedChange={(v) => saveSettings({ geofence_enabled: v })}
+            />
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!location || savingSettings}
+              onClick={() =>
+                location &&
+                saveSettings({
+                  geofence_lat: location.latitude,
+                  geofence_lng: location.longitude,
+                  geofence_enabled: true,
+                })
+              }
+            >
+              <Crosshair className="w-4 h-4 mr-1" />
+              Центр = текущее место ребёнка
+            </Button>
+            {settings?.geofence_lat != null && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={savingSettings}
+                onClick={() => saveSettings({ geofence_lat: null, geofence_lng: null, geofence_enabled: false })}
+              >
+                Очистить
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Радиус</Label>
+              <span className="text-sm font-mono">
+                {settings ? `${settings.geofence_radius_m} м` : "—"}
+              </span>
+            </div>
+            <Slider
+              min={50}
+              max={5000}
+              step={50}
+              value={[settings?.geofence_radius_m ?? 300]}
+              disabled={savingSettings || !(settings?.geofence_enabled ?? false)}
+              onValueChange={(v) => setSettings((s) => s ? { ...s, geofence_radius_m: v[0] } : s)}
+              onValueCommit={(v) => saveSettings({ geofence_radius_m: v[0] })}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>50 м</span>
+              <span>5 км</span>
+            </div>
+          </div>
+
+          {settings?.geofence_enabled && settings.geofence_lat != null && (
+            <p className="text-xs text-muted-foreground font-mono">
+              Центр: {settings.geofence_lat.toFixed(5)}, {settings.geofence_lng?.toFixed(5)}
+            </p>
+          )}
+
+          {geoEvents.length > 0 && (
+            <div className="space-y-1 pt-2 border-t">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">События зоны</p>
+              {geoEvents.slice(0, 5).map((ev) => (
+                <div key={ev.id} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1">
+                    {ev.event_type === "exit" ? (
+                      <ShieldAlert className="w-3 h-3 text-destructive" />
+                    ) : (
+                      <Shield className="w-3 h-3 text-primary" />
+                    )}
+                    {ev.event_type === "exit" ? "Вышел из зоны" : "Вернулся в зону"}
+                    {ev.distance_m != null && (
+                      <span className="text-muted-foreground">· {Math.round(ev.distance_m)}м</span>
+                    )}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true, locale: ru })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Проверить сейчас</CardTitle>

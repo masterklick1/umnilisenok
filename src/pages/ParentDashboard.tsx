@@ -63,6 +63,27 @@ export default function ParentDashboard() {
           });
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "geofence_events" },
+        (payload) => {
+          const ev = payload.new as { child_id: string; event_type: string; distance_m: number | null };
+          if (!childIds.includes(ev.child_id)) return;
+          const child = children.find((c) => c.child_id === ev.child_id);
+          const isExit = ev.event_type === "exit";
+          toast({
+            title: isExit ? "⚠️ Выход из безопасной зоны" : "✅ Возврат в зону",
+            description: `${child?.first_name || "Ребёнок"}${ev.distance_m ? ` · ${Math.round(ev.distance_m)}м от центра` : ""}`,
+            variant: isExit ? "destructive" : "default",
+            duration: 30000,
+            action: (
+              <ToastAction altText="Открыть" onClick={() => setSelectedChild(ev.child_id)}>
+                Открыть
+              </ToastAction>
+            ),
+          });
+        }
+      )
       .subscribe();
 
     return () => {

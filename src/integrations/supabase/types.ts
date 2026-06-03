@@ -189,6 +189,10 @@ export type Database = {
       child_settings: {
         Row: {
           child_id: string
+          geofence_enabled: boolean
+          geofence_lat: number | null
+          geofence_lng: number | null
+          geofence_radius_m: number
           location_enabled: boolean
           location_interval_seconds: number
           updated_at: string
@@ -196,6 +200,10 @@ export type Database = {
         }
         Insert: {
           child_id: string
+          geofence_enabled?: boolean
+          geofence_lat?: number | null
+          geofence_lng?: number | null
+          geofence_radius_m?: number
           location_enabled?: boolean
           location_interval_seconds?: number
           updated_at?: string
@@ -203,6 +211,10 @@ export type Database = {
         }
         Update: {
           child_id?: string
+          geofence_enabled?: boolean
+          geofence_lat?: number | null
+          geofence_lng?: number | null
+          geofence_radius_m?: number
           location_enabled?: boolean
           location_interval_seconds?: number
           updated_at?: string
@@ -305,6 +317,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      geofence_events: {
+        Row: {
+          child_id: string
+          created_at: string
+          distance_m: number | null
+          event_type: string
+          id: string
+          latitude: number
+          longitude: number
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          distance_m?: number | null
+          event_type: string
+          id?: string
+          latitude: number
+          longitude: number
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          distance_m?: number | null
+          event_type?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+        }
+        Relationships: []
       }
       monitoring_requests: {
         Row: {

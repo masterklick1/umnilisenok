@@ -12,6 +12,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ToastAction } from "@/components/ui/toast";
+import { SOSButton } from "@/components/SOSButton";
+import { useLocationTracker } from "@/hooks/useLocationTracker";
+import { useMonitoringListener } from "@/hooks/useMonitoringListener";
 
 export const MainApp = () => {
   const { toast } = useToast();

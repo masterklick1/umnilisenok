@@ -5,9 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { FreeDrawing } from "@/components/creativity/FreeDrawing";
 import { ColoringBook } from "@/components/creativity/ColoringBook";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 const CreativityPage = () => {
   const navigate = useNavigate();
+  useActivityTracker();
   const [activeTab, setActiveTab] = useState("draw");
 
   return (

@@ -25,6 +25,8 @@ export const RoomView = () => {
     if (icon === "🔵") return "bg-gradient-to-b from-blue-200 to-blue-100";
     if (icon === "🩷") return "bg-gradient-to-b from-pink-200 to-pink-100";
     if (icon === "🟢") return "bg-gradient-to-b from-green-200 to-green-100";
+    if (icon === "🟡") return "bg-gradient-to-b from-yellow-200 to-yellow-100";
+    if (icon === "🟣") return "bg-gradient-to-b from-purple-200 to-purple-100";
     if (icon === "🌌") return "bg-gradient-to-b from-indigo-900 via-purple-900 to-indigo-800";
     return "bg-gradient-to-b from-sky-200 to-sky-100";
   };
@@ -35,6 +37,7 @@ export const RoomView = () => {
     if (icon === "🟫") return "bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700";
     if (icon === "🟪") return "bg-gradient-to-r from-purple-300 via-purple-200 to-purple-300";
     if (icon === "🟩") return "bg-gradient-to-r from-green-400 via-green-300 to-green-400";
+    if (icon === "⭐") return "bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-700";
     return "bg-amber-200";
   };
 

@@ -39,25 +39,52 @@ export default function ParentDashboard() {
   const [pushPerm, setPushPerm] = useState<NotificationPermission | "unsupported">(
     isPushSupported() ? getPushPermission() : "unsupported"
   );
+  const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
+
+  const refreshPushStatus = async () => {
+    if (!user?.id) return;
+    const s = await getPushStatus(user.id);
+    setPushStatus(s);
+    setPushPerm(s.permission);
+  };
 
   // Auto-register SW + try to silently reuse subscription
   useEffect(() => {
     if (!user?.id || !isPushSupported()) return;
-    ensureServiceWorker();
-    if (Notification.permission === "granted") {
-      subscribeToPush(user.id).catch(() => {});
-    }
+    (async () => {
+      await ensureServiceWorker();
+      if (Notification.permission === "granted") {
+        await subscribeToPush(user.id).catch(() => {});
+      }
+      await refreshPushStatus();
+    })();
   }, [user?.id]);
 
   const enablePush = async () => {
     if (!user?.id) return;
     const ok = await subscribeToPush(user.id);
-    setPushPerm(getPushPermission());
+    await refreshPushStatus();
     toast({
       title: ok ? "Уведомления включены" : "Не удалось включить уведомления",
       description: ok
         ? "Вы будете получать оповещения о геозоне даже вне приложения."
         : "Проверьте разрешения браузера для этого сайта.",
+      variant: ok ? "default" : "destructive",
+    });
+  };
+
+  const disablePush = async () => {
+    await unsubscribeFromPush();
+    await refreshPushStatus();
+    toast({ title: "Уведомления отключены на этом устройстве" });
+  };
+
+  const resyncPush = async () => {
+    if (!user?.id) return;
+    const ok = await subscribeToPush(user.id);
+    await refreshPushStatus();
+    toast({
+      title: ok ? "Подписка обновлена" : "Не удалось обновить подписку",
       variant: ok ? "default" : "destructive",
     });
   };

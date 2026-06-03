@@ -403,7 +403,113 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Quick monitoring actions */}
+      {/* Geofence settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Shield className="w-5 h-5" /> Безопасная зона (геозона)
+          </CardTitle>
+          <CardDescription>
+            Уведомление, если ребёнок выходит за пределы заданного круга.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="geofence-enabled" className="cursor-pointer">
+              Включить геозону
+            </Label>
+            <Switch
+              id="geofence-enabled"
+              checked={settings?.geofence_enabled ?? false}
+              disabled={savingSettings}
+              onCheckedChange={(v) => saveSettings({ geofence_enabled: v })}
+            />
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!location || savingSettings}
+              onClick={() =>
+                location &&
+                saveSettings({
+                  geofence_lat: location.latitude,
+                  geofence_lng: location.longitude,
+                  geofence_enabled: true,
+                })
+              }
+            >
+              <Crosshair className="w-4 h-4 mr-1" />
+              Центр = текущее место ребёнка
+            </Button>
+            {settings?.geofence_lat != null && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={savingSettings}
+                onClick={() => saveSettings({ geofence_lat: null, geofence_lng: null, geofence_enabled: false })}
+              >
+                Очистить
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Радиус</Label>
+              <span className="text-sm font-mono">
+                {settings ? `${settings.geofence_radius_m} м` : "—"}
+              </span>
+            </div>
+            <Slider
+              min={50}
+              max={5000}
+              step={50}
+              value={[settings?.geofence_radius_m ?? 300]}
+              disabled={savingSettings || !(settings?.geofence_enabled ?? false)}
+              onValueChange={(v) => setSettings((s) => s ? { ...s, geofence_radius_m: v[0] } : s)}
+              onValueCommit={(v) => saveSettings({ geofence_radius_m: v[0] })}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>50 м</span>
+              <span>5 км</span>
+            </div>
+          </div>
+
+          {settings?.geofence_enabled && settings.geofence_lat != null && (
+            <p className="text-xs text-muted-foreground font-mono">
+              Центр: {settings.geofence_lat.toFixed(5)}, {settings.geofence_lng?.toFixed(5)}
+            </p>
+          )}
+
+          {geoEvents.length > 0 && (
+            <div className="space-y-1 pt-2 border-t">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">События зоны</p>
+              {geoEvents.slice(0, 5).map((ev) => (
+                <div key={ev.id} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1">
+                    {ev.event_type === "exit" ? (
+                      <ShieldAlert className="w-3 h-3 text-destructive" />
+                    ) : (
+                      <Shield className="w-3 h-3 text-primary" />
+                    )}
+                    {ev.event_type === "exit" ? "Вышел из зоны" : "Вернулся в зону"}
+                    {ev.distance_m != null && (
+                      <span className="text-muted-foreground">· {Math.round(ev.distance_m)}м</span>
+                    )}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true, locale: ru })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Проверить сейчас</CardTitle>

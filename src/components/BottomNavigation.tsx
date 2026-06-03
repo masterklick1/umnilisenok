@@ -89,8 +89,12 @@ export const BottomNavigation = () => {
       <Button
         size="icon"
         variant="outline"
-        onClick={() => toast({ title: "Настройки", description: "Скоро появятся!" })}
-        className="w-12 h-12 rounded-xl bg-card shadow-lg border-2 border-muted-foreground/20 hover:border-muted-foreground/40"
+        onClick={() => navigate("/settings")}
+        className={`w-12 h-12 rounded-xl bg-card shadow-lg border-2 transition-all ${
+          isActive("/settings")
+            ? "border-muted-foreground bg-muted"
+            : "border-muted-foreground/20 hover:border-muted-foreground/40"
+        }`}
       >
         <Settings className="w-5 h-5 text-muted-foreground" />
       </Button>

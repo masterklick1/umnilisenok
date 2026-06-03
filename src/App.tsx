@@ -16,6 +16,7 @@ import GamePage from "./pages/GamePage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import JoinPage from "./pages/JoinPage";
+import SettingsPage from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -117,6 +118,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <GamePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
                 </ProtectedRoute>
               }
             />

@@ -12,7 +12,8 @@ import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle, House } from "lucide-react";
+import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -281,7 +282,7 @@ export default function ParentDashboard() {
         )}
 
         <Tabs defaultValue="children" className="space-y-6">
-          <TabsList className="grid grid-cols-6 w-full">
+          <TabsList className="grid grid-cols-7 w-full">
             <TabsTrigger value="children" className="gap-1">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Дети</span>
@@ -297,6 +298,10 @@ export default function ParentDashboard() {
             <TabsTrigger value="mirror" className="gap-1" disabled={!selectedChild}>
               <Eye className="w-4 h-4" />
               <span className="hidden sm:inline">Зеркало</span>
+            </TabsTrigger>
+            <TabsTrigger value="room" className="gap-1" disabled={!selectedChild}>
+              <House className="w-4 h-4" />
+              <span className="hidden sm:inline">Домик</span>
             </TabsTrigger>
             <TabsTrigger value="analysis" className="gap-1" disabled={!selectedChild}>
               <Brain className="w-4 h-4" />
@@ -383,6 +388,22 @@ export default function ParentDashboard() {
                   <p className="text-muted-foreground">
                     Выберите ребёнка на вкладке "Дети"
                   </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Child Room Tab */}
+          <TabsContent value="room">
+            {selectedChildData ? (
+              <ChildRoomViewer
+                childId={selectedChildData.child_id}
+                childName={selectedChildData.first_name || "Ребёнок"}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">Выберите ребёнка на вкладке "Дети"</p>
                 </CardContent>
               </Card>
             )}

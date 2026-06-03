@@ -186,6 +186,30 @@ export type Database = {
         }
         Relationships: []
       }
+      child_settings: {
+        Row: {
+          child_id: string
+          location_enabled: boolean
+          location_interval_seconds: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          child_id: string
+          location_enabled?: boolean
+          location_interval_seconds?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          child_id?: string
+          location_enabled?: boolean
+          location_interval_seconds?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       gallery_items: {
         Row: {
           category: string

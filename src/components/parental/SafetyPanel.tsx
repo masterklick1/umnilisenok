@@ -231,35 +231,103 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             <MapPin className="w-5 h-5" /> Местоположение
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           {location ? (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Последнее обновление:{" "}
-                {formatDistanceToNow(new Date(location.created_at), { addSuffix: true, locale: ru })}
-              </p>
-              <p className="font-mono text-sm">
-                {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
-                {location.accuracy && (
-                  <span className="text-muted-foreground"> (±{Math.round(location.accuracy)}м)</span>
-                )}
-              </p>
-              <a
-                href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Navigation className="w-4 h-4" />
-                  Открыть на карте
-                </Button>
-              </a>
-            </div>
+            <>
+              <LocationMap
+                latitude={location.latitude}
+                longitude={location.longitude}
+                accuracy={location.accuracy}
+                label={childName}
+              />
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Обновлено{" "}
+                    {formatDistanceToNow(new Date(location.created_at), { addSuffix: true, locale: ru })}
+                  </p>
+                  <p className="font-mono text-xs">
+                    {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                    {location.accuracy && (
+                      <span className="text-muted-foreground"> · ±{Math.round(location.accuracy)}м</span>
+                    )}
+                  </p>
+                </div>
+                <a
+                  href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Navigation className="w-4 h-4" />В Google Maps
+                  </Button>
+                </a>
+              </div>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               Локация ещё не передана. Ребёнок должен открыть приложение и разрешить геопозицию.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Tracking settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Timer className="w-5 h-5" /> Автоотправка геолокации
+          </CardTitle>
+          <CardDescription>
+            Настройки применяются на телефоне ребёнка автоматически.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="tracking-enabled" className="cursor-pointer">
+              Отправлять координаты
+            </Label>
+            <Switch
+              id="tracking-enabled"
+              checked={settings?.location_enabled ?? true}
+              disabled={savingSettings}
+              onCheckedChange={(v) => saveSettings({ location_enabled: v })}
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Интервал</Label>
+              <span className="text-sm font-mono">
+                {settings ? formatInterval(settings.location_interval_seconds) : "—"}
+              </span>
+            </div>
+            <Slider
+              min={15}
+              max={1800}
+              step={15}
+              value={[settings?.location_interval_seconds ?? 60]}
+              disabled={savingSettings || !(settings?.location_enabled ?? true)}
+              onValueChange={(v) => setSettings((s) => s ? { ...s, location_interval_seconds: v[0] } : s)}
+              onValueCommit={(v) => saveSettings({ location_interval_seconds: v[0] })}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>15 сек</span>
+              <span>30 мин</span>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {[30, 60, 300, 900].map((s) => (
+              <Button
+                key={s}
+                variant={settings?.location_interval_seconds === s ? "default" : "outline"}
+                size="sm"
+                disabled={savingSettings}
+                onClick={() => saveSettings({ location_interval_seconds: s })}
+              >
+                {formatInterval(s)}
+              </Button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

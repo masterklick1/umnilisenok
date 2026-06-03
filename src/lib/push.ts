@@ -59,6 +59,7 @@ export const subscribeToPush = async (userId: string): Promise<boolean> => {
       p256dh: json.keys.p256dh!,
       auth: json.keys.auth!,
       user_agent: navigator.userAgent,
+      last_synced_at: new Date().toISOString(),
     },
     { onConflict: "endpoint" }
   );
@@ -117,10 +118,10 @@ export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
   if (userId) {
     const { data } = await supabase
       .from("push_subscriptions")
-      .select("created_at, user_id")
+      .select("last_synced_at, user_id")
       .eq("endpoint", sub.endpoint)
       .maybeSingle();
-    lastSyncedAt = data?.created_at ?? null;
+    lastSyncedAt = (data as any)?.last_synced_at ?? null;
     matchesCurrentUser = data?.user_id === userId;
   }
 

@@ -60,6 +60,30 @@ export default function ParentDashboard() {
     })();
   }, [user?.id]);
 
+  // Periodic push status re-sync every 5 minutes (and on tab focus)
+  useEffect(() => {
+    if (!user?.id || !isPushSupported()) return;
+
+    const tick = async () => {
+      if (Notification.permission === "granted") {
+        // Re-upsert keeps last_synced_at fresh and re-binds endpoint to current user
+        await subscribeToPush(user.id).catch(() => {});
+      }
+      await refreshPushStatus();
+    };
+
+    const interval = window.setInterval(tick, 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [user?.id]);
+
   const enablePush = async () => {
     if (!user?.id) return;
     const ok = await subscribeToPush(user.id);

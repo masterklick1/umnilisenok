@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useParentalControl } from "@/hooks/useParentalControl";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +10,11 @@ import { ChildCard } from "@/components/parental/ChildCard";
 import { ActivityMirror } from "@/components/parental/ActivityMirror";
 import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut } from "lucide-react";
+import { SafetyPanel } from "@/components/parental/SafetyPanel";
+import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 export default function ParentDashboard() {
   const navigate = useNavigate();

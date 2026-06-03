@@ -45,7 +45,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   }
 
   const reward = (msg: string) => {
-    addStars(1);
+    addStars(1, "math");
     setScore((s) => s + 1);
     speak("Правильно!");
     toast({ title: msg + " 🎉", description: "+1 ⭐" });

@@ -46,7 +46,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const [compareRound, setCompareRound] = useState(0);
 
   const reward = (msg: string) => {
-    addStars(1);
+    addStars(1, "math");
     setScore((s) => s + 1);
     speak("Правильно! Молодец!");
     toast({ title: msg + " 🎉", description: "+1 ⭐" });

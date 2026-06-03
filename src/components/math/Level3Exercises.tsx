@@ -32,7 +32,7 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   const [round, setRound] = useState(0);
 
   const reward = (msg: string) => {
-    addStars(1);
+    addStars(1, "math");
     setScore((s) => s + 1);
     speak("Правильно!");
     toast({ title: msg + " 🎉", description: "+1 ⭐" });

@@ -12,6 +12,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ToastAction } from "@/components/ui/toast";
+import { SOSButton } from "@/components/SOSButton";
+import { useLocationTracker } from "@/hooks/useLocationTracker";
+import { useMonitoringListener } from "@/hooks/useMonitoringListener";
 
 export const MainApp = () => {
   const { toast } = useToast();
@@ -19,6 +22,10 @@ export const MainApp = () => {
   const { user } = useAuth();
   const { progress, loading } = useUserProgress();
   const [childName, setChildName] = useState<string>("");
+
+  useLocationTracker(true);
+  useMonitoringListener();
+
 
   useEffect(() => {
     // Check if we're in child session mode
@@ -184,6 +191,9 @@ export const MainApp = () => {
           />
         </div>
       </div>
+
+      {/* SOS for emergencies */}
+      <SOSButton />
 
       {/* Bottom Navigation */}
       <BottomNavigation />

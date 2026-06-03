@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useParentalControl } from "@/hooks/useParentalControl";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +10,11 @@ import { ChildCard } from "@/components/parental/ChildCard";
 import { ActivityMirror } from "@/components/parental/ActivityMirror";
 import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut } from "lucide-react";
+import { SafetyPanel } from "@/components/parental/SafetyPanel";
+import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 export default function ParentDashboard() {
   const navigate = useNavigate();
@@ -29,6 +33,41 @@ export default function ParentDashboard() {
     createGameSession,
   } = useParentalControl();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const { toast } = useToast();
+
+  // Realtime SOS notification across all linked children
+  useEffect(() => {
+    const childIds = children.map((c) => c.child_id);
+    if (childIds.length === 0) return;
+
+    const channel = supabase
+      .channel("parent-sos")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "sos_alerts" },
+        (payload) => {
+          const a = payload.new as { child_id: string };
+          if (!childIds.includes(a.child_id)) return;
+          const child = children.find((c) => c.child_id === a.child_id);
+          toast({
+            title: "🚨 SOS!",
+            description: `${child?.first_name || "Ребёнок"} нажал кнопку помощи`,
+            variant: "destructive",
+            duration: 60000,
+            action: (
+              <ToastAction altText="Открыть" onClick={() => setSelectedChild(a.child_id)}>
+                Открыть
+              </ToastAction>
+            ),
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [children, setSelectedChild, toast]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -70,20 +109,24 @@ export default function ParentDashboard() {
         </div>
 
         <Tabs defaultValue="children" className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="children" className="gap-2">
+          <TabsList className="grid grid-cols-5 w-full">
+            <TabsTrigger value="children" className="gap-1">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Дети</span>
             </TabsTrigger>
-            <TabsTrigger value="mirror" className="gap-2" disabled={!selectedChild}>
+            <TabsTrigger value="safety" className="gap-1" disabled={!selectedChild}>
+              <Shield className="w-4 h-4" />
+              <span className="hidden sm:inline">Защита</span>
+            </TabsTrigger>
+            <TabsTrigger value="mirror" className="gap-1" disabled={!selectedChild}>
               <Eye className="w-4 h-4" />
               <span className="hidden sm:inline">Зеркало</span>
             </TabsTrigger>
-            <TabsTrigger value="analysis" className="gap-2" disabled={!selectedChild}>
+            <TabsTrigger value="analysis" className="gap-1" disabled={!selectedChild}>
               <Brain className="w-4 h-4" />
-              <span className="hidden sm:inline">ИИ-Анализ</span>
+              <span className="hidden sm:inline">ИИ</span>
             </TabsTrigger>
-            <TabsTrigger value="games" className="gap-2">
+            <TabsTrigger value="games" className="gap-1">
               <Gamepad2 className="w-4 h-4" />
               <span className="hidden sm:inline">Игры</span>
             </TabsTrigger>
@@ -130,6 +173,22 @@ export default function ParentDashboard() {
               </div>
             )}
           </TabsContent>
+          {/* Safety Tab */}
+          <TabsContent value="safety">
+            {selectedChildData ? (
+              <SafetyPanel
+                childId={selectedChildData.child_id}
+                childName={selectedChildData.first_name || "Ребёнок"}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">Выберите ребёнка</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
 
           {/* Mirror Tab */}
           <TabsContent value="mirror">

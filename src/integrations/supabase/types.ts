@@ -123,6 +123,36 @@ export type Database = {
           },
         ]
       }
+      child_locations: {
+        Row: {
+          accuracy: number | null
+          battery_level: number | null
+          child_id: string
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+        }
+        Insert: {
+          accuracy?: number | null
+          battery_level?: number | null
+          child_id: string
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+        }
+        Update: {
+          accuracy?: number | null
+          battery_level?: number | null
+          child_id?: string
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+        }
+        Relationships: []
+      }
       gallery_items: {
         Row: {
           category: string
@@ -218,6 +248,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      monitoring_requests: {
+        Row: {
+          child_id: string
+          created_at: string
+          fulfilled_at: string | null
+          id: string
+          parent_id: string
+          request_type: string
+          result_data: Json | null
+          result_path: string | null
+          status: string
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          parent_id: string
+          request_type: string
+          result_data?: Json | null
+          result_path?: string | null
+          status?: string
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          fulfilled_at?: string | null
+          id?: string
+          parent_id?: string
+          request_type?: string
+          result_data?: Json | null
+          result_path?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       parent_child_links: {
         Row: {
@@ -358,6 +424,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sos_alerts: {
+        Row: {
+          accuracy: number | null
+          child_id: string
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          message: string | null
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          accuracy?: number | null
+          child_id: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          message?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          accuracy?: number | null
+          child_id?: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          message?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       user_achievements: {
         Row: {

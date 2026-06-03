@@ -1,0 +1,292 @@
+import { useState, useEffect, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
+
+type Mode = "odd" | "sequence" | "memory" | null;
+
+const speak = (text: string) => {
+  if ("speechSynthesis" in window) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "ru-RU";
+    u.rate = 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }
+};
+
+const playJoy = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    [523, 659, 784].forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.frequency.value = freq;
+      o.type = "sine";
+      o.connect(g);
+      g.connect(ctx.destination);
+      g.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
+      g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i * 0.12 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.25);
+      o.start(ctx.currentTime + i * 0.12);
+      o.stop(ctx.currentTime + i * 0.12 + 0.3);
+    });
+  } catch {
+    /* noop */
+  }
+};
+
+// --- "Найди лишнее" ---
+const oddPuzzles = [
+  { items: ["🍎", "🍌", "🍇", "🚗"], odd: 3, hint: "Три фрукта и машина" },
+  { items: ["🐶", "🐱", "🐰", "🌳"], odd: 3, hint: "Три животных и дерево" },
+  { items: ["⚽", "🏀", "🎾", "🍕"], odd: 3, hint: "Три мяча и пицца" },
+  { items: ["🚗", "🚌", "🚲", "🐟"], odd: 3, hint: "Три транспорта и рыба" },
+  { items: ["☀️", "⭐", "🌙", "🍎"], odd: 3, hint: "Три на небе и яблоко" },
+  { items: ["🔴", "🔴", "🔵", "🔴"], odd: 2, hint: "Три красных и один синий" },
+];
+
+const OddOneOut = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const [idx, setIdx] = useState(() => Math.floor(Math.random() * oddPuzzles.length));
+  const [locked, setLocked] = useState<number | null>(null);
+  const puzzle = oddPuzzles[idx];
+
+  const handle = (i: number) => {
+    if (locked !== null) return;
+    setLocked(i);
+    const correct = i === puzzle.odd;
+    onAnswer(correct);
+    setTimeout(() => {
+      setLocked(null);
+      setIdx(Math.floor(Math.random() * oddPuzzles.length));
+    }, 1500);
+  };
+
+  return (
+    <Card className="p-8 text-center">
+      <h3 className="text-2xl font-bold mb-2">Найди лишнее</h3>
+      <p className="text-muted-foreground mb-6">Что не подходит?</p>
+      <div className="grid grid-cols-4 gap-4">
+        {puzzle.items.map((emoji, i) => (
+          <button
+            key={i}
+            onClick={() => handle(i)}
+            disabled={locked !== null}
+            className={`text-6xl p-4 rounded-2xl transition-all bg-muted hover:bg-primary/20 ${
+              locked === i ? (i === puzzle.odd ? "bg-green-200 scale-110" : "bg-red-200") : ""
+            } ${locked !== null && i === puzzle.odd ? "ring-4 ring-green-500" : ""}`}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+// --- "Продолжи последовательность" ---
+const sequencePuzzles = [
+  { seq: ["🔴", "🔵", "🔴", "🔵", "?"], options: ["🔴", "🔵", "🟢"], answer: 0 },
+  { seq: ["⭐", "⭐", "🌙", "⭐", "⭐", "?"], options: ["⭐", "🌙", "☀️"], answer: 1 },
+  { seq: ["🐱", "🐶", "🐱", "🐶", "?"], options: ["🐰", "🐱", "🐶"], answer: 1 },
+  { seq: ["🟡", "🟡", "🟢", "🟡", "🟡", "?"], options: ["🟡", "🟢", "🔵"], answer: 1 },
+  { seq: ["1️⃣", "2️⃣", "3️⃣", "?"], options: ["5️⃣", "4️⃣", "6️⃣"], answer: 1 },
+  { seq: ["🍎", "🍌", "🍎", "🍌", "?"], options: ["🍇", "🍎", "🍓"], answer: 1 },
+];
+
+const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const [idx, setIdx] = useState(() => Math.floor(Math.random() * sequencePuzzles.length));
+  const [locked, setLocked] = useState<number | null>(null);
+  const puzzle = sequencePuzzles[idx];
+
+  const handle = (i: number) => {
+    if (locked !== null) return;
+    setLocked(i);
+    const correct = i === puzzle.answer;
+    onAnswer(correct);
+    setTimeout(() => {
+      setLocked(null);
+      setIdx(Math.floor(Math.random() * sequencePuzzles.length));
+    }, 1500);
+  };
+
+  return (
+    <Card className="p-8 text-center">
+      <h3 className="text-2xl font-bold mb-2">Продолжи ряд</h3>
+      <p className="text-muted-foreground mb-6">Что идёт следующим?</p>
+      <div className="flex justify-center gap-2 mb-8 flex-wrap">
+        {puzzle.seq.map((s, i) => (
+          <div
+            key={i}
+            className={`text-5xl p-3 rounded-xl ${s === "?" ? "bg-primary/20 animate-pulse" : "bg-muted"}`}
+          >
+            {s}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        {puzzle.options.map((opt, i) => (
+          <button
+            key={i}
+            onClick={() => handle(i)}
+            disabled={locked !== null}
+            className={`text-5xl p-4 rounded-2xl transition-all bg-muted hover:bg-primary/20 ${
+              locked === i ? (i === puzzle.answer ? "bg-green-200 scale-110" : "bg-red-200") : ""
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
+// --- Память: найди пару ---
+const memoryEmojis = ["🐶", "🐱", "🐰", "🐻", "🐼", "🦁"];
+
+const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const cards = useMemo(() => {
+    const pairs = [...memoryEmojis, ...memoryEmojis];
+    return pairs
+      .sort(() => Math.random() - 0.5)
+      .map((emoji, id) => ({ id, emoji }));
+  }, []);
+  const [flipped, setFlipped] = useState<number[]>([]);
+  const [matched, setMatched] = useState<number[]>([]);
+  const [reportedWin, setReportedWin] = useState(false);
+
+  useEffect(() => {
+    if (flipped.length === 2) {
+      const [a, b] = flipped;
+      if (cards[a].emoji === cards[b].emoji) {
+        setMatched((m) => [...m, a, b]);
+        onAnswer(true);
+        setTimeout(() => setFlipped([]), 700);
+      } else {
+        onAnswer(false);
+        setTimeout(() => setFlipped([]), 1000);
+      }
+    }
+  }, [flipped, cards, onAnswer]);
+
+  useEffect(() => {
+    if (matched.length === cards.length && !reportedWin) {
+      setReportedWin(true);
+      speak("Все пары найдены! Молодец!");
+    }
+  }, [matched, cards.length, reportedWin]);
+
+  const flip = (id: number) => {
+    if (flipped.length >= 2 || flipped.includes(id) || matched.includes(id)) return;
+    setFlipped((f) => [...f, id]);
+  };
+
+  return (
+    <Card className="p-6 text-center">
+      <h3 className="text-2xl font-bold mb-2">Найди пару</h3>
+      <p className="text-muted-foreground mb-6">Открывай по две карточки</p>
+      <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+        {cards.map((card, id) => {
+          const isOpen = flipped.includes(id) || matched.includes(id);
+          return (
+            <button
+              key={id}
+              onClick={() => flip(id)}
+              className={`aspect-square text-5xl rounded-2xl transition-all ${
+                isOpen
+                  ? matched.includes(id)
+                    ? "bg-green-100"
+                    : "bg-primary/20"
+                  : "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground"
+              }`}
+            >
+              {isOpen ? card.emoji : "?"}
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+};
+
+export default function IntellectPage() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
+  const [mode, setMode] = useState<Mode>(null);
+  const [score, setScore] = useState(0);
+
+  const handleAnswer = (correct: boolean) => {
+    if (correct) {
+      setScore((s) => s + 1);
+      playJoy();
+      logCorrectAnswer({ section: "intellect", mode });
+      toast({ title: "Правильно! 🎉" });
+    } else {
+      speak("Попробуй ещё раз!");
+      logWrongAnswer({ section: "intellect", mode });
+      toast({ title: "Не верно 💪", description: "Попробуй ещё", variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-orange-50 to-yellow-50 p-4">
+      <div className="container mx-auto max-w-3xl">
+        <div className="flex items-center justify-between mb-6">
+          <Button variant="ghost" onClick={() => (mode ? setMode(null) : navigate("/"))}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Назад
+          </Button>
+          {mode && (
+            <div className="bg-card rounded-full px-4 py-2 shadow font-bold text-primary">
+              Очки: {score}
+            </div>
+          )}
+        </div>
+
+        <div className="text-center mb-8">
+          <div className="text-6xl mb-4">🧩</div>
+          <h1 className="text-4xl font-bold mb-2">Интеллект</h1>
+          <p className="text-lg text-muted-foreground">Логика, внимание и память</p>
+        </div>
+
+        {!mode && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card
+              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
+              onClick={() => setMode("odd")}
+            >
+              <div className="text-5xl mb-3">🔍</div>
+              <h3 className="text-xl font-bold">Найди лишнее</h3>
+              <p className="text-sm text-muted-foreground mt-2">Внимание</p>
+            </Card>
+            <Card
+              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
+              onClick={() => setMode("sequence")}
+            >
+              <div className="text-5xl mb-3">➡️</div>
+              <h3 className="text-xl font-bold">Продолжи ряд</h3>
+              <p className="text-sm text-muted-foreground mt-2">Логика</p>
+            </Card>
+            <Card
+              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
+              onClick={() => setMode("memory")}
+            >
+              <div className="text-5xl mb-3">🧠</div>
+              <h3 className="text-xl font-bold">Найди пару</h3>
+              <p className="text-sm text-muted-foreground mt-2">Память</p>
+            </Card>
+          </div>
+        )}
+
+        {mode === "odd" && <OddOneOut onAnswer={handleAnswer} />}
+        {mode === "sequence" && <Sequence onAnswer={handleAnswer} />}
+        {mode === "memory" && <MemoryGame onAnswer={handleAnswer} />}
+      </div>
+    </div>
+  );
+}

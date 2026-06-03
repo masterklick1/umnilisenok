@@ -10,6 +10,7 @@ import AlphabetPage from "./pages/AlphabetPage";
 import WorldPage from "./pages/WorldPage";
 import CreativityPage from "./pages/CreativityPage";
 import VirtualHomePage from "./pages/VirtualHomePage";
+import IntellectPage from "./pages/IntellectPage";
 import ParentDashboard from "./pages/ParentDashboard";
 import GamePage from "./pages/GamePage";
 import NotFound from "./pages/NotFound";
@@ -90,6 +91,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <VirtualHomePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intellect"
+              element={
+                <ProtectedRoute>
+                  <IntellectPage />
                 </ProtectedRoute>
               }
             />

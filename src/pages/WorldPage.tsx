@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 type Item = {
   name: string;
@@ -111,6 +112,7 @@ const generateQuizOptions = (correctItem: Item, allItems: Item[]): Item[] => {
 export default function WorldPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [mode, setMode] = useState<"learn" | "quiz" | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -176,12 +178,14 @@ export default function WorldPage() {
     if (correct) {
       setScore(score + 1);
       speak("Правильно! Молодец!");
+      logCorrectAnswer({ topic: selectedTopic.id, item: selected.name });
       toast({
         title: "Правильно! 🎉",
         description: "Отличная работа!",
       });
     } else {
       speak("Не правильно. Ещё раз подумай!");
+      logWrongAnswer({ topic: selectedTopic.id, expected: selectedTopic.items[currentIndex].name, got: selected.name });
       toast({
         title: "Попробуй ещё раз! 💪",
         description: `Правильный ответ: ${selectedTopic.items[currentIndex].name}`,

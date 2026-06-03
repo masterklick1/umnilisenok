@@ -178,12 +178,14 @@ export default function WorldPage() {
     if (correct) {
       setScore(score + 1);
       speak("Правильно! Молодец!");
+      logCorrectAnswer({ topic: selectedTopic.id, item: selected.name });
       toast({
         title: "Правильно! 🎉",
         description: "Отличная работа!",
       });
     } else {
       speak("Не правильно. Ещё раз подумай!");
+      logWrongAnswer({ topic: selectedTopic.id, expected: selectedTopic.items[currentIndex].name, got: selected.name });
       toast({
         title: "Попробуй ещё раз! 💪",
         description: `Правильный ответ: ${selectedTopic.items[currentIndex].name}`,

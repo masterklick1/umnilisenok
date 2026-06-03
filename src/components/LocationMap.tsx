@@ -28,19 +28,35 @@ const loadGoogleMaps = (): Promise<void> => {
   return window.__googleMapsLoading;
 };
 
+interface Geofence {
+  lat: number;
+  lng: number;
+  radius: number;
+}
+
 interface Props {
   latitude: number;
   longitude: number;
   accuracy?: number | null;
   label?: string;
   height?: number;
+  geofence?: Geofence | null;
+  onMapClick?: (lat: number, lng: number) => void;
 }
 
-export const LocationMap = ({ latitude, longitude, accuracy, label, height = 280 }: Props) => {
+export const LocationMap = ({ latitude, longitude, accuracy, label, height = 280, geofence, onMapClick }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const circleRef = useRef<any>(null);
+  const geofenceCircleRef = useRef<any>(null);
+  const geofenceMarkerRef = useRef<any>(null);
+  const clickListenerRef = useRef<any>(null);
+  const onClickRef = useRef(onMapClick);
+
+  useEffect(() => {
+    onClickRef.current = onMapClick;
+  }, [onMapClick]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +89,11 @@ export const LocationMap = ({ latitude, longitude, accuracy, label, height = 280
               fillOpacity: 0.15,
             });
           }
+          clickListenerRef.current = mapRef.current.addListener("click", (e: any) => {
+            if (onClickRef.current && e.latLng) {
+              onClickRef.current(e.latLng.lat(), e.latLng.lng());
+            }
+          });
         } else {
           mapRef.current.panTo(center);
           markerRef.current.setPosition(center);
@@ -81,12 +102,55 @@ export const LocationMap = ({ latitude, longitude, accuracy, label, height = 280
             if (accuracy) circleRef.current.setRadius(accuracy);
           }
         }
+
+        // Geofence
+        if (geofence) {
+          const gCenter = { lat: geofence.lat, lng: geofence.lng };
+          if (!geofenceCircleRef.current) {
+            geofenceCircleRef.current = new window.google.maps.Circle({
+              map: mapRef.current,
+              center: gCenter,
+              radius: geofence.radius,
+              strokeColor: "#22c55e",
+              strokeOpacity: 0.8,
+              strokeWeight: 2,
+              fillColor: "#22c55e",
+              fillOpacity: 0.1,
+            });
+            geofenceMarkerRef.current = new window.google.maps.Marker({
+              map: mapRef.current,
+              position: gCenter,
+              title: "Безопасная зона",
+              icon: {
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 6,
+                fillColor: "#22c55e",
+                fillOpacity: 1,
+                strokeColor: "#fff",
+                strokeWeight: 2,
+              },
+            });
+          } else {
+            geofenceCircleRef.current.setCenter(gCenter);
+            geofenceCircleRef.current.setRadius(geofence.radius);
+            geofenceMarkerRef.current.setPosition(gCenter);
+          }
+        } else {
+          if (geofenceCircleRef.current) {
+            geofenceCircleRef.current.setMap(null);
+            geofenceCircleRef.current = null;
+          }
+          if (geofenceMarkerRef.current) {
+            geofenceMarkerRef.current.setMap(null);
+            geofenceMarkerRef.current = null;
+          }
+        }
       })
       .catch((e) => console.error(e));
     return () => {
       cancelled = true;
     };
-  }, [latitude, longitude, accuracy, label]);
+  }, [latitude, longitude, accuracy, label, geofence?.lat, geofence?.lng, geofence?.radius]);
 
   return <div ref={ref} style={{ width: "100%", height, borderRadius: 12 }} />;
 };

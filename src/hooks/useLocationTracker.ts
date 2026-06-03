@@ -6,24 +6,46 @@ import { Capacitor } from "@capacitor/core";
 
 const DEFAULT_INTERVAL_SEC = 60;
 
+interface Settings {
+  location_interval_seconds: number;
+  location_enabled: boolean;
+  geofence_enabled: boolean;
+  geofence_lat: number | null;
+  geofence_lng: number | null;
+  geofence_radius_m: number | null;
+}
+
+// Haversine distance in meters
+const distanceM = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+};
+
 /**
- * Periodically writes child's geo-position to DB so parents can see it on a map.
- * Reads `child_settings` for interval and enabled flag, and subscribes to
- * realtime updates so the parent can change interval remotely.
+ * Periodically writes child's geo-position to DB and emits geofence_events
+ * when crossing the safe zone boundary.
  */
 export const useLocationTracker = (enabled = true) => {
   const { user } = useAuth();
   const timerRef = useRef<number | null>(null);
   const [intervalSec, setIntervalSec] = useState<number>(DEFAULT_INTERVAL_SEC);
   const [trackingEnabled, setTrackingEnabled] = useState<boolean>(true);
+  const settingsRef = useRef<Settings | null>(null);
+  const lastInsideRef = useRef<boolean | null>(null);
 
-  // Load current settings + subscribe to changes
   useEffect(() => {
     if (!user?.id) return;
     let active = true;
 
-    const apply = (row: { location_interval_seconds: number; location_enabled: boolean } | null) => {
+    const apply = (row: Settings | null) => {
       if (!row) return;
+      settingsRef.current = row;
       setIntervalSec(Math.max(15, row.location_interval_seconds || DEFAULT_INTERVAL_SEC));
       setTrackingEnabled(!!row.location_enabled);
     };
@@ -31,14 +53,13 @@ export const useLocationTracker = (enabled = true) => {
     (async () => {
       const { data } = await supabase
         .from("child_settings")
-        .select("location_interval_seconds, location_enabled")
+        .select("location_interval_seconds, location_enabled, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m")
         .eq("child_id", user.id)
         .maybeSingle();
       if (!active) return;
       if (data) {
-        apply(data);
+        apply(data as any);
       } else {
-        // create defaults
         await supabase.from("child_settings").insert({
           child_id: user.id,
           location_interval_seconds: DEFAULT_INTERVAL_SEC,
@@ -62,7 +83,6 @@ export const useLocationTracker = (enabled = true) => {
     };
   }, [user?.id]);
 
-  // Run periodic geolocation
   useEffect(() => {
     if (!enabled || !user?.id || !trackingEnabled) {
       if (timerRef.current) {
@@ -113,6 +133,28 @@ export const useLocationTracker = (enabled = true) => {
       }
     };
 
+    const checkGeofence = async (lat: number, lng: number) => {
+      const s = settingsRef.current;
+      if (!s || !s.geofence_enabled || s.geofence_lat == null || s.geofence_lng == null) {
+        lastInsideRef.current = null;
+        return;
+      }
+      const radius = s.geofence_radius_m || 300;
+      const d = distanceM(lat, lng, s.geofence_lat, s.geofence_lng);
+      const inside = d <= radius;
+      const prev = lastInsideRef.current;
+      lastInsideRef.current = inside;
+      if (prev === null) return; // first sample, no event
+      if (prev === inside) return;
+      await supabase.from("geofence_events" as any).insert({
+        child_id: user.id,
+        event_type: inside ? "enter" : "exit",
+        latitude: lat,
+        longitude: lng,
+        distance_m: d,
+      });
+    };
+
     const tick = async () => {
       const pos = await getPosition();
       if (!pos || cancelled) return;
@@ -124,6 +166,7 @@ export const useLocationTracker = (enabled = true) => {
           accuracy: pos.coords.accuracy ?? null,
         },
       ]);
+      await checkGeofence(pos.coords.latitude, pos.coords.longitude);
     };
 
     (async () => {

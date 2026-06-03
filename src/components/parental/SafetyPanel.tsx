@@ -3,12 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2 } from "lucide-react";
+import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
+import { LocationMap } from "@/components/LocationMap";
 
 interface Props {
   childId: string;
@@ -41,6 +45,12 @@ interface MonitoringReq {
   created_at: string;
 }
 
+const formatInterval = (sec: number) => {
+  if (sec < 60) return `${sec} сек`;
+  const m = Math.round(sec / 60);
+  return m < 60 ? `${m} мин` : `${Math.round(m / 60)} ч`;
+};
+
 export const SafetyPanel = ({ childId, childName }: Props) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -49,6 +59,39 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [requests, setRequests] = useState<MonitoringReq[]>([]);
   const [requesting, setRequesting] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [settings, setSettings] = useState<{ location_enabled: boolean; location_interval_seconds: number } | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  const loadSettings = useCallback(async () => {
+    const { data } = await supabase
+      .from("child_settings")
+      .select("location_enabled, location_interval_seconds")
+      .eq("child_id", childId)
+      .maybeSingle();
+    setSettings(data ?? { location_enabled: true, location_interval_seconds: 60 });
+  }, [childId]);
+
+  const saveSettings = async (patch: Partial<{ location_enabled: boolean; location_interval_seconds: number }>) => {
+    if (!user) return;
+    setSavingSettings(true);
+    const next = { ...(settings ?? { location_enabled: true, location_interval_seconds: 60 }), ...patch };
+    setSettings(next);
+    const { error } = await supabase
+      .from("child_settings")
+      .upsert(
+        {
+          child_id: childId,
+          location_enabled: next.location_enabled,
+          location_interval_seconds: next.location_interval_seconds,
+          updated_by: user.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "child_id" }
+      );
+    setSavingSettings(false);
+    if (error) toast({ title: "Не удалось сохранить", description: error.message, variant: "destructive" });
+  };
+
 
   const loadData = useCallback(async () => {
     const [loc, sos, req] = await Promise.all([
@@ -79,6 +122,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
 
   useEffect(() => {
     loadData();
+    loadSettings();
 
     const channel = supabase
       .channel(`safety-${childId}`)
@@ -102,7 +146,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [childId, loadData]);
+  }, [childId, loadData, loadSettings]);
 
   // Sign URLs for fulfilled monitoring results
   useEffect(() => {
@@ -193,35 +237,103 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             <MapPin className="w-5 h-5" /> Местоположение
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           {location ? (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Последнее обновление:{" "}
-                {formatDistanceToNow(new Date(location.created_at), { addSuffix: true, locale: ru })}
-              </p>
-              <p className="font-mono text-sm">
-                {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
-                {location.accuracy && (
-                  <span className="text-muted-foreground"> (±{Math.round(location.accuracy)}м)</span>
-                )}
-              </p>
-              <a
-                href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Navigation className="w-4 h-4" />
-                  Открыть на карте
-                </Button>
-              </a>
-            </div>
+            <>
+              <LocationMap
+                latitude={location.latitude}
+                longitude={location.longitude}
+                accuracy={location.accuracy}
+                label={childName}
+              />
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Обновлено{" "}
+                    {formatDistanceToNow(new Date(location.created_at), { addSuffix: true, locale: ru })}
+                  </p>
+                  <p className="font-mono text-xs">
+                    {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                    {location.accuracy && (
+                      <span className="text-muted-foreground"> · ±{Math.round(location.accuracy)}м</span>
+                    )}
+                  </p>
+                </div>
+                <a
+                  href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Navigation className="w-4 h-4" />В Google Maps
+                  </Button>
+                </a>
+              </div>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               Локация ещё не передана. Ребёнок должен открыть приложение и разрешить геопозицию.
             </p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Tracking settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Timer className="w-5 h-5" /> Автоотправка геолокации
+          </CardTitle>
+          <CardDescription>
+            Настройки применяются на телефоне ребёнка автоматически.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="tracking-enabled" className="cursor-pointer">
+              Отправлять координаты
+            </Label>
+            <Switch
+              id="tracking-enabled"
+              checked={settings?.location_enabled ?? true}
+              disabled={savingSettings}
+              onCheckedChange={(v) => saveSettings({ location_enabled: v })}
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Интервал</Label>
+              <span className="text-sm font-mono">
+                {settings ? formatInterval(settings.location_interval_seconds) : "—"}
+              </span>
+            </div>
+            <Slider
+              min={15}
+              max={1800}
+              step={15}
+              value={[settings?.location_interval_seconds ?? 60]}
+              disabled={savingSettings || !(settings?.location_enabled ?? true)}
+              onValueChange={(v) => setSettings((s) => s ? { ...s, location_interval_seconds: v[0] } : s)}
+              onValueCommit={(v) => saveSettings({ location_interval_seconds: v[0] })}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>15 сек</span>
+              <span>30 мин</span>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {[30, 60, 300, 900].map((s) => (
+              <Button
+                key={s}
+                variant={settings?.location_interval_seconds === s ? "default" : "outline"}
+                size="sm"
+                disabled={savingSettings}
+                onClick={() => saveSettings({ location_interval_seconds: s })}
+              >
+                {formatInterval(s)}
+              </Button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

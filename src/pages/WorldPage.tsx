@@ -112,6 +112,7 @@ const generateQuizOptions = (correctItem: Item, allItems: Item[]): Item[] => {
 export default function WorldPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [mode, setMode] = useState<"learn" | "quiz" | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);

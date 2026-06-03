@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 type Item = {
   name: string;

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer } from "lucide-react";
+import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer, Shield, ShieldAlert, Crosshair } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,6 +51,33 @@ const formatInterval = (sec: number) => {
   return m < 60 ? `${m} мин` : `${Math.round(m / 60)} ч`;
 };
 
+interface Settings {
+  location_enabled: boolean;
+  location_interval_seconds: number;
+  geofence_enabled: boolean;
+  geofence_lat: number | null;
+  geofence_lng: number | null;
+  geofence_radius_m: number;
+}
+
+interface GeofenceEvent {
+  id: string;
+  event_type: string;
+  latitude: number;
+  longitude: number;
+  distance_m: number | null;
+  created_at: string;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  location_enabled: true,
+  location_interval_seconds: 60,
+  geofence_enabled: false,
+  geofence_lat: null,
+  geofence_lng: null,
+  geofence_radius_m: 300,
+};
+
 export const SafetyPanel = ({ childId, childName }: Props) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -59,22 +86,23 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [requests, setRequests] = useState<MonitoringReq[]>([]);
   const [requesting, setRequesting] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
-  const [settings, setSettings] = useState<{ location_enabled: boolean; location_interval_seconds: number } | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [geoEvents, setGeoEvents] = useState<GeofenceEvent[]>([]);
 
   const loadSettings = useCallback(async () => {
     const { data } = await supabase
       .from("child_settings")
-      .select("location_enabled, location_interval_seconds")
+      .select("location_enabled, location_interval_seconds, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m")
       .eq("child_id", childId)
       .maybeSingle();
-    setSettings(data ?? { location_enabled: true, location_interval_seconds: 60 });
+    setSettings({ ...DEFAULT_SETTINGS, ...((data as any) ?? {}) });
   }, [childId]);
 
-  const saveSettings = async (patch: Partial<{ location_enabled: boolean; location_interval_seconds: number }>) => {
+  const saveSettings = async (patch: Partial<Settings>) => {
     if (!user) return;
     setSavingSettings(true);
-    const next = { ...(settings ?? { location_enabled: true, location_interval_seconds: 60 }), ...patch };
+    const next = { ...(settings ?? DEFAULT_SETTINGS), ...patch };
     setSettings(next);
     const { error } = await supabase
       .from("child_settings")
@@ -83,9 +111,13 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
           child_id: childId,
           location_enabled: next.location_enabled,
           location_interval_seconds: next.location_interval_seconds,
+          geofence_enabled: next.geofence_enabled,
+          geofence_lat: next.geofence_lat,
+          geofence_lng: next.geofence_lng,
+          geofence_radius_m: next.geofence_radius_m,
           updated_by: user.id,
           updated_at: new Date().toISOString(),
-        },
+        } as any,
         { onConflict: "child_id" }
       );
     setSavingSettings(false);

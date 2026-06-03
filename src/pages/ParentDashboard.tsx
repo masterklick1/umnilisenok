@@ -12,10 +12,11 @@ import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2 } from "lucide-react";
+import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorker } from "@/lib/push";
 
 export default function ParentDashboard() {
   const navigate = useNavigate();

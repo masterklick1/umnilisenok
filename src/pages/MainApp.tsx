@@ -23,6 +23,10 @@ export const MainApp = () => {
   const { progress, loading } = useUserProgress();
   const [childName, setChildName] = useState<string>("");
 
+  useLocationTracker(true);
+  useMonitoringListener();
+
+
   useEffect(() => {
     // Check if we're in child session mode
     const activeChildId = sessionStorage.getItem("activeChildId");

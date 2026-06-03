@@ -9,10 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { ToastAction } from "@/components/ui/toast";
 
 export const MainApp = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { progress, loading } = useUserProgress();
   const [childName, setChildName] = useState<string>("");
 
@@ -31,6 +35,48 @@ export const MainApp = () => {
       setChildName(activeChildName);
     }
   }, [navigate]);
+
+  // Listen for game invitations from parent
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const gameTypeName: Record<string, string> = {
+      tic_tac_toe: "Крестики-нолики",
+      checkers: "Шашки",
+      chess: "Шахматы",
+    };
+
+    const channel = supabase
+      .channel(`invites-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "game_sessions",
+          filter: `child_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const game = payload.new as { id: string; game_type: string };
+          toast({
+            title: "🎮 Папа/мама зовёт играть!",
+            description: gameTypeName[game.game_type] || "Игра",
+            duration: 15000,
+            action: (
+              <ToastAction altText="Играть" onClick={() => navigate(`/games/${game.id}`)}>
+                Играть
+              </ToastAction>
+            ),
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, toast, navigate]);
+
 
   const handleSubjectClick = (subject: string) => {
     toast({

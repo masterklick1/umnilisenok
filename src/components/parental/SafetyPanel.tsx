@@ -298,7 +298,20 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 longitude={location.longitude}
                 accuracy={location.accuracy}
                 label={childName}
+                geofence={
+                  settings?.geofence_enabled && settings.geofence_lat != null && settings.geofence_lng != null
+                    ? { lat: settings.geofence_lat, lng: settings.geofence_lng, radius: settings.geofence_radius_m }
+                    : null
+                }
+                onMapClick={(lat, lng) =>
+                  saveSettings({ geofence_lat: lat, geofence_lng: lng, geofence_enabled: true })
+                }
               />
+              {settings?.geofence_enabled && (
+                <p className="text-xs text-muted-foreground">
+                  💡 Кликните на карте, чтобы переместить центр безопасной зоны
+                </p>
+              )}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <p className="text-sm text-muted-foreground">

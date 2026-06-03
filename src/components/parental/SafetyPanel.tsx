@@ -45,6 +45,12 @@ interface MonitoringReq {
   created_at: string;
 }
 
+const formatInterval = (sec: number) => {
+  if (sec < 60) return `${sec} сек`;
+  const m = Math.round(sec / 60);
+  return m < 60 ? `${m} мин` : `${Math.round(m / 60)} ч`;
+};
+
 export const SafetyPanel = ({ childId, childName }: Props) => {
   const { user } = useAuth();
   const { toast } = useToast();

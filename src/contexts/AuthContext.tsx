@@ -28,6 +28,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // On login/token refresh — re-bind existing browser push subscription
+        // to the current user (handles mom↔dad switch on the same device).
+        if (event === "SIGNED_IN" && session?.user && isPushSupported() && Notification.permission === "granted") {
+          subscribeToPush(session.user.id).catch(() => {});
+        }
       }
     );
 

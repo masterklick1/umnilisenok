@@ -14,6 +14,7 @@ import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
 import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle, House } from "lucide-react";
 import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
+import { MonitoringPanel } from "@/components/parental/MonitoringPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -359,12 +360,18 @@ export default function ParentDashboard() {
             )}
           </TabsContent>
           {/* Safety Tab */}
-          <TabsContent value="safety">
+          <TabsContent value="safety" className="space-y-4">
             {selectedChildData ? (
-              <SafetyPanel
-                childId={selectedChildData.child_id}
-                childName={selectedChildData.first_name || "Ребёнок"}
-              />
+              <>
+                <SafetyPanel
+                  childId={selectedChildData.child_id}
+                  childName={selectedChildData.first_name || "Ребёнок"}
+                />
+                <MonitoringPanel
+                  childId={selectedChildData.child_id}
+                  childName={selectedChildData.first_name || "Ребёнок"}
+                />
+              </>
             ) : (
               <Card>
                 <CardContent className="py-8 text-center">

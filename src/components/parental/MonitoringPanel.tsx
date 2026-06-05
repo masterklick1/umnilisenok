@@ -140,7 +140,14 @@ export function MonitoringPanel({ childId, childName }: Props) {
             <p className="text-sm text-muted-foreground py-4 text-center">Запросов пока нет</p>
           ) : (
             requests.map((r) => (
-              <div key={r.id} className="border rounded-lg p-3 flex items-center justify-between gap-2 flex-wrap">
+              <div
+                key={r.id}
+                className={`border rounded-lg p-3 flex items-center justify-between gap-2 flex-wrap transition-all duration-500 ${
+                  highlightId === r.id
+                    ? "ring-2 ring-primary bg-primary/5 shadow-md animate-pulse"
+                    : ""
+                }`}
+              >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-sm font-medium">{typeLabel(r.request_type)}</span>
                   {statusBadge(r.status)}

@@ -163,6 +163,29 @@ export default function ParentDashboard() {
           });
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "monitoring_requests" },
+        (payload) => {
+          const r = payload.new as { child_id: string; parent_id: string; request_type: string; status: string };
+          if (!childIds.includes(r.child_id)) return;
+          if (r.status !== "fulfilled" && r.status !== "failed") return;
+          const child = children.find((c) => c.child_id === r.child_id);
+          const typeLabel = r.request_type === "photo" ? "фото" : r.request_type === "audio" ? "звук" : "локацию";
+          const ok = r.status === "fulfilled";
+          toast({
+            title: ok ? `✅ Получен ответ: ${typeLabel}` : `❌ Ошибка запроса: ${typeLabel}`,
+            description: `${child?.first_name || "Ребёнок"}${ok ? " прислал данные" : " не смог выполнить запрос"}`,
+            variant: ok ? "default" : "destructive",
+            duration: 20000,
+            action: (
+              <ToastAction altText="Открыть" onClick={() => setSelectedChild(r.child_id)}>
+                Открыть
+              </ToastAction>
+            ),
+          });
+        }
+      )
       .subscribe();
 
     return () => {

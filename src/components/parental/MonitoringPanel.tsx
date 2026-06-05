@@ -27,6 +27,7 @@ export function MonitoringPanel({ childId, childName }: Props) {
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,7 +58,14 @@ export function MonitoringPanel({ childId, childName }: Props) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "monitoring_requests", filter: `child_id=eq.${childId}` },
-        () => load()
+        (payload) => {
+          const row: any = payload.new ?? payload.old;
+          if (row?.id && (payload.eventType === "UPDATE" || payload.eventType === "INSERT")) {
+            setHighlightId(row.id);
+            window.setTimeout(() => setHighlightId((curr) => (curr === row.id ? null : curr)), 4000);
+          }
+          load();
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -132,7 +140,14 @@ export function MonitoringPanel({ childId, childName }: Props) {
             <p className="text-sm text-muted-foreground py-4 text-center">Запросов пока нет</p>
           ) : (
             requests.map((r) => (
-              <div key={r.id} className="border rounded-lg p-3 flex items-center justify-between gap-2 flex-wrap">
+              <div
+                key={r.id}
+                className={`border rounded-lg p-3 flex items-center justify-between gap-2 flex-wrap transition-all duration-500 ${
+                  highlightId === r.id
+                    ? "ring-2 ring-primary bg-primary/5 shadow-md animate-pulse"
+                    : ""
+                }`}
+              >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-sm font-medium">{typeLabel(r.request_type)}</span>
                   {statusBadge(r.status)}

@@ -58,7 +58,14 @@ export function MonitoringPanel({ childId, childName }: Props) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "monitoring_requests", filter: `child_id=eq.${childId}` },
-        () => load()
+        (payload) => {
+          const row: any = payload.new ?? payload.old;
+          if (row?.id && (payload.eventType === "UPDATE" || payload.eventType === "INSERT")) {
+            setHighlightId(row.id);
+            window.setTimeout(() => setHighlightId((curr) => (curr === row.id ? null : curr)), 4000);
+          }
+          load();
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };

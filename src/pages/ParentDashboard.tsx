@@ -15,6 +15,7 @@ import { InvitePanel } from "@/components/parental/InvitePanel";
 import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle, House } from "lucide-react";
 import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
 import { MonitoringPanel } from "@/components/parental/MonitoringPanel";
+import { MonitoringNotificationSettings, loadMonitoringPrefs, shouldNotify, type MonitoringNotifPrefs } from "@/components/parental/MonitoringNotificationSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";

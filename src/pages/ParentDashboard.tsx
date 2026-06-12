@@ -200,7 +200,7 @@ export default function ParentDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [children, setSelectedChild, toast]);
+  }, [children, setSelectedChild, toast, notifPrefs]);
 
   const handleSignOut = async () => {
     await signOut();

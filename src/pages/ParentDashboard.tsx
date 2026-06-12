@@ -15,6 +15,7 @@ import { InvitePanel } from "@/components/parental/InvitePanel";
 import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle, House } from "lucide-react";
 import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
 import { MonitoringPanel } from "@/components/parental/MonitoringPanel";
+import { MonitoringNotificationSettings, loadMonitoringPrefs, shouldNotify, type MonitoringNotifPrefs } from "@/components/parental/MonitoringNotificationSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -42,6 +43,13 @@ export default function ParentDashboard() {
     isPushSupported() ? getPushPermission() : "unsupported"
   );
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
+  const [notifPrefs, setNotifPrefs] = useState<MonitoringNotifPrefs>(loadMonitoringPrefs());
+
+  useEffect(() => {
+    const handler = (e: Event) => setNotifPrefs((e as CustomEvent).detail);
+    window.addEventListener("monitoring-prefs-changed", handler);
+    return () => window.removeEventListener("monitoring-prefs-changed", handler);
+  }, []);
 
   const refreshPushStatus = async () => {
     if (!user?.id) return;
@@ -170,6 +178,7 @@ export default function ParentDashboard() {
           const r = payload.new as { child_id: string; parent_id: string; request_type: string; status: string };
           if (!childIds.includes(r.child_id)) return;
           if (r.status !== "fulfilled" && r.status !== "failed") return;
+          if (!shouldNotify(notifPrefs, r.request_type, r.status)) return;
           const child = children.find((c) => c.child_id === r.child_id);
           const typeLabel = r.request_type === "photo" ? "фото" : r.request_type === "audio" ? "звук" : "локацию";
           const ok = r.status === "fulfilled";
@@ -191,7 +200,7 @@ export default function ParentDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [children, setSelectedChild, toast]);
+  }, [children, setSelectedChild, toast, notifPrefs]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -394,6 +403,7 @@ export default function ParentDashboard() {
                   childId={selectedChildData.child_id}
                   childName={selectedChildData.first_name || "Ребёнок"}
                 />
+                <MonitoringNotificationSettings />
               </>
             ) : (
               <Card>

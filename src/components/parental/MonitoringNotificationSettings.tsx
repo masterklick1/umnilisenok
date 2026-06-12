@@ -10,6 +10,7 @@ export type MonitoringNotifPrefs = {
   audio: boolean;
   location: boolean;
   level: "errors" | "all";
+  timeoutMinutes: number; // 0 = disabled
 };
 
 const STORAGE_KEY = "monitoring_notif_prefs";
@@ -19,7 +20,10 @@ export const defaultPrefs: MonitoringNotifPrefs = {
   audio: true,
   location: true,
   level: "all",
+  timeoutMinutes: 5,
 };
+
+export const TIMEOUT_OPTIONS = [0, 2, 5, 10, 15, 30] as const;
 
 export function loadMonitoringPrefs(): MonitoringNotifPrefs {
   try {

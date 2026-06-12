@@ -178,6 +178,7 @@ export default function ParentDashboard() {
           const r = payload.new as { child_id: string; parent_id: string; request_type: string; status: string };
           if (!childIds.includes(r.child_id)) return;
           if (r.status !== "fulfilled" && r.status !== "failed") return;
+          if (!shouldNotify(notifPrefs, r.request_type, r.status)) return;
           const child = children.find((c) => c.child_id === r.child_id);
           const typeLabel = r.request_type === "photo" ? "фото" : r.request_type === "audio" ? "звук" : "локацию";
           const ok = r.status === "fulfilled";

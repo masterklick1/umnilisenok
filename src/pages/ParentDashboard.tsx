@@ -202,6 +202,50 @@ export default function ParentDashboard() {
     };
   }, [children, setSelectedChild, toast, notifPrefs]);
 
+  // Timeout watcher: notify when a child hasn't responded within N minutes
+  useEffect(() => {
+    const childIds = children.map((c) => c.child_id);
+    if (childIds.length === 0) return;
+    if (!notifPrefs.timeoutMinutes || notifPrefs.timeoutMinutes <= 0) return;
+
+    const notified = new Set<string>();
+
+    const check = async () => {
+      const thresholdMs = notifPrefs.timeoutMinutes * 60 * 1000;
+      const cutoff = new Date(Date.now() - thresholdMs).toISOString();
+      const { data } = await supabase
+        .from("monitoring_requests")
+        .select("id, child_id, request_type, status, created_at")
+        .in("child_id", childIds)
+        .eq("status", "pending")
+        .lt("created_at", cutoff);
+
+      (data || []).forEach((r: any) => {
+        if (notified.has(r.id)) return;
+        if (!shouldNotify(notifPrefs, r.request_type, "failed")) return;
+        notified.add(r.id);
+        const child = children.find((c) => c.child_id === r.child_id);
+        const typeLabel =
+          r.request_type === "photo" ? "фото" : r.request_type === "audio" ? "звук" : "локацию";
+        toast({
+          title: `⏱ Нет ответа: ${typeLabel}`,
+          description: `${child?.first_name || "Ребёнок"} не ответил за ${notifPrefs.timeoutMinutes} мин`,
+          variant: "destructive",
+          duration: 30000,
+          action: (
+            <ToastAction altText="Открыть" onClick={() => setSelectedChild(r.child_id)}>
+              Открыть
+            </ToastAction>
+          ),
+        });
+      });
+    };
+
+    check();
+    const interval = window.setInterval(check, 30 * 1000);
+    return () => window.clearInterval(interval);
+  }, [children, notifPrefs, setSelectedChild, toast]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");

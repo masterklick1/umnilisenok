@@ -403,6 +403,7 @@ export default function ParentDashboard() {
                   childId={selectedChildData.child_id}
                   childName={selectedChildData.first_name || "Ребёнок"}
                 />
+                <MonitoringNotificationSettings />
               </>
             ) : (
               <Card>

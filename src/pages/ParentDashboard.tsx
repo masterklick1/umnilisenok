@@ -43,6 +43,13 @@ export default function ParentDashboard() {
     isPushSupported() ? getPushPermission() : "unsupported"
   );
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
+  const [notifPrefs, setNotifPrefs] = useState<MonitoringNotifPrefs>(loadMonitoringPrefs());
+
+  useEffect(() => {
+    const handler = (e: Event) => setNotifPrefs((e as CustomEvent).detail);
+    window.addEventListener("monitoring-prefs-changed", handler);
+    return () => window.removeEventListener("monitoring-prefs-changed", handler);
+  }, []);
 
   const refreshPushStatus = async () => {
     if (!user?.id) return;

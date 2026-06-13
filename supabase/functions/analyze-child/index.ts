@@ -54,6 +54,32 @@ serve(async (req) => {
       .eq("user_id", childId)
       .single();
 
+    // Fetch recent monitoring requests (last 30)
+    const { data: monitoring } = await supabase
+      .from("monitoring_requests")
+      .select("request_type, status, created_at, result_data")
+      .eq("child_id", childId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    const monStats = (monitoring || []).reduce(
+      (acc: Record<string, { total: number; ok: number; failed: number }>, m: any) => {
+        const t = m.request_type;
+        if (!acc[t]) acc[t] = { total: 0, ok: 0, failed: 0 };
+        acc[t].total++;
+        if (m.status === "fulfilled") acc[t].ok++;
+        if (m.status === "failed") acc[t].failed++;
+        return acc;
+      },
+      {}
+    );
+
+    const aiConcerns = (monitoring || [])
+      .map((m: any) => m.result_data?.ai_analysis)
+      .filter((a: any) => a && Array.isArray(a.concerns) && a.concerns.length > 0)
+      .flatMap((a: any) => a.concerns)
+      .slice(0, 10);
+
     // Prepare analysis prompt
     const activitySummary = activities?.reduce((acc: Record<string, { correct: number; wrong: number }>, act) => {
       const category = act.page_path?.split("/")[1] || "other";
@@ -81,6 +107,11 @@ serve(async (req) => {
 Статистика по разделам (правильных/неправильных ответов):
 ${JSON.stringify(activitySummary, null, 2)}
 
+Статистика родительских проверок (мониторинг):
+${JSON.stringify(monStats, null, 2)}
+
+${aiConcerns.length > 0 ? `Замечания ИИ по фото окружения ребёнка:\n${aiConcerns.map((c: string) => "- " + c).join("\n")}` : "Замечаний по фото нет."}
+
 Последние активности:
 ${activities?.slice(0, 20).map(a => `- ${a.activity_type} на ${a.page_path}: ${JSON.stringify(a.details)}`).join("\n")}
 
@@ -88,7 +119,7 @@ ${activities?.slice(0, 20).map(a => `- ${a.activity_type} на ${a.page_path}: $
 {
   "strengths": ["сильная сторона 1", "сильная сторона 2"],
   "weaknesses": ["область для улучшения 1", "область для улучшения 2"],
-  "recommendations": "Подробные рекомендации для родителей на русском языке (2-3 абзаца)"
+  "recommendations": "Подробные рекомендации для родителей на русском языке (2-3 абзаца). Учти данные мониторинга и замечания ИИ по окружению, если они есть."
 }
 
 Отвечай ТОЛЬКО JSON без дополнительного текста.`;

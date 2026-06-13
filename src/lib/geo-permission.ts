@@ -33,6 +33,34 @@ export interface GeoPositionResult {
   accuracy: number | null;
 }
 
+const mapWebError = (err: GeolocationPositionError): Error => {
+  if (err.code === err.PERMISSION_DENIED) {
+    return new Error("Разрешите геопозицию в настройках браузера");
+  }
+  if (err.code === err.TIMEOUT) {
+    return new Error("GPS не ответил вовремя — держите приложение открытым на экране");
+  }
+  return new Error("Не удалось получить координаты");
+};
+
+const webGetPosition = (
+  enableHighAccuracy: boolean,
+  timeoutMs: number,
+  maximumAgeMs: number,
+): Promise<GeoPositionResult> =>
+  new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (p) =>
+        resolve({
+          latitude: p.coords.latitude,
+          longitude: p.coords.longitude,
+          accuracy: p.coords.accuracy ?? null,
+        }),
+      (err) => reject(mapWebError(err)),
+      { enableHighAccuracy, timeout: timeoutMs, maximumAge: maximumAgeMs },
+    );
+  });
+
 export const getGeoPosition = async (
   maximumAgeMs = 60_000,
   timeoutMs = 30_000,
@@ -60,31 +88,20 @@ export const getGeoPosition = async (
     throw new Error("Геолокация не поддерживается");
   }
 
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (p) =>
-        resolve({
-          latitude: p.coords.latitude,
-          longitude: p.coords.longitude,
-          accuracy: p.coords.accuracy ?? null,
-        }),
-      (err) => {
-        const msg =
-          err.code === err.PERMISSION_DENIED
-            ? "Разрешите геопозицию в настройках браузера"
-            : err.code === err.TIMEOUT
-              ? "GPS не ответил вовремя — откройте приложение на экране"
-              : "Не удалось получить координаты";
-        reject(new Error(msg));
-      },
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: maximumAgeMs },
-    );
-  });
+  try {
+    return await webGetPosition(true, Math.min(timeoutMs, 20_000), maximumAgeMs);
+  } catch (highAccErr) {
+    try {
+      return await webGetPosition(false, timeoutMs, Math.max(maximumAgeMs, 120_000));
+    } catch {
+      throw highAccErr;
+    }
+  }
 };
 
 export const requestGeoPermissionInteractive = async (): Promise<boolean> => {
   try {
-    await getGeoPosition(0, 20_000);
+    await getGeoPosition(0, 25_000);
     return true;
   } catch {
     return false;

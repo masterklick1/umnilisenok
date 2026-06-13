@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
 import { useToast } from "@/hooks/use-toast";
+import { getGeoPosition } from "@/lib/geo-permission";
 
 interface MonitoringRequest {
   id: string;
@@ -12,66 +13,7 @@ interface MonitoringRequest {
   status: string;
 }
 
-/**
- * Listens for parent's monitoring requests and fulfills them
- * (take photo / record audio / send location).
- * Always notifies the child first — no silent surveillance.
- */
-export const useMonitoringListener = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const channel = supabase
-      .channel(`monitoring-${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "monitoring_requests",
-          filter: `child_id=eq.${user.id}`,
-        },
-        async (payload) => {
-          const req = payload.new as MonitoringRequest;
-          if (req.status !== "pending") return;
-
-          toast({
-            title: "👀 Родитель проверяет тебя",
-            description:
-              req.request_type === "photo"
-                ? "Делаем фото"
-                : req.request_type === "audio"
-                ? "Записываем звук (5 сек)"
-                : "Отправляем местоположение",
-          });
-
-          try {
-            if (req.request_type === "photo") {
-              await handlePhoto(req, user.id);
-            } else if (req.request_type === "audio") {
-              await handleAudio(req, user.id);
-            } else if (req.request_type === "location") {
-              await handleLocation(req, user.id);
-            }
-          } catch (e) {
-            console.error("Monitoring request failed:", e);
-            await supabase
-              .from("monitoring_requests")
-              .update({ status: "failed", fulfilled_at: new Date().toISOString() })
-              .eq("id", req.id);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, toast]);
-};
+const processing = new Set<string>();
 
 async function handlePhoto(req: MonitoringRequest, childId: string) {
   let blob: Blob;
@@ -89,7 +31,6 @@ async function handlePhoto(req: MonitoringRequest, childId: string) {
     for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     blob = new Blob([arr], { type: "image/jpeg" });
   } else {
-    // Web fallback: capture from webcam
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     const track = stream.getVideoTracks()[0];
     const video = document.createElement("video");
@@ -100,7 +41,7 @@ async function handlePhoto(req: MonitoringRequest, childId: string) {
     canvas.height = video.videoHeight;
     canvas.getContext("2d")!.drawImage(video, 0, 0);
     blob = await new Promise<Blob>((r) =>
-      canvas.toBlob((b) => r(b!), "image/jpeg", 0.6)
+      canvas.toBlob((b) => r(b!), "image/jpeg", 0.6),
     );
     track.stop();
   }
@@ -152,26 +93,135 @@ async function handleAudio(req: MonitoringRequest, childId: string) {
 }
 
 async function handleLocation(req: MonitoringRequest, childId: string) {
-  const pos = await new Promise<GeolocationPosition>((res, rej) =>
-    navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true })
-  );
-  await supabase.from("child_locations").insert([
+  const pos = await getGeoPosition(0, 35_000);
+
+  const { error: locError } = await supabase.from("child_locations").insert([
     {
       child_id: childId,
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude,
-      accuracy: pos.coords.accuracy,
+      latitude: pos.latitude,
+      longitude: pos.longitude,
+      accuracy: pos.accuracy,
     },
   ]);
-  await supabase
+  if (locError) throw new Error(locError.message);
+
+  const { error: reqError } = await supabase
     .from("monitoring_requests")
     .update({
       status: "fulfilled",
       result_data: {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+        accuracy: pos.accuracy,
       },
       fulfilled_at: new Date().toISOString(),
     })
     .eq("id", req.id);
+  if (reqError) throw new Error(reqError.message);
 }
+
+async function fulfillRequest(req: MonitoringRequest, childId: string) {
+  if (processing.has(req.id)) return;
+  processing.add(req.id);
+
+  try {
+    if (req.request_type === "photo") {
+      await handlePhoto(req, childId);
+    } else if (req.request_type === "audio") {
+      await handleAudio(req, childId);
+    } else if (req.request_type === "location") {
+      await handleLocation(req, childId);
+    }
+  } finally {
+    processing.delete(req.id);
+  }
+}
+
+/**
+ * Listens for parent's monitoring requests and fulfills them
+ * (take photo / record audio / send location).
+ * Polls pending queue — Realtime alone misses requests if app was in background.
+ */
+export const useMonitoringListener = (enabled = true) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+
+  useEffect(() => {
+    if (!enabled || !user?.id) return;
+
+    const childId = user.id;
+
+    const processRequest = async (req: MonitoringRequest, notify: boolean) => {
+      if (req.status !== "pending") return;
+
+      if (notify) {
+        toastRef.current({
+          title: "👀 Родитель проверяет тебя",
+          description:
+            req.request_type === "photo"
+              ? "Делаем фото"
+              : req.request_type === "audio"
+                ? "Записываем звук (5 сек)"
+                : "Отправляем местоположение",
+        });
+      }
+
+      try {
+        await fulfillRequest(req, childId);
+        if (req.request_type === "location") {
+          window.dispatchEvent(new CustomEvent("force-location-send"));
+        }
+      } catch (e) {
+        console.error("Monitoring request failed:", e);
+        await supabase
+          .from("monitoring_requests")
+          .update({
+            status: "failed",
+            fulfilled_at: new Date().toISOString(),
+            result_data: { error: e instanceof Error ? e.message : "unknown" },
+          })
+          .eq("id", req.id);
+      }
+    };
+
+    const pollPending = async () => {
+      const { data } = await supabase
+        .from("monitoring_requests")
+        .select("id, child_id, request_type, status")
+        .eq("child_id", childId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: true })
+        .limit(5);
+
+      for (const row of data || []) {
+        await processRequest(row as MonitoringRequest, false);
+      }
+    };
+
+    pollPending();
+    const pollInterval = window.setInterval(pollPending, 12_000);
+
+    const channel = supabase
+      .channel(`monitoring-${childId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "monitoring_requests",
+          filter: `child_id=eq.${childId}`,
+        },
+        async (payload) => {
+          await processRequest(payload.new as MonitoringRequest, true);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      window.clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [enabled, user?.id]);
+};

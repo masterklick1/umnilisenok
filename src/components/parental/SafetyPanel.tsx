@@ -438,17 +438,58 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const request = async (type: "photo" | "audio" | "location") => {
     if (!user?.id) return;
     setRequesting(type);
-    const { error } = await supabase.from("monitoring_requests").insert([
-      { parent_id: user.id, child_id: childId, request_type: type },
-    ]);
+    const { data: inserted, error } = await supabase
+      .from("monitoring_requests")
+      .insert([{ parent_id: user.id, child_id: childId, request_type: type }])
+      .select("id")
+      .single();
     setRequesting(null);
     if (error) {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
-    } else {
-      toast({
-        title: "Запрос отправлен",
-        description: "Ребёнок получит уведомление и приложение выполнит запрос.",
-      });
+      return;
+    }
+
+    toast({
+      title: "Запрос отправлен",
+      description:
+        type === "location"
+          ? "Ждём ответ с телефона ребёнка — приложение должно быть открыто."
+          : "Ребёнок получит уведомление и приложение выполнит запрос.",
+    });
+
+    if (type === "location" && inserted?.id) {
+      const requestId = inserted.id;
+      const started = Date.now();
+      const poll = window.setInterval(async () => {
+        const { data: reqRow } = await supabase
+          .from("monitoring_requests")
+          .select("status, result_data")
+          .eq("id", requestId)
+          .maybeSingle();
+
+        if (reqRow?.status === "fulfilled") {
+          window.clearInterval(poll);
+          await loadData();
+          toast({ title: "📍 Местоположение получено" });
+          return;
+        }
+        if (reqRow?.status === "failed") {
+          window.clearInterval(poll);
+          const errMsg =
+            (reqRow.result_data as { error?: string } | null)?.error ||
+            "Ребёнок не смог отправить координаты";
+          toast({ title: "Не удалось получить местоположение", description: errMsg, variant: "destructive" });
+          return;
+        }
+        if (Date.now() - started > 45_000) {
+          window.clearInterval(poll);
+          toast({
+            title: "Нет ответа",
+            description: "Попросите ребёнка открыть приложение и нажать «Отправить сейчас» в жёлтой плашке.",
+            variant: "destructive",
+          });
+        }
+      }, 2000);
     }
   };
 

@@ -3,6 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolveChildTrackingId } from "@/lib/resolve-user-role";
 import {
+  fetchSavedPlaces,
+  upsertPlaceStatus,
+  emitChildPlaceStatus,
+} from "@/lib/child-places-service";
+import {
+  evaluateSmartPlaces,
+  type DbSavedPlace,
+} from "@/lib/smart-places";
+import {
   getCachedGeoPosition,
   getGeoPosition,
   queryGeoPermission,
@@ -55,7 +64,8 @@ export const useLocationTracker = (enabled = true) => {
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [trackingEnabled, setTrackingEnabled] = useState(true);
   const settingsRef = useRef<Settings | null>(null);
-  const lastInsideRef = useRef<boolean | null>(null);
+  const placesRef = useRef<DbSavedPlace[]>([]);
+  const insideMapRef = useRef<Map<string, boolean>>(new Map());
   const lastSentAtRef = useRef<string | null>(null);
   const lastErrorRef = useRef<string | null>(null);
   const tickInFlightRef = useRef(false);
@@ -110,6 +120,28 @@ export const useLocationTracker = (enabled = true) => {
       window.clearInterval(interval);
     };
   }, [user]);
+
+  const loadPlaces = async (id: string) => {
+    placesRef.current = await fetchSavedPlaces(id);
+  };
+
+  useEffect(() => {
+    if (!childId) return;
+    loadPlaces(childId);
+    const ch = supabase
+      .channel(`child-places-${childId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "child_saved_places", filter: `child_id=eq.${childId}` },
+        () => loadPlaces(childId),
+      )
+      .subscribe();
+    const poll = window.setInterval(() => loadPlaces(childId), SETTINGS_POLL_MS);
+    return () => {
+      window.clearInterval(poll);
+      supabase.removeChannel(ch);
+    };
+  }, [childId]);
 
   const loadSettings = async (id: string) => {
     const { data } = await supabase
@@ -212,29 +244,84 @@ export const useLocationTracker = (enabled = true) => {
     let cancelled = false;
     startGeoWatch();
 
-    const checkGeofence = async (lat: number, lng: number) => {
+    const checkSmartPlaces = async (lat: number, lng: number) => {
       const s = settingsRef.current;
-      if (!s?.geofence_enabled || s.geofence_lat == null || s.geofence_lng == null) {
-        lastInsideRef.current = null;
+      if (s && !s.geofence_enabled) return;
+
+      const places = placesRef.current;
+      if (!places.length) {
+        const s = settingsRef.current;
+        if (s?.geofence_enabled && s.geofence_lat != null && s.geofence_lng != null) {
+          const radius = s.geofence_radius_m || 300;
+          const d = distanceM(lat, lng, s.geofence_lat, s.geofence_lng);
+          const inside = d <= radius;
+          const key = "legacy";
+          const prev = insideMapRef.current.get(key);
+          if (prev !== undefined && prev === inside) return;
+          insideMapRef.current.set(key, inside);
+          if (prev === undefined) return;
+          await supabase.from("geofence_events").insert({
+            child_id: childId,
+            event_type: inside ? "enter" : "exit",
+            latitude: lat,
+            longitude: lng,
+            distance_m: d,
+            place_name: "Безопасная зона",
+          });
+          supabase.functions
+            .invoke("notify-geofence", {
+              body: {
+                event_type: inside ? "enter" : "exit",
+                distance_m: d,
+                place_name: "Безопасная зона",
+              },
+            })
+            .catch(() => {});
+        }
         return;
       }
-      const radius = s.geofence_radius_m || 300;
-      const d = distanceM(lat, lng, s.geofence_lat, s.geofence_lng);
-      const inside = d <= radius;
-      const prev = lastInsideRef.current;
-      lastInsideRef.current = inside;
-      if (prev === null || prev === inside) return;
 
-      await supabase.from("geofence_events" as any).insert({
-        child_id: childId,
-        event_type: inside ? "enter" : "exit",
+      const result = evaluateSmartPlaces(lat, lng, places, insideMapRef.current);
+      emitChildPlaceStatus(result.statusMessage);
+
+      await upsertPlaceStatus(childId, {
+        current_place_id: result.currentPlace?.id ?? null,
+        current_place_name: result.currentPlace?.name ?? null,
+        status: result.status,
+        target_place_id: result.targetPlace?.id ?? null,
+        target_place_name: result.targetPlace?.name ?? null,
+        status_message: result.statusMessage,
         latitude: lat,
         longitude: lng,
-        distance_m: d,
       });
-      supabase.functions
-        .invoke("notify-geofence", { body: { event_type: inside ? "enter" : "exit", distance_m: d } })
-        .catch(() => {});
+
+      for (const t of result.transitions) {
+        const statusHint =
+          t.eventType === "exit" && result.targetPlace ? "going_home" : result.status;
+
+        await supabase.from("geofence_events").insert({
+          child_id: childId,
+          event_type: t.eventType,
+          latitude: lat,
+          longitude: lng,
+          distance_m: t.distance_m,
+          place_id: t.place.id,
+          place_name: t.place.name,
+          status_hint: statusHint,
+        });
+
+        supabase.functions
+          .invoke("notify-geofence", {
+            body: {
+              event_type: t.eventType,
+              distance_m: t.distance_m,
+              place_name: `${t.place.emoji} ${t.place.name}`,
+              status_hint: statusHint,
+              status_message: result.statusMessage,
+            },
+          })
+          .catch(() => {});
+      }
     };
 
     const obtainPosition = async (forceFresh: boolean) => {
@@ -266,7 +353,7 @@ export const useLocationTracker = (enabled = true) => {
 
         lastSentAtRef.current = new Date().toISOString();
         lastErrorRef.current = null;
-        await checkGeofence(pos.latitude, pos.longitude);
+        await checkSmartPlaces(pos.latitude, pos.longitude);
       } catch (e) {
         lastErrorRef.current = e instanceof Error ? e.message : "Ошибка геолокации";
         console.warn("Location tick failed:", lastErrorRef.current);

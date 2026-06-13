@@ -161,13 +161,29 @@ export default function ParentDashboard() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "geofence_events" },
         (payload) => {
-          const ev = payload.new as { child_id: string; event_type: string; distance_m: number | null };
+          const ev = payload.new as {
+            child_id: string;
+            event_type: string;
+            distance_m: number | null;
+            place_name?: string | null;
+            status_hint?: string | null;
+          };
           if (!childIds.includes(ev.child_id)) return;
           const child = children.find((c) => c.child_id === ev.child_id);
+          const name = child?.first_name || "Ребёнок";
           const isExit = ev.event_type === "exit";
+          const isGoingHome = ev.status_hint === "going_home";
+          let title: string;
+          if (!isExit) {
+            title = ev.place_name ? `✅ ${name} в ${ev.place_name}` : `✅ ${name} в зоне`;
+          } else if (isGoingHome) {
+            title = `🏠 ${name} идёт домой`;
+          } else {
+            title = ev.place_name ? `⚠️ ${name} вышел из «${ev.place_name}»` : `⚠️ ${name} вышел из зоны`;
+          }
           toast({
-            title: isExit ? "⚠️ Выход из безопасной зоны" : "✅ Возврат в зону",
-            description: `${child?.first_name || "Ребёнок"}${ev.distance_m ? ` · ${Math.round(ev.distance_m)}м от центра` : ""}`,
+            title,
+            description: ev.distance_m ? `${Math.round(ev.distance_m)} м от центра` : undefined,
             variant: isExit ? "destructive" : "default",
             duration: 30000,
             action: (

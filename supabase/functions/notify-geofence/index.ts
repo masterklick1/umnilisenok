@@ -88,13 +88,31 @@ Deno.serve(async (req) => {
       });
     }
 
+    const placeName: string | null = body.place_name ?? null;
+    const statusMessage: string | null = body.status_message ?? null;
+    const statusHint: string | null = body.status_hint ?? null;
+
     ensureVapid();
 
-    const title =
-      eventType === "exit"
-        ? `⚠️ ${childName} вышел из безопасной зоны`
-        : `✅ ${childName} вернулся в зону`;
-    const body_ = distanceM != null ? `Расстояние от центра: ${Math.round(distanceM)} м` : "";
+    let title: string;
+    let body_: string;
+
+    if (placeName) {
+      if (eventType === "enter") {
+        title = `✅ ${childName} в ${placeName}`;
+      } else if (statusHint === "going_home" || statusMessage?.includes("домой")) {
+        title = `🏠 ${childName} идёт домой`;
+      } else {
+        title = `⚠️ ${childName} вышел из «${placeName}»`;
+      }
+      body_ = statusMessage || (distanceM != null ? `${Math.round(distanceM)} м от центра` : "");
+    } else {
+      title =
+        eventType === "exit"
+          ? `⚠️ ${childName} вышел из безопасной зоны`
+          : `✅ ${childName} вернулся в зону`;
+      body_ = distanceM != null ? `Расстояние от центра: ${Math.round(distanceM)} м` : "";
+    }
 
     const payload = JSON.stringify({
       title,

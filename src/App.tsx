@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import Index from "./pages/Index";
 import MathPage from "./pages/MathPage";
 import AlphabetPage from "./pages/AlphabetPage";
@@ -35,6 +36,29 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const ParentOnlyRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading: authLoading } = useAuth();
+  const { role, loading: roleLoading } = useUserRole();
+
+  if (authLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-4xl">🦊</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (role === "child") {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
@@ -110,9 +134,9 @@ const App = () => (
             <Route
               path="/parent"
               element={
-                <ProtectedRoute>
+                <ParentOnlyRoute>
                   <ParentDashboard />
-                </ProtectedRoute>
+                </ParentOnlyRoute>
               }
             />
             <Route

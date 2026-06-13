@@ -340,6 +340,21 @@ export default function ParentDashboard() {
   }
 
   const selectedChildData = children.find((c) => c.child_id === selectedChild);
+  const ownPhoneChildren = children.filter((c) => c.connected_via_invite);
+  const thisDeviceChildren = children.filter((c) => !c.connected_via_invite);
+
+  const renderChildCards = (list: typeof children) =>
+    list.map((child) => (
+      <ChildCard
+        key={child.child_id}
+        child={child}
+        isSelected={selectedChild === child.child_id}
+        onSelect={() => setSelectedChild(child.child_id)}
+        onStartSession={() => handleStartChildSession(child.child_id, child.first_name || "Ребёнок")}
+        onOpenSafety={() => openChildTab(child.child_id, "safety")}
+        onOpenMirror={() => openChildTab(child.child_id, "mirror")}
+      />
+    ));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 p-4">
@@ -479,56 +494,89 @@ export default function ParentDashboard() {
           </TabsContent>
 
           {/* Children Tab */}
-          <TabsContent value="children" className="space-y-4">
-            <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="py-4 px-4">
-                <p className="text-sm font-medium">Играть на этом телефоне</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Вы остаётесь залогинены как родитель. Нажмите «Играть здесь» — ребёнок занимается на
-                  вашем устройстве, а вы следите за ним во вкладках «Зеркало» и «Защита».
-                </p>
-              </CardContent>
-            </Card>
-
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Аккаунты детей</h2>
-              <Button onClick={() => setShowCreateForm(!showCreateForm)}>
-                {showCreateForm ? "Отмена" : "Добавить ребёнка"}
-              </Button>
-            </div>
-
-            {showCreateForm && (
-              <CreateChildForm
-                onSubmit={async (name, avatar) => {
-                  await createChildAccount(name, avatar);
-                  setShowCreateForm(false);
-                }}
-              />
-            )}
-
+          <TabsContent value="children" className="space-y-6">
             {children.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <div className="text-5xl mb-4">👶</div>
-                  <p className="text-muted-foreground">
-                    Добавьте аккаунт ребёнка, чтобы начать
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {children.map((child) => (
-                  <ChildCard
-                    key={child.child_id}
-                    child={child}
-                    isSelected={selectedChild === child.child_id}
-                    onSelect={() => setSelectedChild(child.child_id)}
-                    onStartSession={() => handleStartChildSession(child.child_id, child.first_name || "Ребёнок")}
-                    onOpenSafety={() => openChildTab(child.child_id, "safety")}
-                    onOpenMirror={() => openChildTab(child.child_id, "mirror")}
+              <>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">Аккаунты детей</h2>
+                  <Button onClick={() => setShowCreateForm(!showCreateForm)}>
+                    {showCreateForm ? "Отмена" : "Добавить ребёнка"}
+                  </Button>
+                </div>
+                {showCreateForm && (
+                  <CreateChildForm
+                    onSubmit={async (name, avatar) => {
+                      await createChildAccount(name, avatar);
+                      setShowCreateForm(false);
+                    }}
                   />
-                ))}
-              </div>
+                )}
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <div className="text-5xl mb-4">👶</div>
+                    <p className="text-muted-foreground">
+                      Добавьте аккаунт ребёнка или привяжите телефон через вкладку «Код»
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <>
+                {ownPhoneChildren.length > 0 && (
+                  <section className="space-y-4">
+                    <Card className="border-green-200 bg-green-50/50">
+                      <CardContent className="py-4 px-4">
+                        <p className="text-sm font-medium">📱 На своём телефоне</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ребёнок играет на своём устройстве. Следите через «Зеркало» и «Защита» —
+                          карта и активность обновляются с его телефона.
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <h2 className="text-lg font-semibold">Дети на своём телефоне</h2>
+                    <div className="grid gap-4 md:grid-cols-2">{renderChildCards(ownPhoneChildren)}</div>
+                  </section>
+                )}
+
+                <section className="space-y-4">
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="py-4 px-4">
+                      <p className="text-sm font-medium">💻 На этом устройстве</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Вы остаётесь залогинены как родитель. «Играть здесь» — ребёнок занимается на
+                        вашем телефоне, вы возвращаетесь в кабинет одной кнопкой.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-semibold">Дети на этом телефоне</h2>
+                    <Button onClick={() => setShowCreateForm(!showCreateForm)}>
+                      {showCreateForm ? "Отмена" : "Добавить ребёнка"}
+                    </Button>
+                  </div>
+
+                  {showCreateForm && (
+                    <CreateChildForm
+                      onSubmit={async (name, avatar) => {
+                        await createChildAccount(name, avatar);
+                        setShowCreateForm(false);
+                      }}
+                    />
+                  )}
+
+                  {thisDeviceChildren.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                        Нет локальных аккаунтов — нажмите «Добавить ребёнка» или привяжите телефон
+                        ребёнка через вкладку «Код».
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2">{renderChildCards(thisDeviceChildren)}</div>
+                  )}
+                </section>
+              </>
             )}
           </TabsContent>
           {/* Safety Tab */}

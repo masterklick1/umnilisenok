@@ -4,7 +4,9 @@ import { ScoreDisplay } from "@/components/ScoreDisplay";
 import { UserAvatar } from "@/components/UserAvatar";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calculator, BookOpen, Leaf, Palette, Brain, Users } from "lucide-react";
+import { Calculator, BookOpen, Leaf, Palette, Brain, ArrowLeft } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { ChildAccountBanner } from "@/components/child/ChildAccountBanner";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useUserProgress } from "@/hooks/useUserProgress";
@@ -20,37 +22,47 @@ export const MainApp = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { progress, loading } = useUserProgress();
+  const { isChild, isParent, loading: roleLoading } = useUserRole();
   const [childName, setChildName] = useState<string>("");
+  const [parentPlayMode, setParentPlayMode] = useState(false);
 
   useActivityTracker();
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || roleLoading) return;
 
     const activeChildId = sessionStorage.getItem("activeChildId");
     const activeChildName = sessionStorage.getItem("activeChildName");
 
-    if (activeChildId) {
+    if (isChild) {
+      sessionStorage.setItem("activeChildId", user.id);
       if (activeChildName) setChildName(activeChildName);
+      else {
+        supabase
+          .from("profiles")
+          .select("first_name")
+          .eq("id", user.id)
+          .single()
+          .then(({ data }) => {
+            const name = data?.first_name || "";
+            sessionStorage.setItem("activeChildName", name);
+            setChildName(name);
+          });
+      }
+      setParentPlayMode(false);
       return;
     }
 
-    // Child logged in directly — auto-start child session
-    supabase
-      .from("profiles")
-      .select("role, first_name")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data?.role === "child") {
-          sessionStorage.setItem("activeChildId", user.id);
-          sessionStorage.setItem("activeChildName", data.first_name || "");
-          setChildName(data.first_name || "");
-          return;
-        }
-        navigate("/parent");
-      });
-  }, [navigate, user?.id]);
+    if (isParent && activeChildId) {
+      if (activeChildName) setChildName(activeChildName);
+      setParentPlayMode(true);
+      return;
+    }
+
+    if (isParent) {
+      navigate("/parent");
+    }
+  }, [navigate, user?.id, isChild, isParent, roleLoading]);
 
   // Listen for game invitations from parent
   useEffect(() => {
@@ -107,7 +119,7 @@ export const MainApp = () => {
     navigate("/parent");
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-4xl">🦊</div>
@@ -130,15 +142,17 @@ export const MainApp = () => {
           </div>
           <div className="flex items-center gap-2">
             <UserAvatar fallback={childName?.[0]?.toUpperCase() || "👤"} />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackToParent}
-              className="gap-2"
-            >
-              <Users className="w-4 h-4" />
-              Родителям
-            </Button>
+            {parentPlayMode && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBackToParent}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                К родителям
+              </Button>
+            )}
           </div>
         </div>
 
@@ -200,6 +214,8 @@ export const MainApp = () => {
           />
         </div>
       </div>
+
+      {isChild && <ChildAccountBanner />}
 
       {/* SOS for emergencies */}
       <SOSButton />

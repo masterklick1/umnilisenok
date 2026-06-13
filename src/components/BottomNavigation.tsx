@@ -3,28 +3,14 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [isParent, setIsParent] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          setIsParent(data?.role === "parent");
-        });
-    }
-  }, [user]);
+  const { isParent } = useUserRole();
 
   const handleAIChat = () => {
     toast({

@@ -11,11 +11,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { SOUND_KEY } from "@/lib/sound";
 import { PIN_KEY } from "@/lib/parent-pin";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, signOut } = useAuth();
+  const { isChild } = useUserRole();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [pin, setPin] = useState("");
@@ -124,35 +126,46 @@ export default function SettingsPage() {
           </p>
         </Card>
 
-        {/* Родительский PIN */}
-        <Card className="p-5 mb-4">
-          <div className="flex items-center gap-2 mb-3 font-semibold">
-            <Lock className="w-5 h-5 text-primary" /> Родительский PIN
-          </div>
-          <p className="text-sm text-muted-foreground mb-3">
-            4 цифры — чтобы открыть родительский раздел
-          </p>
-          {pin ? (
-            <div className="flex items-center justify-between">
-              <span className="text-sm">PIN установлен: <span className="font-mono">••••</span></span>
-              <Button variant="outline" size="sm" onClick={clearPin}>
-                <Trash2 className="w-4 h-4 mr-1" /> Удалить
-              </Button>
+        {/* Родительский PIN — только для родителей на своём телефоне */}
+        {!isChild && (
+          <Card className="p-5 mb-4">
+            <div className="flex items-center gap-2 mb-3 font-semibold">
+              <Lock className="w-5 h-5 text-primary" /> Родительский PIN
             </div>
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="1234"
-                value={newPin}
-                onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-              />
-              <Button onClick={savePin}>Установить</Button>
-            </div>
-          )}
-        </Card>
+            <p className="text-sm text-muted-foreground mb-3">
+              4 цифры — чтобы открыть родительский раздел
+            </p>
+            {pin ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm">PIN установлен: <span className="font-mono">••••</span></span>
+                <Button variant="outline" size="sm" onClick={clearPin}>
+                  <Trash2 className="w-4 h-4 mr-1" /> Удалить
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="1234"
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+                />
+                <Button onClick={savePin}>Установить</Button>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {isChild && (
+          <Card className="p-5 mb-4 border-primary/20 bg-primary/5">
+            <p className="text-sm text-muted-foreground">
+              📱 Это аккаунт ребёнка. Родители управляют и следят со своего телефона в родительском
+              кабинете.
+            </p>
+          </Card>
+        )}
 
         {/* О приложении */}
         <Card className="p-5 mb-4">

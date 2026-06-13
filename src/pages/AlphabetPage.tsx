@@ -5,6 +5,7 @@ import { ArrowLeft, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { speak } from "@/lib/sound";
 
 type Letter = {
   letter: string;
@@ -48,16 +49,6 @@ const russianAlphabet: Letter[] = [
   { letter: "Ю", sound: "ю", word: "Юла", emoji: "🌀" },
   { letter: "Я", sound: "я", word: "Яблоко", emoji: "🍎" },
 ];
-
-const speak = (text: string) => {
-  if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ru-RU';
-    utterance.rate = 0.8;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  }
-};
 
 const generateQuizOptions = (correctLetter: Letter): Letter[] => {
   const options = [correctLetter];

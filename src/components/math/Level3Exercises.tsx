@@ -5,22 +5,13 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { speak } from "@/lib/sound";
 
 type ExerciseType = "count20" | "problems" | "measurement" | "charts";
 
 interface Level3ExercisesProps {
   onBack: () => void;
 }
-
-const speak = (text: string) => {
-  if ("speechSynthesis" in window) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ru-RU";
-    u.rate = 0.85;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  }
-};
 
 export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   const { toast } = useToast();
@@ -56,6 +47,57 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
     { type: "charts" as ExerciseType, title: "Графики", description: "Простые диаграммы", emoji: "📊" },
   ];
 
+  const count20Data = useMemo(() => {
+    if (currentExercise !== "count20") return null;
+    const n = Math.floor(Math.random() * 20) + 1;
+    const tens = Math.floor(n / 10);
+    const ones = n % 10;
+    const opts = new Set<number>([n]);
+    while (opts.size < 4) opts.add(Math.max(1, Math.min(20, n + Math.floor(Math.random() * 7) - 3)));
+    return { n, tens, ones, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [currentExercise, round]);
+
+  const problemsData = useMemo(() => {
+    if (currentExercise !== "problems") return null;
+    const a = Math.floor(Math.random() * 6) + 2;
+    const b = Math.floor(Math.random() * 5) + 1;
+    const add = Math.random() > 0.5;
+    const subjects = [
+      { name: "морковок у зайки", emoji: "🥕" },
+      { name: "яблок в корзинке", emoji: "🍎" },
+      { name: "цветов в саду", emoji: "🌸" },
+    ];
+    const s = subjects[Math.floor(Math.random() * subjects.length)];
+    const story = add
+      ? `Было ${a} ${s.name}, добавили ещё ${b}. Сколько стало?`
+      : `Было ${a + b} ${s.name}, ${b} забрали. Сколько осталось?`;
+    const ans = add ? a + b : a;
+    const opts = new Set<number>([ans]);
+    while (opts.size < 4) opts.add(Math.max(1, ans + Math.floor(Math.random() * 5) - 2));
+    return { story, ans, opts: [...opts].sort(() => Math.random() - 0.5), s };
+  }, [currentExercise, round]);
+
+  const measurementData = useMemo(() => {
+    if (currentExercise !== "measurement") return null;
+    const modes = [
+      { q: "Что длиннее?", items: [{ e: "🚂", v: 5 }, { e: "🚗", v: 2 }, { e: "✏️", v: 1 }] },
+      { q: "Что тяжелее?", items: [{ e: "🐘", v: 5 }, { e: "🐈", v: 2 }, { e: "🐭", v: 1 }] },
+      { q: "Что выше?", items: [{ e: "🌳", v: 5 }, { e: "🌷", v: 2 }, { e: "🍄", v: 1 }] },
+    ];
+    const m = modes[Math.floor(Math.random() * modes.length)];
+    const shuffled = [...m.items].sort(() => Math.random() - 0.5);
+    const max = Math.max(...shuffled.map((x) => x.v));
+    return { q: m.q, items: shuffled, correctEmoji: shuffled.find((x) => x.v === max)!.e };
+  }, [currentExercise, round]);
+
+  const chartsData = useMemo(() => {
+    if (currentExercise !== "charts") return null;
+    const labels = ["🍎", "🍌", "🍇"];
+    const values = labels.map(() => Math.floor(Math.random() * 5) + 1);
+    const maxIdx = values.indexOf(Math.max(...values));
+    return { labels, values, correct: labels[maxIdx] };
+  }, [currentExercise, round]);
+
   if (!currentExercise) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-background p-4">
@@ -87,16 +129,8 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   }
 
   // ===== Счёт до 20 =====
-  if (currentExercise === "count20") {
-    const r = useMemo(() => {
-      const n = Math.floor(Math.random() * 20) + 1;
-      const tens = Math.floor(n / 10);
-      const ones = n % 10;
-      const opts = new Set<number>([n]);
-      while (opts.size < 4) opts.add(Math.max(1, Math.min(20, n + Math.floor(Math.random() * 7) - 3)));
-      return { n, tens, ones, opts: [...opts].sort(() => Math.random() - 0.5) };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+  if (currentExercise === "count20" && count20Data) {
+    const r = count20Data;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-6">Сколько здесь?</h2>
@@ -127,26 +161,8 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   }
 
   // ===== Задачи =====
-  if (currentExercise === "problems") {
-    const r = useMemo(() => {
-      const a = Math.floor(Math.random() * 6) + 2;
-      const b = Math.floor(Math.random() * 5) + 1;
-      const add = Math.random() > 0.5;
-      const subjects = [
-        { name: "морковок у зайки", emoji: "🥕" },
-        { name: "яблок в корзинке", emoji: "🍎" },
-        { name: "цветов в саду", emoji: "🌸" },
-      ];
-      const s = subjects[Math.floor(Math.random() * subjects.length)];
-      const story = add
-        ? `Было ${a} ${s.name}, добавили ещё ${b}. Сколько стало?`
-        : `Было ${a + b} ${s.name}, ${b} забрали. Сколько осталось?`;
-      const ans = add ? a + b : a;
-      const opts = new Set<number>([ans]);
-      while (opts.size < 4) opts.add(Math.max(1, ans + Math.floor(Math.random() * 5) - 2));
-      return { story, ans, opts: [...opts].sort(() => Math.random() - 0.5), s };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+  if (currentExercise === "problems" && problemsData) {
+    const r = problemsData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <div className="text-6xl mb-4">{r.s.emoji}</div>
@@ -163,19 +179,8 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   }
 
   // ===== Измерения =====
-  if (currentExercise === "measurement") {
-    const r = useMemo(() => {
-      const modes = [
-        { q: "Что длиннее?", items: [{ e: "🚂", v: 5 }, { e: "🚗", v: 2 }, { e: "✏️", v: 1 }] },
-        { q: "Что тяжелее?", items: [{ e: "🐘", v: 5 }, { e: "🐈", v: 2 }, { e: "🐭", v: 1 }] },
-        { q: "Что выше?", items: [{ e: "🌳", v: 5 }, { e: "🌷", v: 2 }, { e: "🍄", v: 1 }] },
-      ];
-      const m = modes[Math.floor(Math.random() * modes.length)];
-      const shuffled = [...m.items].sort(() => Math.random() - 0.5);
-      const max = Math.max(...shuffled.map((x) => x.v));
-      return { q: m.q, items: shuffled, correctEmoji: shuffled.find((x) => x.v === max)!.e };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+  if (currentExercise === "measurement" && measurementData) {
+    const r = measurementData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-6">{r.q}</h2>
@@ -190,14 +195,8 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   }
 
   // ===== Графики =====
-  if (currentExercise === "charts") {
-    const r = useMemo(() => {
-      const labels = ["🍎", "🍌", "🍇"];
-      const values = labels.map(() => Math.floor(Math.random() * 5) + 1);
-      const maxIdx = values.indexOf(Math.max(...values));
-      return { labels, values, correct: labels[maxIdx] };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+  if (currentExercise === "charts" && chartsData) {
+    const r = chartsData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-6">Чего больше всего?</h2>

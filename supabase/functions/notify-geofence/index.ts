@@ -11,11 +11,21 @@ const corsHeaders = {
 };
 
 const VAPID_PUBLIC =
+  Deno.env.get("VAPID_PUBLIC_KEY") ??
   "BCp-2vIxJ4Rbjk0Zk-1cPN6OCw5O1XFPKmrkVbA7X6nm5lk1Dum59dpnQUt1d6MUPFB0YuN4WvkJuBfTaNIx5Q8";
-const VAPID_PRIVATE = "kQgRUcwvUipDz1rFMsOVuc_-v2LNDzAsuFC7XGYRNtQ";
-const VAPID_SUBJECT = "mailto:support@umnilisenok.app";
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:support@umnilisenok.app";
 
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
+let vapidConfigured = false;
+
+const ensureVapid = () => {
+  const privateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+  if (!privateKey) return false;
+  if (!vapidConfigured) {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, privateKey);
+    vapidConfigured = true;
+  }
+  return true;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -73,6 +83,13 @@ Deno.serve(async (req) => {
 
     if (!subs || subs.length === 0) {
       return new Response(JSON.stringify({ sent: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!ensureVapid()) {
+      return new Response(JSON.stringify({ error: "Push notifications not configured" }), {
+        status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

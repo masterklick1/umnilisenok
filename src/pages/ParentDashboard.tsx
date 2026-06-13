@@ -12,7 +12,7 @@ import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle, House } from "lucide-react";
+import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle, House, Lock } from "lucide-react";
 import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
 import { MonitoringPanel } from "@/components/parental/MonitoringPanel";
 import { MonitoringNotificationSettings, loadMonitoringPrefs, shouldNotify, type MonitoringNotifPrefs } from "@/components/parental/MonitoringNotificationSettings";
@@ -20,6 +20,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorker, getPushStatus, unsubscribeFromPush, type PushStatus } from "@/lib/push";
+import { getStoredPin, isParentPinUnlocked, unlockParentPin } from "@/lib/parent-pin";
+import { Input } from "@/components/ui/input";
 
 export default function ParentDashboard() {
   const navigate = useNavigate();
@@ -44,6 +46,9 @@ export default function ParentDashboard() {
   );
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [notifPrefs, setNotifPrefs] = useState<MonitoringNotifPrefs>(loadMonitoringPrefs());
+  const [pinUnlocked, setPinUnlocked] = useState(() => isParentPinUnlocked());
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => setNotifPrefs((e as CustomEvent).detail);
@@ -258,10 +263,58 @@ export default function ParentDashboard() {
     navigate("/");
   };
 
+  const verifyParentPin = () => {
+    const stored = getStoredPin();
+    if (stored && pinInput === stored) {
+      unlockParentPin();
+      setPinUnlocked(true);
+      setPinError(false);
+      setPinInput("");
+      return;
+    }
+    setPinError(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-accent/5">
         <div className="text-4xl animate-bounce">👨‍👩‍👧‍👦</div>
+      </div>
+    );
+  }
+
+  if (getStoredPin() && !pinUnlocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-accent/5 p-4">
+        <Card className="w-full max-w-sm">
+          <CardContent className="pt-6 space-y-4">
+            <div className="text-center">
+              <Lock className="w-10 h-10 mx-auto mb-2 text-primary" />
+              <h2 className="text-xl font-bold">Родительский PIN</h2>
+              <p className="text-sm text-muted-foreground">Введи 4-значный PIN для доступа</p>
+            </div>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="••••"
+              value={pinInput}
+              onChange={(e) => {
+                setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4));
+                setPinError(false);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && pinInput.length === 4 && verifyParentPin()}
+              className="text-center text-2xl tracking-widest"
+            />
+            {pinError && <p className="text-sm text-destructive text-center">Неверный PIN</p>}
+            <Button className="w-full" disabled={pinInput.length !== 4} onClick={verifyParentPin}>
+              Войти
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => navigate("/")}>
+              Назад
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

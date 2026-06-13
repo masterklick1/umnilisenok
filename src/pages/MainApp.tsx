@@ -28,20 +28,32 @@ export const MainApp = () => {
 
 
   useEffect(() => {
-    // Check if we're in child session mode
+    if (!user?.id) return;
+
     const activeChildId = sessionStorage.getItem("activeChildId");
     const activeChildName = sessionStorage.getItem("activeChildName");
-    
-    if (!activeChildId) {
-      // No child session - redirect to parent dashboard
-      navigate("/parent");
+
+    if (activeChildId) {
+      if (activeChildName) setChildName(activeChildName);
       return;
     }
-    
-    if (activeChildName) {
-      setChildName(activeChildName);
-    }
-  }, [navigate]);
+
+    // Child logged in directly — auto-start child session
+    supabase
+      .from("profiles")
+      .select("role, first_name")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.role === "child") {
+          sessionStorage.setItem("activeChildId", user.id);
+          sessionStorage.setItem("activeChildName", data.first_name || "");
+          setChildName(data.first_name || "");
+          return;
+        }
+        navigate("/parent");
+      });
+  }, [navigate, user?.id]);
 
   // Listen for game invitations from parent
   useEffect(() => {

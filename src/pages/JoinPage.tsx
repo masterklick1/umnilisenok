@@ -89,6 +89,9 @@ export default function JoinPage() {
     toast({ title: `Готово! 🎉`, description: `Аккаунт ${childName} привязан к родителю.` });
     setStep("done");
 
+    sessionStorage.setItem("activeChildId", newChildId);
+    sessionStorage.setItem("activeChildName", childName);
+
     // If session exists — go to main app
     if (signupData.session) {
       setTimeout(() => navigate("/"), 1500);

@@ -5,22 +5,13 @@ import { ArrowLeft, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { speak } from "@/lib/sound";
 
 type ExerciseType = "count" | "shapes" | "sort" | "compare";
 
 interface Level1ExercisesProps {
   onBack: () => void;
 }
-
-const speak = (text: string) => {
-  if ("speechSynthesis" in window) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ru-RU";
-    u.rate = 0.85;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  }
-};
 
 export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const { toast } = useToast();
@@ -63,6 +54,23 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     { type: "sort" as ExerciseType, title: "Сортировка", description: "От маленького к большому", emoji: "📦" },
     { type: "compare" as ExerciseType, title: "Больше-меньше", description: "Где больше фруктов?", emoji: "🍊" },
   ];
+
+  const sortSizes = useMemo(() => {
+    const arr = [
+      { size: 1, label: "🟢", scale: "text-3xl" },
+      { size: 2, label: "🟢", scale: "text-5xl" },
+      { size: 3, label: "🟢", scale: "text-7xl" },
+    ];
+    return [...arr].sort(() => Math.random() - 0.5);
+  }, [sortRound]);
+
+  const compareRoundData = useMemo(() => {
+    const a = Math.floor(Math.random() * 5) + 1;
+    let b = Math.floor(Math.random() * 5) + 1;
+    while (b === a) b = Math.floor(Math.random() * 5) + 1;
+    const fruit = ["🍎", "🍐", "🍊", "🍇", "🍓"][Math.floor(Math.random() * 5)];
+    return { a, b, fruit, bigger: a > b ? "a" as const : "b" as const };
+  }, [compareRound]);
 
   // ===== Меню =====
   if (!currentExercise) {
@@ -177,16 +185,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
   // ===== Сортировка =====
   if (currentExercise === "sort") {
-    const sizes = useMemo(() => {
-      const arr = [
-        { size: 1, label: "🟢", scale: "text-3xl" },
-        { size: 2, label: "🟢", scale: "text-5xl" },
-        { size: 3, label: "🟢", scale: "text-7xl" },
-      ];
-      return [...arr].sort(() => Math.random() - 0.5);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sortRound]);
-
+    const sizes = sortSizes;
     const nextNeeded = sortClicked.length + 1;
 
     return (
@@ -234,14 +233,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
   // ===== Сравнение =====
   if (currentExercise === "compare") {
-    const round = useMemo(() => {
-      const a = Math.floor(Math.random() * 5) + 1;
-      let b = Math.floor(Math.random() * 5) + 1;
-      while (b === a) b = Math.floor(Math.random() * 5) + 1;
-      const fruit = ["🍎", "🍐", "🍊", "🍇", "🍓"][Math.floor(Math.random() * 5)];
-      return { a, b, fruit, bigger: a > b ? "a" : "b" };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [compareRound]);
+    const round = compareRoundData;
 
     const pick = (side: "a" | "b") => {
       setTotal((t) => t + 1);

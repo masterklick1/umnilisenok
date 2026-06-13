@@ -83,7 +83,7 @@ export function InvitePanel() {
     const url = joinUrl(inv.code);
     const text = `Открой ссылку на телефоне ${inv.child_first_name} и зарегистрируй детский аккаунт: ${url}\n\nИли введи код вручную: ${inv.code}`;
     if (navigator.share) {
-      try { await navigator.share({ title: "Привязка устройства", text, url }); } catch {}
+      try { await navigator.share({ title: "Привязка устройства", text, url }); } catch { /* user cancelled */ }
     } else {
       copy(text, "Сообщение");
     }

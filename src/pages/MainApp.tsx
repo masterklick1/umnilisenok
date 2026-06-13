@@ -4,7 +4,6 @@ import { ScoreDisplay } from "@/components/ScoreDisplay";
 import { UserAvatar } from "@/components/UserAvatar";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Calculator, BookOpen, Leaf, Palette, Brain, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -14,8 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ToastAction } from "@/components/ui/toast";
 import { SOSButton } from "@/components/SOSButton";
-import { useLocationTracker } from "@/hooks/useLocationTracker";
-import { useMonitoringListener } from "@/hooks/useMonitoringListener";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 export const MainApp = () => {
@@ -25,29 +22,7 @@ export const MainApp = () => {
   const { progress, loading } = useUserProgress();
   const [childName, setChildName] = useState<string>("");
 
-  useLocationTracker(true);
-  useMonitoringListener();
   useActivityTracker();
-  const [locationHint, setLocationHint] = useState(false);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    const activeChildId = sessionStorage.getItem("activeChildId");
-    if (activeChildId && activeChildId === user.id) return;
-    supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.role === "child" && "geolocation" in navigator) {
-          navigator.permissions?.query({ name: "geolocation" }).then((p) => {
-            if (p.state === "prompt") setLocationHint(true);
-          }).catch(() => {});
-        }
-      });
-  }, [user?.id]);
-
 
   useEffect(() => {
     if (!user?.id) return;
@@ -169,25 +144,6 @@ export const MainApp = () => {
 
         {/* Welcome Message */}
         <UserWelcome name={childName} />
-
-        {locationHint && (
-          <Card className="mb-4 border-primary/30 bg-primary/5">
-            <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
-              <p className="text-sm">
-                📍 Разреши геопозицию — мама/папа смогут видеть, что ты в безопасности
-              </p>
-              <Button
-                size="sm"
-                onClick={() => {
-                  navigator.geolocation.getCurrentPosition(() => setLocationHint(false), () => {});
-                  setLocationHint(false);
-                }}
-              >
-                Разрешить
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Fox Avatar */}
         <div className="flex justify-center my-8">

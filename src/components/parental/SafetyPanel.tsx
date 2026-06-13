@@ -756,10 +756,14 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 disabled={savingSettings}
                 onClick={() => saveSettings({ location_interval_seconds: s })}
               >
-                {formatInterval(s)}
+                {s === 300 ? "5 мин" : formatInterval(s)}
               </Button>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground">
+            Интервал применится на телефоне ребёнка автоматически. Держите приложение открытым или
+            в фоне — при возврате на экран координаты отправятся сразу.
+          </p>
         </CardContent>
       </Card>
 

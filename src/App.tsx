@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import JoinPage from "./pages/JoinPage";
 import SettingsPage from "./pages/SettingsPage";
+import { ChildDeviceServices } from "./components/child/ChildDeviceServices";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ChildDeviceServices />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/join" element={<JoinPage />} />

@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer, Shield, ShieldAlert, Crosshair, BookmarkPlus, Trash2 } from "lucide-react";
+import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer, Shield, ShieldAlert, Crosshair, BookmarkPlus, Trash2, Route, Car, Footprints, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +25,14 @@ import {
   type SavedPlace,
 } from "@/lib/saved-places";
 import { PlaceAddressSearch, type SelectedPlacePayload } from "@/components/parental/PlaceAddressSearch";
+import {
+  distanceMeters,
+  formatDistance,
+  getParentLocation,
+  googleMapsDirectionsUrl,
+  type LatLng,
+  type TravelMode,
+} from "@/lib/route-utils";
 
 interface Props {
   childId: string;
@@ -104,6 +112,12 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
   const [activeZoneLabel, setActiveZoneLabel] = useState<string | null>(null);
   const [customPlaceName, setCustomPlaceName] = useState("");
+  const [movementPath, setMovementPath] = useState<LatLng[]>([]);
+  const [parentLocation, setParentLocation] = useState<LatLng | null>(null);
+  const [showRoute, setShowRoute] = useState(false);
+  const [routeMode, setRouteMode] = useState<TravelMode>("driving");
+  const [showTrail, setShowTrail] = useState(true);
+  const [loadingRoute, setLoadingRoute] = useState(false);
 
   const loadSettings = useCallback(async () => {
     const { data } = await supabase
@@ -141,7 +155,8 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
 
 
   const loadData = useCallback(async () => {
-    const [loc, sos, req, geo] = await Promise.all([
+    const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+    const [loc, history, sos, req, geo] = await Promise.all([
       supabase
         .from("child_locations")
         .select("*")
@@ -149,6 +164,13 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("child_locations")
+        .select("latitude, longitude, created_at")
+        .eq("child_id", childId)
+        .gte("created_at", since)
+        .order("created_at", { ascending: true })
+        .limit(150),
       supabase
         .from("sos_alerts")
         .select("*")
@@ -169,6 +191,14 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         .limit(10),
     ]);
     if (loc.data) setLocation(loc.data as Location);
+    if (history.data) {
+      setMovementPath(
+        (history.data as { latitude: number; longitude: number }[]).map((p) => ({
+          lat: p.latitude,
+          lng: p.longitude,
+        })),
+      );
+    }
     if (sos.data) setAlerts(sos.data as SosAlert[]);
     if (req.data) setRequests(req.data as MonitoringReq[]);
     if (geo.data) setGeoEvents(geo.data as unknown as GeofenceEvent[]);
@@ -178,7 +208,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     loadData();
     loadSettings();
 
-    const poll = window.setInterval(loadData, 10000);
+    const poll = window.setInterval(loadData, 5000);
 
     const channel = supabase
       .channel(`safety-${childId}`)
@@ -317,6 +347,46 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     setSavedPlaces(removeSavedPlace(childId, placeId));
   };
 
+  const buildRoute = async (mode: TravelMode) => {
+    if (!location) {
+      toast({
+        title: "Нет местоположения ребёнка",
+        description: "Дождитесь координат с телефона ребёнка.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLoadingRoute(true);
+    setRouteMode(mode);
+    try {
+      const parent = await getParentLocation();
+      setParentLocation(parent);
+      setShowRoute(true);
+      const dist = distanceMeters(parent, {
+        lat: location.latitude,
+        lng: location.longitude,
+      });
+      toast({
+        title: mode === "walking" ? "Маршрут пешком" : "Маршрут на машине",
+        description: `До ${childName} ≈ ${formatDistance(dist)}. Маршрут на карте обновляется.`,
+      });
+    } catch {
+      toast({
+        title: "Не удалось определить ваше место",
+        description: "Разрешите геопозицию браузеру или откройте навигатор по кнопке ниже.",
+        variant: "destructive",
+      });
+    }
+    setLoadingRoute(false);
+  };
+
+  const childPoint = location
+    ? { lat: location.latitude, lng: location.longitude }
+    : null;
+
+  const distanceToChild =
+    parentLocation && childPoint ? distanceMeters(parentLocation, childPoint) : null;
+
   const applySearchedPlace = (payload: SelectedPlacePayload, save: boolean) => {
     const label = formatPlaceLabel(payload.emoji, payload.name);
     const saved: SavedPlace | undefined = save
@@ -440,15 +510,38 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 <h3 className="font-bold text-lg text-destructive">🚨 SOS от {childName}!</h3>
                 <p className="text-sm">{activeAlert.message}</p>
                 {activeAlert.latitude != null && activeAlert.longitude != null && (
-                  <a
-                    href={`https://www.google.com/maps?q=${activeAlert.latitude},${activeAlert.longitude}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-primary underline mt-1"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    Открыть на карте
-                  </a>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <a
+                      href={`https://www.google.com/maps?q=${activeAlert.latitude},${activeAlert.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary underline text-sm"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      Открыть на карте
+                    </a>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-7 gap-1"
+                      onClick={async () => {
+                        if (activeAlert.latitude == null || activeAlert.longitude == null) return;
+                        const dest = { lat: activeAlert.latitude, lng: activeAlert.longitude };
+                        try {
+                          const parent = await getParentLocation();
+                          window.open(googleMapsDirectionsUrl(parent, dest), "_blank");
+                        } catch {
+                          window.open(
+                            `https://www.google.com/maps?q=${dest.lat},${dest.lng}`,
+                            "_blank",
+                          );
+                        }
+                      }}
+                    >
+                      <Route className="w-3 h-3" />
+                      Как добраться
+                    </Button>
+                  </div>
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
                   {formatDistanceToNow(new Date(activeAlert.created_at), {
@@ -469,17 +562,102 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <MapPin className="w-5 h-5" /> Местоположение
+            <MapPin className="w-5 h-5" /> Местоположение и маршрут
           </CardTitle>
+          <CardDescription>
+            Карта обновляется каждые 5 сек. Оранжевая линия — куда ребёнок ходил. Синяя — как вам
+            добраться.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {location ? (
             <>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  disabled={loadingRoute}
+                  onClick={() => buildRoute("driving")}
+                  className="gap-1"
+                >
+                  {loadingRoute && routeMode === "driving" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Car className="w-4 h-4" />
+                  )}
+                  Как доехать
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={loadingRoute}
+                  onClick={() => buildRoute("walking")}
+                  className="gap-1"
+                >
+                  {loadingRoute && routeMode === "walking" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Footprints className="w-4 h-4" />
+                  )}
+                  Пешком
+                </Button>
+                {parentLocation && childPoint && (
+                  <a
+                    href={googleMapsDirectionsUrl(parentLocation, childPoint, routeMode)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Button size="sm" variant="secondary" className="gap-1">
+                      <ExternalLink className="w-4 h-4" />
+                      Навигатор
+                    </Button>
+                  </a>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowRoute(false);
+                    setParentLocation(null);
+                  }}
+                >
+                  Скрыть маршрут
+                </Button>
+              </div>
+
+              {distanceToChild != null && showRoute && (
+                <p className="text-sm flex items-center gap-2">
+                  <Route className="w-4 h-4 text-primary" />
+                  До {childName}: <strong>{formatDistance(distanceToChild)}</strong>
+                  {routeMode === "walking" ? " пешком" : " на машине"}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between gap-3 flex-wrap text-xs">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="show-trail"
+                    checked={showTrail}
+                    onCheckedChange={setShowTrail}
+                  />
+                  <Label htmlFor="show-trail" className="cursor-pointer">
+                    Путь перемещения (6 ч)
+                  </Label>
+                </div>
+                <span className="text-muted-foreground">
+                  👶 ребёнок · 👨 вы · 🟠 трек · 🔵 маршрут
+                </span>
+              </div>
+
               <LocationMap
                 latitude={location.latitude}
                 longitude={location.longitude}
                 accuracy={location.accuracy}
                 label={childName}
+                height={340}
+                movementPath={showTrail ? movementPath : []}
+                parentLocation={parentLocation}
+                showRoute={showRoute}
+                routeMode={routeMode}
                 geofence={
                   settings?.geofence_enabled && settings.geofence_lat != null && settings.geofence_lng != null
                     ? { lat: settings.geofence_lat, lng: settings.geofence_lng, radius: settings.geofence_radius_m }

@@ -10,6 +10,31 @@ import { Loader2 } from "lucide-react";
 
 type Step = "code" | "register" | "done";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Profile row may appear slightly after auth.users — retry redeem on race. */
+const redeemInvite = async (code: string, childId: string) => {
+  const normalized = code.trim().toUpperCase();
+  let lastError: { message: string } | null = null;
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { error } = await supabase.rpc("redeem_child_invite", {
+      p_code: normalized,
+      p_child_id: childId,
+    });
+    if (!error) return null;
+
+    lastError = error;
+    const retryable =
+      error.message.includes("Invalid child account") ||
+      error.message.includes("Invalid or expired invite code");
+    if (!retryable || attempt === 9) return error;
+    await sleep(400);
+  }
+
+  return lastError;
+};
+
 export default function JoinPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -17,32 +42,52 @@ export default function JoinPage() {
 
   const [step, setStep] = useState<Step>("code");
   const [code, setCode] = useState((params.get("code") || "").toUpperCase());
-  const [checking, setChecking] = useState(false);
+  const [checking, setChecking] = useState(!!params.get("code"));
   const [childName, setChildName] = useState("");
-  const [parentId, setParentId] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const verifyCode = async (c: string) => {
-    setChecking(true);
-    const { data, error } = await supabase.rpc("get_invite_by_code", { p_code: c.trim().toUpperCase() });
-    setChecking(false);
-    if (error || !data || (Array.isArray(data) && data.length === 0)) {
-      toast({ title: "Код не найден", description: "Проверь правильность кода или попроси новый.", variant: "destructive" });
+    const normalized = c.trim().toUpperCase();
+    if (normalized.length < 6) {
+      toast({ title: "Введи 6 символов кода", variant: "destructive" });
       return;
     }
+
+    setChecking(true);
+    const { data, error } = await supabase.rpc("get_invite_by_code", { p_code: normalized });
+    setChecking(false);
+
+    if (error) {
+      toast({
+        title: "Ошибка проверки кода",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const row = Array.isArray(data) ? data[0] : data;
+    if (!row) {
+      toast({
+        title: "Код не найден",
+        description: "Код истёк, уже использован или неверный. Попроси родителя создать новый.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCode(normalized);
     setChildName(row.child_first_name);
-    setParentId(row.parent_id);
     setStep("register");
   };
 
-  // auto-verify if code came from URL
   useEffect(() => {
-    if (params.get("code") && step === "code") {
-      verifyCode(params.get("code")!);
+    const urlCode = params.get("code");
+    if (urlCode && step === "code") {
+      verifyCode(urlCode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -55,13 +100,12 @@ export default function JoinPage() {
     }
     setSubmitting(true);
 
-    // Sign up child
     const { data: signupData, error: signupError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
-        data: { first_name: childName },
+        data: { first_name: childName, role: "child" },
       },
     });
 
@@ -73,12 +117,7 @@ export default function JoinPage() {
 
     const newChildId = signupData.user.id;
 
-    // Redeem invite (SECURITY DEFINER — works regardless of session state)
-    const { error: redeemError } = await supabase.rpc("redeem_child_invite", {
-      p_code: code.trim().toUpperCase(),
-      p_child_id: newChildId,
-    });
-
+    const redeemError = await redeemInvite(code, newChildId);
     setSubmitting(false);
 
     if (redeemError) {
@@ -92,7 +131,6 @@ export default function JoinPage() {
     sessionStorage.setItem("activeChildId", newChildId);
     sessionStorage.setItem("activeChildName", childName);
 
-    // If session exists — go to main app
     if (signupData.session) {
       setTimeout(() => navigate("/"), 1500);
     }
@@ -105,13 +143,20 @@ export default function JoinPage() {
           <div className="text-6xl mb-2">🦊</div>
           <CardTitle className="text-2xl">Привязка устройства</CardTitle>
           <CardDescription>
-            {step === "code" && "Введи код приглашения от родителя"}
+            {checking && step === "code" && "Проверяем код…"}
+            {!checking && step === "code" && "Введи код приглашения от родителя"}
             {step === "register" && `Создай аккаунт для ${childName}`}
             {step === "done" && "Всё готово!"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {step === "code" && (
+          {checking && step === "code" && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          )}
+
+          {!checking && step === "code" && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="code">Код</Label>
@@ -124,8 +169,8 @@ export default function JoinPage() {
                   className="text-2xl font-mono tracking-widest text-center"
                 />
               </div>
-              <Button className="w-full" onClick={() => verifyCode(code)} disabled={checking || code.length < 6}>
-                {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : "Продолжить"}
+              <Button className="w-full" onClick={() => verifyCode(code)} disabled={code.length < 6}>
+                Продолжить
               </Button>
               <button
                 onClick={() => navigate("/auth")}
@@ -175,7 +220,9 @@ export default function JoinPage() {
           {step === "done" && (
             <div className="text-center space-y-4 py-4">
               <div className="text-6xl">✅</div>
-              <p>Аккаунт <b>{childName}</b> привязан.</p>
+              <p>
+                Аккаунт <b>{childName}</b> привязан.
+              </p>
               <p className="text-sm text-muted-foreground">
                 Если потребуется подтвердить email — проверь почту. После входа откроется детский режим.
               </p>

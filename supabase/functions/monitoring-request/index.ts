@@ -38,13 +38,9 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      // Verify parent-child link
       const { data: link } = await admin
-        .from('parent_child_links')
-        .select('id')
-        .eq('parent_id', user.id)
-        .eq('child_id', child_id)
-        .maybeSingle();
+        .from('parent_child_links').select('id')
+        .eq('parent_id', user.id).eq('child_id', child_id).maybeSingle();
       if (!link) {
         return new Response(JSON.stringify({ error: 'Not linked to child' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -53,36 +49,68 @@ Deno.serve(async (req) => {
       const { data, error } = await admin
         .from('monitoring_requests')
         .insert({ parent_id: user.id, child_id, request_type, status: 'pending' })
-        .select()
-        .single();
+        .select().single();
       if (error) throw error;
       return new Response(JSON.stringify({ request: data }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    if (action === 'cancel' && req.method === 'POST') {
+      const { id } = await req.json();
+      if (!id) {
+        return new Response(JSON.stringify({ error: 'Missing id' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: r } = await admin
+        .from('monitoring_requests').select('*')
+        .eq('id', id).eq('parent_id', user.id).maybeSingle();
+      if (!r) {
+        return new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (r.status !== 'pending') {
+        return new Response(JSON.stringify({ error: 'Can cancel only pending' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { error } = await admin
+        .from('monitoring_requests')
+        .update({ status: 'failed', result_data: { ...(r.result_data || {}), cancelled: true } })
+        .eq('id', id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'list') {
       const child_id = url.searchParams.get('child_id');
+      const type = url.searchParams.get('type'); // photo|audio|location|all
+      const status = url.searchParams.get('status'); // pending|fulfilled|failed|all
       if (!child_id) {
         return new Response(JSON.stringify({ error: 'Missing child_id' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const { data, error } = await admin
+      let q = admin
         .from('monitoring_requests')
         .select('*')
         .eq('parent_id', user.id)
         .eq('child_id', child_id)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
+      if (type && type !== 'all') q = q.eq('request_type', type);
+      if (status && status !== 'all') q = q.eq('status', status);
+      const { data, error } = await q;
       if (error) throw error;
 
-      // Sign result paths
       const items = await Promise.all((data || []).map(async (r: any) => {
         if (r.result_path) {
           const { data: signed } = await admin.storage
-            .from('monitoring')
-            .createSignedUrl(r.result_path, 60 * 10);
+            .from('monitoring').createSignedUrl(r.result_path, 60 * 10);
           return { ...r, signed_url: signed?.signedUrl || null };
         }
         return r;
@@ -100,19 +128,15 @@ Deno.serve(async (req) => {
         });
       }
       const { data: r, error } = await admin
-        .from('monitoring_requests')
-        .select('*')
-        .eq('id', id)
-        .eq('parent_id', user.id)
-        .maybeSingle();
+        .from('monitoring_requests').select('*')
+        .eq('id', id).eq('parent_id', user.id).maybeSingle();
       if (error || !r || !r.result_path) {
         return new Response(JSON.stringify({ error: 'Not found' }), {
           status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       const { data: signed } = await admin.storage
-        .from('monitoring')
-        .createSignedUrl(r.result_path, 60 * 10);
+        .from('monitoring').createSignedUrl(r.result_path, 60 * 10);
       return new Response(JSON.stringify({ signed_url: signed?.signedUrl }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -123,7 +147,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error('monitoring-request error', e);
-    return new Response(JSON.stringify({ error: String(e?.message || e) }), {
+    return new Response(JSON.stringify({ error: String((e as any)?.message || e) }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

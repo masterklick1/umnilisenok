@@ -5,22 +5,13 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { speak } from "@/lib/sound";
 
 type ExerciseType = "abacus" | "building" | "3dshapes" | "patterns";
 
 interface Level2ExercisesProps {
   onBack: () => void;
 }
-
-const speak = (text: string) => {
-  if ("speechSynthesis" in window) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ru-RU";
-    u.rate = 0.85;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  }
-};
 
 export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   const { toast } = useToast();
@@ -73,6 +64,27 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     { type: "3dshapes" as ExerciseType, title: "Объёмные фигуры", description: "Куб, шар, пирамида", emoji: "🎲" },
     { type: "patterns" as ExerciseType, title: "Узоры", description: "Найди закономерность", emoji: "🔢" },
   ];
+
+  const shapes3d = useMemo(() => {
+    const all = [
+      { name: "куб", emoji: "🎲" },
+      { name: "шар", emoji: "⚽" },
+      { name: "пирамида", emoji: "🔺" },
+      { name: "цилиндр", emoji: "🥫" },
+    ];
+    const target = all[Math.floor(Math.random() * all.length)];
+    const opts = [...all].sort(() => Math.random() - 0.5);
+    return { target, opts };
+  }, [shape3dRound]);
+
+  const pattern = useMemo(() => {
+    const palette = ["🔴", "🔵", "🟡", "🟢"];
+    const [a, b] = [palette[Math.floor(Math.random() * 4)], palette[Math.floor(Math.random() * 4)]];
+    const seq = [a, b, a, b, a];
+    const next = b;
+    const opts = [...new Set([next, ...palette])].slice(0, 4).sort(() => Math.random() - 0.5);
+    return { seq, next, opts };
+  }, [patternRound]);
 
   if (!currentExercise) {
     return (
@@ -156,39 +168,28 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   }
 
   if (currentExercise === "3dshapes") {
-    const shapes3d = useMemo(() => {
-      const all = [
-        { name: "куб", emoji: "🎲" },
-        { name: "шар", emoji: "⚽" },
-        { name: "пирамида", emoji: "🔺" },
-        { name: "цилиндр", emoji: "🥫" },
-      ];
-      const target = all[Math.floor(Math.random() * all.length)];
-      const opts = [...all].sort(() => Math.random() - 0.5);
-      return { target, opts };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [shape3dRound]);
+    const shapes3dData = shapes3d;
 
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Найди фигуру: <span className="text-primary">{shapes3d.target.name}</span></h2>
-        <Button size="sm" variant="outline" onClick={() => speak(`Найди ${shapes3d.target.name}`)} className="mb-6">
+        <h2 className="text-2xl font-bold mb-6">Найди фигуру: <span className="text-primary">{shapes3dData.target.name}</span></h2>
+        <Button size="sm" variant="outline" onClick={() => speak(`Найди ${shapes3dData.target.name}`)} className="mb-6">
           🔊 Повторить
         </Button>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {shapes3d.opts.map((s, i) => (
+          {shapes3dData.opts.map((s, i) => (
             <Button
               key={i}
               className="h-32 text-7xl"
               variant="outline"
               onClick={() => {
                 setTotal((t) => t + 1);
-                if (s.name === shapes3d.target.name) {
+                if (s.name === shapes3dData.target.name) {
                   reward("Точно");
                   logCorrectAnswer({ section: "math", level: 2, exercise: "3dshapes", shape: s.name });
                 } else {
-                  wrong(shapes3d.target.name);
-                  logWrongAnswer({ section: "math", level: 2, exercise: "3dshapes", shape: s.name, correct: shapes3d.target.name });
+                  wrong(shapes3dData.target.name);
+                  logWrongAnswer({ section: "math", level: 2, exercise: "3dshapes", shape: s.name, correct: shapes3dData.target.name });
                 }
                 setTimeout(() => setShape3dRound((r) => r + 1), 1200);
               }}
@@ -202,37 +203,29 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   }
 
   if (currentExercise === "patterns") {
-    const pattern = useMemo(() => {
-      const palette = ["🔴", "🔵", "🟡", "🟢"];
-      const [a, b] = [palette[Math.floor(Math.random() * 4)], palette[Math.floor(Math.random() * 4)]];
-      const seq = [a, b, a, b, a];
-      const next = b;
-      const opts = [...new Set([next, ...palette])].slice(0, 4).sort(() => Math.random() - 0.5);
-      return { seq, next, opts };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [patternRound]);
+    const patternData = pattern;
 
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-6">Что дальше в узоре?</h2>
         <div className="flex justify-center gap-2 mb-8 text-5xl">
-          {pattern.seq.map((c, i) => <span key={i}>{c}</span>)}
+          {patternData.seq.map((c, i) => <span key={i}>{c}</span>)}
           <span className="text-muted-foreground">?</span>
         </div>
         <div className="grid grid-cols-4 gap-4 max-w-md mx-auto">
-          {pattern.opts.map((c, i) => (
+          {patternData.opts.map((c, i) => (
             <Button
               key={i}
               className="h-20 text-4xl"
               variant="outline"
               onClick={() => {
                 setTotal((t) => t + 1);
-                if (c === pattern.next) {
+                if (c === patternData.next) {
                   reward("Точно");
                   logCorrectAnswer({ section: "math", level: 2, exercise: "patterns" });
                 } else {
-                  wrong(pattern.next);
-                  logWrongAnswer({ section: "math", level: 2, exercise: "patterns", correct: pattern.next });
+                  wrong(patternData.next);
+                  logWrongAnswer({ section: "math", level: 2, exercise: "patterns", correct: patternData.next });
                 }
                 setTimeout(() => setPatternRound((r) => r + 1), 1200);
               }}

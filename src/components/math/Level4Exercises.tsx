@@ -5,22 +5,13 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { speak } from "@/lib/sound";
 
 type ExerciseType = "count100" | "multiplication" | "puzzles" | "spatial";
 
 interface Level4ExercisesProps {
   onBack: () => void;
 }
-
-const speak = (text: string) => {
-  if ("speechSynthesis" in window) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ru-RU";
-    u.rate = 0.85;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  }
-};
 
 export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   const { toast } = useToast();
@@ -55,6 +46,43 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     { type: "spatial" as ExerciseType, title: "Пространство", description: "Зеркальные фигуры", emoji: "🎲" },
   ];
 
+  const count100Data = useMemo(() => {
+    if (currentExercise !== "count100") return null;
+    const n = Math.floor(Math.random() * 99) + 1;
+    return { n, even: n % 2 === 0 };
+  }, [currentExercise, round]);
+
+  const multiplicationData = useMemo(() => {
+    if (currentExercise !== "multiplication") return null;
+    const a = Math.floor(Math.random() * 4) + 2;
+    const b = Math.floor(Math.random() * 4) + 2;
+    const emoji = ["🍓", "⭐", "🍎", "🌸"][Math.floor(Math.random() * 4)];
+    const ans = a * b;
+    const opts = new Set<number>([ans]);
+    while (opts.size < 4) opts.add(Math.max(1, ans + Math.floor(Math.random() * 7) - 3));
+    return { a, b, ans, emoji, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [currentExercise, round]);
+
+  const puzzlesData = useMemo(() => {
+    if (currentExercise !== "puzzles") return null;
+    const start = Math.floor(Math.random() * 5) + 1;
+    const step = [1, 2, 2, 3, 5][Math.floor(Math.random() * 5)];
+    const seq = [start, start + step, start + 2 * step, start + 3 * step];
+    const next = start + 4 * step;
+    const opts = new Set<number>([next]);
+    while (opts.size < 4) opts.add(Math.max(0, next + Math.floor(Math.random() * 7) - 3));
+    return { seq, next, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [currentExercise, round]);
+
+  const spatialData = useMemo(() => {
+    if (currentExercise !== "spatial") return null;
+    const figures = ["🐶", "🚗", "🌳", "⭐", "🎈"];
+    const target = figures[Math.floor(Math.random() * figures.length)];
+    const opts = [...figures].sort(() => Math.random() - 0.5).slice(0, 4);
+    if (!opts.includes(target)) opts[0] = target;
+    return { target, opts: opts.sort(() => Math.random() - 0.5) };
+  }, [currentExercise, round]);
+
   if (!currentExercise) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-background p-4">
@@ -86,12 +114,8 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   }
 
   // ===== Чётные/нечётные =====
-  if (currentExercise === "count100") {
-    const r = useMemo(() => {
-      const n = Math.floor(Math.random() * 99) + 1;
-      return { n, even: n % 2 === 0 };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+  if (currentExercise === "count100" && count100Data) {
+    const r = count100Data;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-xl font-semibold mb-3">Это число чётное или нечётное?</h2>
@@ -107,17 +131,8 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   }
 
   // ===== Умножение через группы =====
-  if (currentExercise === "multiplication") {
-    const r = useMemo(() => {
-      const a = Math.floor(Math.random() * 4) + 2;
-      const b = Math.floor(Math.random() * 4) + 2;
-      const emoji = ["🍓", "⭐", "🍎", "🌸"][Math.floor(Math.random() * 4)];
-      const ans = a * b;
-      const opts = new Set<number>([ans]);
-      while (opts.size < 4) opts.add(Math.max(1, ans + Math.floor(Math.random() * 7) - 3));
-      return { a, b, ans, emoji, opts: [...opts].sort(() => Math.random() - 0.5) };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+  if (currentExercise === "multiplication" && multiplicationData) {
+    const r = multiplicationData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-xl font-semibold mb-4">{r.a} групп(ы) по {r.b} = ?</h2>
@@ -139,17 +154,8 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   }
 
   // ===== Головоломки (числовая последовательность) =====
-  if (currentExercise === "puzzles") {
-    const r = useMemo(() => {
-      const start = Math.floor(Math.random() * 5) + 1;
-      const step = [1, 2, 2, 3, 5][Math.floor(Math.random() * 5)];
-      const seq = [start, start + step, start + 2 * step, start + 3 * step];
-      const next = start + 4 * step;
-      const opts = new Set<number>([next]);
-      while (opts.size < 4) opts.add(Math.max(0, next + Math.floor(Math.random() * 7) - 3));
-      return { seq, next, opts: [...opts].sort(() => Math.random() - 0.5) };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+  if (currentExercise === "puzzles" && puzzlesData) {
+    const r = puzzlesData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-xl font-semibold mb-6">Какое число продолжит ряд?</h2>
@@ -168,15 +174,8 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   }
 
   // ===== Пространство (зеркало) =====
-  if (currentExercise === "spatial") {
-    const r = useMemo(() => {
-      const figures = ["🐶", "🚗", "🌳", "⭐", "🎈"];
-      const target = figures[Math.floor(Math.random() * figures.length)];
-      const opts = [...figures].sort(() => Math.random() - 0.5).slice(0, 4);
-      if (!opts.includes(target)) opts[0] = target;
-      return { target, opts: opts.sort(() => Math.random() - 0.5) };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [round]);
+  if (currentExercise === "spatial" && spatialData) {
+    const r = spatialData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-xl font-semibold mb-4">Найди такую же фигуру в зеркале</h2>

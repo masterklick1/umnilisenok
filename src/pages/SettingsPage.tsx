@@ -9,9 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-
-const SOUND_KEY = "settings.soundEnabled";
-const PIN_KEY = "settings.parentPin";
+import { SOUND_KEY } from "@/lib/sound";
+import { PIN_KEY } from "@/lib/parent-pin";
 
 export default function SettingsPage() {
   const navigate = useNavigate();

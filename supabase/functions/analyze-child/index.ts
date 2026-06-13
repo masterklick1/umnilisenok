@@ -1,31 +1,65 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.84.0";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { childId } = await req.json();
-    
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing Authorization" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    
+
     if (!lovableApiKey) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Fetch child's activity data
-    const { data: activities, error: activityError } = await supabase
+    const { childId } = await req.json();
+    if (!childId) {
+      return new Response(JSON.stringify({ error: "Missing childId" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    const { data: link, error: linkError } = await admin
+      .from("parent_child_links")
+      .select("child_id")
+      .eq("parent_id", user.id)
+      .eq("child_id", childId)
+      .maybeSingle();
+
+    if (linkError || !link) {
+      return new Response(JSON.stringify({ error: "Child not linked to this parent" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: activities, error: activityError } = await admin
       .from("child_activity")
       .select("*")
       .eq("child_id", childId)
@@ -36,8 +70,7 @@ serve(async (req) => {
       throw new Error(`Failed to fetch activities: ${activityError.message}`);
     }
 
-    // Fetch child's profile
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await admin
       .from("profiles")
       .select("first_name")
       .eq("id", childId)
@@ -47,23 +80,22 @@ serve(async (req) => {
       throw new Error(`Failed to fetch profile: ${profileError.message}`);
     }
 
-    // Fetch user progress
-    const { data: progress, error: progressError } = await supabase
+    const { data: progress } = await admin
       .from("user_progress")
       .select("*")
       .eq("user_id", childId)
       .single();
 
-    // Fetch recent monitoring requests (last 30)
-    const { data: monitoring } = await supabase
+    const { data: monitoring } = await admin
       .from("monitoring_requests")
       .select("request_type, status, created_at, result_data")
       .eq("child_id", childId)
       .order("created_at", { ascending: false })
       .limit(30);
 
+    type MonRow = { request_type: string; status: string; result_data?: { ai_analysis?: { concerns?: string[] } } };
     const monStats = (monitoring || []).reduce(
-      (acc: Record<string, { total: number; ok: number; failed: number }>, m: any) => {
+      (acc: Record<string, { total: number; ok: number; failed: number }>, m: MonRow) => {
         const t = m.request_type;
         if (!acc[t]) acc[t] = { total: 0, ok: 0, failed: 0 };
         acc[t].total++;
@@ -71,16 +103,15 @@ serve(async (req) => {
         if (m.status === "failed") acc[t].failed++;
         return acc;
       },
-      {}
+      {},
     );
 
     const aiConcerns = (monitoring || [])
-      .map((m: any) => m.result_data?.ai_analysis)
-      .filter((a: any) => a && Array.isArray(a.concerns) && a.concerns.length > 0)
-      .flatMap((a: any) => a.concerns)
+      .map((m: MonRow) => m.result_data?.ai_analysis)
+      .filter((a): a is { concerns: string[] } => !!a && Array.isArray(a.concerns) && a.concerns.length > 0)
+      .flatMap((a) => a.concerns)
       .slice(0, 10);
 
-    // Prepare analysis prompt
     const activitySummary = activities?.reduce((acc: Record<string, { correct: number; wrong: number }>, act) => {
       const category = act.page_path?.split("/")[1] || "other";
       if (!acc[category]) {
@@ -113,7 +144,7 @@ ${JSON.stringify(monStats, null, 2)}
 ${aiConcerns.length > 0 ? `Замечания ИИ по фото окружения ребёнка:\n${aiConcerns.map((c: string) => "- " + c).join("\n")}` : "Замечаний по фото нет."}
 
 Последние активности:
-${activities?.slice(0, 20).map(a => `- ${a.activity_type} на ${a.page_path}: ${JSON.stringify(a.details)}`).join("\n")}
+${activities?.slice(0, 20).map((a) => `- ${a.activity_type} на ${a.page_path}: ${JSON.stringify(a.details)}`).join("\n")}
 
 Дай анализ в следующем формате JSON:
 {
@@ -159,13 +190,12 @@ ${activities?.slice(0, 20).map(a => `- ${a.activity_type} на ${a.page_path}: $
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content;
-    
+
     let analysis;
     try {
-      // Clean potential markdown code blocks
       const cleanedContent = content.replace(/```json\n?|\n?```/g, "").trim();
       analysis = JSON.parse(cleanedContent);
-    } catch (e) {
+    } catch {
       console.error("Failed to parse AI response:", content);
       analysis = {
         strengths: ["Активно занимается"],
@@ -174,8 +204,7 @@ ${activities?.slice(0, 20).map(a => `- ${a.activity_type} на ${a.page_path}: $
       };
     }
 
-    // Save analysis to database
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await admin
       .from("child_analysis")
       .upsert({
         child_id: childId,
@@ -197,7 +226,7 @@ ${activities?.slice(0, 20).map(a => `- ${a.activity_type} на ${a.page_path}: $
     console.error("Error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

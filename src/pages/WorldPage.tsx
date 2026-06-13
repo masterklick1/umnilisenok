@@ -5,6 +5,7 @@ import { ArrowLeft, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { speak } from "@/lib/sound";
 
 type Item = {
   name: string;
@@ -82,16 +83,6 @@ const topics: Topic[] = [
     ]
   },
 ];
-
-const speak = (text: string) => {
-  if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ru-RU';
-    utterance.rate = 0.8;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  }
-};
 
 const generateQuizOptions = (correctItem: Item, allItems: Item[]): Item[] => {
   const options = [correctItem];

@@ -1,32 +1,12 @@
 import { useEffect, useRef } from "react";
 
-const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string;
-const CHANNEL = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as string;
+import { loadGoogleMaps } from "@/lib/google-maps";
 
 declare global {
   interface Window {
     google: any;
-    __initLovableMap?: () => void;
-    __googleMapsLoading?: Promise<void>;
   }
 }
-
-const loadGoogleMaps = (): Promise<void> => {
-  if (typeof window === "undefined") return Promise.resolve();
-  if (window.google?.maps) return Promise.resolve();
-  if (window.__googleMapsLoading) return window.__googleMapsLoading;
-
-  window.__googleMapsLoading = new Promise((resolve, reject) => {
-    window.__initLovableMap = () => resolve();
-    const s = document.createElement("script");
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${BROWSER_KEY}&loading=async&callback=__initLovableMap&channel=${CHANNEL}`;
-    s.async = true;
-    s.onerror = () => reject(new Error("Не удалось загрузить Google Maps"));
-    document.head.appendChild(s);
-  });
-
-  return window.__googleMapsLoading;
-};
 
 interface Geofence {
   lat: number;

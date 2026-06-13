@@ -15,7 +15,6 @@ import { ru } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { LocationMap } from "@/components/LocationMap";
 import {
-  GEOFENCE_PRESETS,
   formatPlaceLabel,
   loadGeofenceLabel,
   loadSavedPlaces,
@@ -25,6 +24,7 @@ import {
   type GeofencePreset,
   type SavedPlace,
 } from "@/lib/saved-places";
+import { PlaceAddressSearch, type SelectedPlacePayload } from "@/components/parental/PlaceAddressSearch";
 
 interface Props {
   childId: string;
@@ -317,6 +317,25 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     setSavedPlaces(removeSavedPlace(childId, placeId));
   };
 
+  const applySearchedPlace = (payload: SelectedPlacePayload, save: boolean) => {
+    const label = formatPlaceLabel(payload.emoji, payload.name);
+    const saved: SavedPlace | undefined = save
+      ? {
+          id: `addr-${Date.now()}`,
+          name: payload.name,
+          emoji: payload.emoji,
+          lat: payload.lat,
+          lng: payload.lng,
+          radius_m: payload.radius_m,
+        }
+      : undefined;
+    activateGeofence(payload.lat, payload.lng, payload.radius_m, label, saved);
+    toast({
+      title: `Зона «${payload.name}» установлена`,
+      description: payload.address,
+    });
+  };
+
   // Sign URLs for fulfilled monitoring results
   useEffect(() => {
     const fetchUrls = async () => {
@@ -573,8 +592,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             <Shield className="w-5 h-5" /> Безопасная зона (геозона)
           </CardTitle>
           <CardDescription>
-            Когда ребёнок в нужном месте — выберите «Садик», «Школа» или сохраните своё. Уведомим при
-            выходе из зоны.
+            Найдите садик или школу по адресу — или укажите вручную, где ребёнок сейчас.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -598,43 +616,18 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-              Где ребёнок сейчас — поставить зону
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Ребёнок должен быть в этом месте (садик, школа…). Нажмите кнопку — зона запомнится здесь.
-              Долгое нажатие не нужно: «+» сохранит место навсегда.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {GEOFENCE_PRESETS.map((preset) => (
-                <div key={preset.id} className="flex gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs h-auto py-2 px-2"
-                    disabled={!location || savingSettings}
-                    onClick={() => applyAtCurrentLocation(preset, false)}
-                  >
-                    {preset.emoji} {preset.name}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 shrink-0"
-                    disabled={!location || savingSettings}
-                    title={`Сохранить «${preset.name}» навсегда`}
-                    onClick={() => applyAtCurrentLocation(preset, true)}
-                  >
-                    <BookmarkPlus className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <PlaceAddressSearch
+            childName={childName}
+            childLocation={
+              location ? { lat: location.latitude, lng: location.longitude } : null
+            }
+            disabled={savingSettings}
+            onSelectPlace={applySearchedPlace}
+            onManualCurrent={(preset) => applyAtCurrentLocation(preset, true)}
+          />
 
           <div className="space-y-2 pt-2 border-t">
-            <Label htmlFor="custom-place">Своё название места</Label>
+            <Label htmlFor="custom-place">Или вручную — название без поиска</Label>
             <div className="flex gap-2">
               <Input
                 id="custom-place"

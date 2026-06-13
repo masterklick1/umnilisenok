@@ -33,6 +33,8 @@ import {
   type LatLng,
   type TravelMode,
 } from "@/lib/route-utils";
+import { useParentLocation } from "@/hooks/useParentLocation";
+import { requestGeoPermissionInteractive } from "@/lib/geo-permission";
 
 interface Props {
   childId: string;
@@ -113,11 +115,19 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [activeZoneLabel, setActiveZoneLabel] = useState<string | null>(null);
   const [customPlaceName, setCustomPlaceName] = useState("");
   const [movementPath, setMovementPath] = useState<LatLng[]>([]);
-  const [parentLocation, setParentLocation] = useState<LatLng | null>(null);
   const [showRoute, setShowRoute] = useState(false);
   const [routeMode, setRouteMode] = useState<TravelMode>("driving");
   const [showTrail, setShowTrail] = useState(true);
-  const [loadingRoute, setLoadingRoute] = useState(false);
+
+  const {
+    location: parentLocation,
+    permission: parentPermission,
+    error: parentGeoError,
+    loading: loadingParentGeo,
+    lastUpdatedAt: parentLocUpdatedAt,
+    refresh: refreshParentLocation,
+    clear: clearParentLocation,
+  } = useParentLocation({ active: true, routeActive: showRoute, refreshIntervalSec: 60 });
 
   const loadSettings = useCallback(async () => {
     const { data } = await supabase
@@ -356,11 +366,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       });
       return;
     }
-    setLoadingRoute(true);
     setRouteMode(mode);
     try {
-      const parent = await getParentLocation();
-      setParentLocation(parent);
+      const parent = await refreshParentLocation();
       setShowRoute(true);
       const dist = distanceMeters(parent, {
         lat: location.latitude,
@@ -368,16 +376,18 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       });
       toast({
         title: mode === "walking" ? "Маршрут пешком" : "Маршрут на машине",
-        description: `До ${childName} ≈ ${formatDistance(dist)}. Маршрут на карте обновляется.`,
+        description: `До ${childName} ≈ ${formatDistance(dist)}. Ваше место обновляется каждую минуту.`,
       });
-    } catch {
+    } catch (e) {
       toast({
         title: "Не удалось определить ваше место",
-        description: "Разрешите геопозицию браузеру или откройте навигатор по кнопке ниже.",
+        description:
+          e instanceof Error
+            ? e.message
+            : "Разрешите геопозицию браузеру и нажмите «Разрешить снова».",
         variant: "destructive",
       });
     }
-    setLoadingRoute(false);
   };
 
   const childPoint = location
@@ -572,14 +582,39 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         <CardContent className="space-y-3">
           {location ? (
             <>
+              {(parentPermission === "denied" || parentGeoError) && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm space-y-2">
+                  <p>
+                    📍 <strong>Ваша геопозиция:</strong>{" "}
+                    {parentPermission === "denied"
+                      ? "доступ запрещён. Включите в настройках браузера для этого сайта."
+                      : parentGeoError}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={loadingParentGeo}
+                    onClick={async () => {
+                      const ok = await requestGeoPermissionInteractive();
+                      if (ok) {
+                        await refreshParentLocation().catch(() => {});
+                        setShowRoute(true);
+                      }
+                    }}
+                  >
+                    {loadingParentGeo ? "…" : "Разрешить снова"}
+                  </Button>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
-                  disabled={loadingRoute}
+                  disabled={loadingParentGeo}
                   onClick={() => buildRoute("driving")}
                   className="gap-1"
                 >
-                  {loadingRoute && routeMode === "driving" ? (
+                  {loadingParentGeo && routeMode === "driving" ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Car className="w-4 h-4" />
@@ -589,16 +624,30 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={loadingRoute}
+                  disabled={loadingParentGeo}
                   onClick={() => buildRoute("walking")}
                   className="gap-1"
                 >
-                  {loadingRoute && routeMode === "walking" ? (
+                  {loadingParentGeo && routeMode === "walking" ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Footprints className="w-4 h-4" />
                   )}
                   Пешком
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={loadingParentGeo}
+                  onClick={() => refreshParentLocation().then(() => setShowRoute(true)).catch(() => {})}
+                  className="gap-1"
+                >
+                  {loadingParentGeo ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Navigation className="w-4 h-4" />
+                  )}
+                  Моё место
                 </Button>
                 {parentLocation && childPoint && (
                   <a
@@ -617,12 +666,20 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                   variant="ghost"
                   onClick={() => {
                     setShowRoute(false);
-                    setParentLocation(null);
+                    clearParentLocation();
                   }}
                 >
                   Скрыть маршрут
                 </Button>
               </div>
+
+              {parentLocUpdatedAt && parentLocation && (
+                <p className="text-xs text-muted-foreground">
+                  Ваше место обновлено{" "}
+                  {formatDistanceToNow(new Date(parentLocUpdatedAt), { addSuffix: true, locale: ru })}
+                  {showRoute ? " · автообновление каждую минуту" : ""}
+                </p>
+              )}
 
               {distanceToChild != null && showRoute && (
                 <p className="text-sm flex items-center gap-2">

@@ -1,3 +1,5 @@
+import { getGeoPosition } from "@/lib/geo-permission";
+
 export interface LatLng {
   lat: number;
   lng: number;
@@ -40,15 +42,8 @@ export const googleMapsDirectionsUrl = (
 export const googleMapsPointUrl = (point: LatLng): string =>
   `https://www.google.com/maps?q=${point.lat},${point.lng}`;
 
-export const getParentLocation = (): Promise<LatLng> =>
-  new Promise((resolve, reject) => {
-    if (!("geolocation" in navigator)) {
-      reject(new Error("Геолокация недоступна в браузере"));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
-    );
-  });
+/** Текущая геопозиция родителя (с понятными ошибками и повторным запросом). */
+export const getParentLocation = async (): Promise<LatLng> => {
+  const pos = await getGeoPosition(90_000, 30_000);
+  return { lat: pos.latitude, lng: pos.longitude };
+};

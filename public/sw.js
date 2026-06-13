@@ -23,7 +23,7 @@ self.addEventListener('push', (event) => {
     badge: '/icon-192.png',
     tag: data.tag || 'umnilisenok',
     requireInteraction: data.requireInteraction || false,
-    data: { url: data.url || '/parent' },
+    data: { url: data.url || '/' },
     vibrate: [200, 100, 200],
   };
 

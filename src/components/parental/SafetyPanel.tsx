@@ -591,9 +591,15 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       title: "Запрос отправлен",
       description:
         type === "location"
-          ? "Ждём ответ с телефона ребёнка — приложение должно быть открыто."
+          ? "Ребёнку отправлено уведомление — пусть откроет приложение."
           : "Ребёнок получит уведомление и приложение выполнит запрос.",
     });
+
+    if (type === "location") {
+      supabase.functions
+        .invoke("notify-child-poke", { body: { child_id: childId, type: "location" } })
+        .catch(() => {});
+    }
 
     if (type === "location" && inserted?.id) {
       const requestId = inserted.id;
@@ -667,7 +673,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {settings?.location_enabled
-                  ? `Автоотправка каждые ${formatInterval(settings.location_interval_seconds)}`
+                  ? `Автоотправка каждые ${formatInterval(settings.location_interval_seconds)} · только пока приложение ребёнка открыто`
                   : "Автоотправка выключена — включите ниже"}
               </p>
             </div>
@@ -1036,8 +1042,8 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Интервал применится на телефоне ребёнка автоматически. Держите приложение открытым или
-            в фоне — при возврате на экран координаты отправятся сразу.
+            Интервал применится на телефоне ребёнка. В браузере GPS не работает в «спячке» —
+            попросите включить «Не гасить экран» или нажимайте «Где сейчас?» (придёт уведомление).
           </p>
         </CardContent>
       </Card>

@@ -5,6 +5,7 @@ export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported"
 
 let cachedPosition: (GeoPositionResult & { cachedAt: number }) | null = null;
 let webWatchId: number | null = null;
+let nativeWatchId: string | null = null;
 let watchRefCount = 0;
 
 export const queryGeoPermission = async (): Promise<GeoPermissionState> => {
@@ -79,11 +80,30 @@ const webGetPosition = (
     );
   });
 
-/** Keep GPS warm — updates cached position in background (mobile browsers). */
+/** Keep GPS warm while app is open. */
 export const startGeoWatch = () => {
   watchRefCount += 1;
-  if (watchRefCount > 1 || webWatchId != null || Capacitor.isNativePlatform()) return;
-  if (!("geolocation" in navigator)) return;
+  if (watchRefCount > 1) return;
+
+  if (Capacitor.isNativePlatform()) {
+    if (nativeWatchId) return;
+    Geolocation.watchPosition(
+      { enableHighAccuracy: true, timeout: 60_000, maximumAge: 60_000 },
+      (pos) => {
+        if (!pos) return;
+        cacheResult({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy ?? null,
+        });
+      },
+    ).then((id) => {
+      nativeWatchId = id;
+    });
+    return;
+  }
+
+  if (webWatchId != null || !("geolocation" in navigator)) return;
 
   webWatchId = navigator.geolocation.watchPosition(
     (p) => {
@@ -100,7 +120,13 @@ export const startGeoWatch = () => {
 
 export const stopGeoWatch = () => {
   watchRefCount = Math.max(0, watchRefCount - 1);
-  if (watchRefCount > 0 || webWatchId == null) return;
+  if (watchRefCount > 0) return;
+
+  if (nativeWatchId) {
+    Geolocation.clearWatch({ id: nativeWatchId }).catch(() => {});
+    nativeWatchId = null;
+  }
+  if (webWatchId == null) return;
   navigator.geolocation.clearWatch(webWatchId);
   webWatchId = null;
 };

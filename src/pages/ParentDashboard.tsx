@@ -415,11 +415,11 @@ export default function ParentDashboard() {
           <TabsList className="grid grid-cols-7 w-full">
             <TabsTrigger value="children" className="gap-1">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Дети</span>
+              <span className="hidden sm:inline">Это устройство</span>
             </TabsTrigger>
             <TabsTrigger value="invite" className="gap-1">
               <Link2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Привязка</span>
+              <span className="hidden sm:inline">Телефон ребёнка</span>
             </TabsTrigger>
             <TabsTrigger value="safety" className="gap-1" disabled={!selectedChild}>
               <Shield className="w-4 h-4" />
@@ -449,6 +449,16 @@ export default function ParentDashboard() {
 
           {/* Children Tab */}
           <TabsContent value="children" className="space-y-4">
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="py-4 px-4">
+                <p className="text-sm font-medium">Играть на этом телефоне</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Вы остаётесь залогинены как родитель. Нажмите «Играть здесь» — ребёнок занимается на
+                  вашем устройстве, а вы следите за ним во вкладках «Зеркало» и «Защита».
+                </p>
+              </CardContent>
+            </Card>
+
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Аккаунты детей</h2>
               <Button onClick={() => setShowCreateForm(!showCreateForm)}>

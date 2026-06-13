@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, Trophy, Flame, Play } from "lucide-react";
+import { Star, Trophy, Flame, Smartphone } from "lucide-react";
 
 interface ChildCardProps {
   child: {
@@ -59,8 +59,8 @@ export const ChildCard = ({ child, isSelected, onSelect, onStartSession }: Child
               onStartSession();
             }}
           >
-            <Play className="w-4 h-4 mr-1" />
-            Запустить
+            <Smartphone className="w-4 h-4 mr-1" />
+            Играть здесь
           </Button>
         </div>
       </CardContent>

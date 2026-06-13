@@ -1,9 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle, XCircle, Eye, MousePointer, Navigation } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Eye,
+  MousePointer,
+  Navigation,
+  GraduationCap,
+  Layers,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
+import {
+  formatActivityDescription,
+  getActivityLocationLabel,
+  getActivityTypeLabel,
+  getPathLabel,
+} from "@/lib/activity-labels";
 
 interface Activity {
   id: string;
@@ -22,44 +36,20 @@ interface ActivityMirrorProps {
 const getActivityIcon = (type: string) => {
   switch (type) {
     case "answer_correct":
-      return <CheckCircle className="w-5 h-5 text-green-500" />;
+      return <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />;
     case "answer_wrong":
-      return <XCircle className="w-5 h-5 text-red-500" />;
+      return <XCircle className="w-5 h-5 text-red-500 shrink-0" />;
     case "page_view":
-      return <Navigation className="w-5 h-5 text-blue-500" />;
+      return <Navigation className="w-5 h-5 text-blue-500 shrink-0" />;
     case "click":
-      return <MousePointer className="w-5 h-5 text-purple-500" />;
+      return <MousePointer className="w-5 h-5 text-purple-500 shrink-0" />;
+    case "select_level":
+      return <Layers className="w-5 h-5 text-amber-500 shrink-0" />;
+    case "start_learning":
+      return <GraduationCap className="w-5 h-5 text-teal-500 shrink-0" />;
     default:
-      return <Eye className="w-5 h-5 text-muted-foreground" />;
+      return <Eye className="w-5 h-5 text-muted-foreground shrink-0" />;
   }
-};
-
-const getActivityLabel = (type: string) => {
-  switch (type) {
-    case "answer_correct":
-      return "Правильный ответ";
-    case "answer_wrong":
-      return "Неправильный ответ";
-    case "page_view":
-      return "Открыл страницу";
-    case "click":
-      return "Нажал";
-    default:
-      return type;
-  }
-};
-
-const getPathLabel = (path: string | null) => {
-  if (!path) return "";
-  const paths: Record<string, string> = {
-    "/": "Главная",
-    "/math": "Математика",
-    "/alphabet": "Азбука",
-    "/world": "Мир вокруг",
-    "/creativity": "Творчество",
-    "/home": "Виртуальный дом",
-  };
-  return paths[path] || path;
 };
 
 export const ActivityMirror = ({ childName, activities }: ActivityMirrorProps) => {
@@ -69,14 +59,16 @@ export const ActivityMirror = ({ childName, activities }: ActivityMirrorProps) =
 
   return (
     <div className="space-y-4">
-      {/* Live Status */}
       <Card className="bg-gradient-to-r from-primary/10 to-accent/10">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-bold text-lg">{childName}</h3>
               <p className="text-sm text-muted-foreground">
-                Сейчас: <span className="font-medium text-foreground">{getPathLabel(currentPage || null)}</span>
+                Сейчас:{" "}
+                <span className="font-medium text-foreground">
+                  {getPathLabel(currentPage || null) || "неизвестно"}
+                </span>
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -102,7 +94,6 @@ export const ActivityMirror = ({ childName, activities }: ActivityMirrorProps) =
         </CardContent>
       </Card>
 
-      {/* Activity Feed */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -110,48 +101,53 @@ export const ActivityMirror = ({ childName, activities }: ActivityMirrorProps) =
             Лента активности
           </CardTitle>
           <CardDescription>
-            Что делает {childName} в реальном времени
+            Что делает {childName} в реальном времени — простым языком, без технических данных
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[400px] pr-4">
             {activities.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                Пока нет активности
+                Пока нет активности. Когда ребёнок начнёт заниматься, здесь появятся его действия.
               </p>
             ) : (
               <div className="space-y-3">
-                {activities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
-                  >
-                    {getActivityIcon(activity.activity_type)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
-                          {getActivityLabel(activity.activity_type)}
-                        </span>
-                        {activity.page_path && (
-                          <Badge variant="outline" className="text-xs">
-                            {getPathLabel(activity.page_path)}
-                          </Badge>
+                {activities.map((activity) => {
+                  const description = formatActivityDescription(activity);
+                  const location = getActivityLocationLabel(activity);
+
+                  return (
+                    <div
+                      key={activity.id}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
+                    >
+                      {getActivityIcon(activity.activity_type)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">
+                            {getActivityTypeLabel(activity.activity_type)}
+                          </span>
+                          {location && (
+                            <Badge variant="outline" className="text-xs">
+                              {location}
+                            </Badge>
+                          )}
+                        </div>
+                        {description && (
+                          <p className="text-sm text-foreground mt-1 leading-snug">
+                            {description}
+                          </p>
                         )}
-                      </div>
-                      {activity.details && Object.keys(activity.details).length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {JSON.stringify(activity.details)}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(activity.created_at), {
+                            addSuffix: true,
+                            locale: ru,
+                          })}
                         </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(activity.created_at), {
-                          addSuffix: true,
-                          locale: ru,
-                        })}
-                      </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>

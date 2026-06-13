@@ -94,9 +94,19 @@ export function InvitePanel() {
 
   return (
     <div className="space-y-4">
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="py-4 px-4">
+          <p className="text-sm font-medium">Детское приложение на телефоне ребёнка</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Создайте код или QR — ребёнок откроет приложение на своём телефоне («Я ребёнок» → скан или
+            код). Вы остаётесь родителем здесь и видите его действия во вкладке «Зеркало».
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Привязать телефон ребёнка</CardTitle>
+          <CardTitle className="text-base">Создать код для телефона ребёнка</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
@@ -114,7 +124,8 @@ export function InvitePanel() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Ребёнок нажимает «Я ребёнок» → сканирует этот QR или вводит код. Email и пароль ребёнку не нужны.
+            На телефоне ребёнка: «Я ребёнок» → скан QR или ввод 6-значного кода. Email и пароль не
+            нужны — аккаунт создаётся автоматически.
           </p>
         </CardContent>
       </Card>

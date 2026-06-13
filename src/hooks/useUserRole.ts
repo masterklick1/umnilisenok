@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolveUserRole, type ResolvedRole } from "@/lib/resolve-user-role";
 
-export type UserRole = "parent" | "child" | null;
+export type UserRole = ResolvedRole;
 
 export function useUserRole() {
   const { user } = useAuth();
@@ -17,24 +17,28 @@ export function useUserRole() {
     }
 
     let cancelled = false;
-    setLoading(true);
 
-    supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (cancelled) return;
-        const r = data?.role;
-        setRole(r === "parent" || r === "child" ? r : null);
+    const load = async () => {
+      const r = await resolveUserRole(user);
+      if (!cancelled) {
+        setRole(r);
         setLoading(false);
-      });
+      }
+    };
+
+    load();
+    const interval = window.setInterval(load, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [user?.id]);
+  }, [user]);
 
   return {
     role,

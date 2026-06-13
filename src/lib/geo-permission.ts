@@ -3,6 +3,10 @@ import { Capacitor } from "@capacitor/core";
 
 export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported";
 
+let cachedPosition: (GeoPositionResult & { cachedAt: number }) | null = null;
+let webWatchId: number | null = null;
+let watchRefCount = 0;
+
 export const queryGeoPermission = async (): Promise<GeoPermissionState> => {
   if (Capacitor.isNativePlatform()) {
     try {
@@ -43,6 +47,17 @@ const mapWebError = (err: GeolocationPositionError): Error => {
   return new Error("Не удалось получить координаты");
 };
 
+const cacheResult = (pos: GeoPositionResult) => {
+  cachedPosition = { ...pos, cachedAt: Date.now() };
+};
+
+export const getCachedGeoPosition = (maxAgeMs = 600_000): GeoPositionResult | null => {
+  if (!cachedPosition) return null;
+  if (Date.now() - cachedPosition.cachedAt > maxAgeMs) return null;
+  const { latitude, longitude, accuracy } = cachedPosition;
+  return { latitude, longitude, accuracy };
+};
+
 const webGetPosition = (
   enableHighAccuracy: boolean,
   timeoutMs: number,
@@ -50,21 +65,56 @@ const webGetPosition = (
 ): Promise<GeoPositionResult> =>
   new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
-      (p) =>
-        resolve({
+      (p) => {
+        const result = {
           latitude: p.coords.latitude,
           longitude: p.coords.longitude,
           accuracy: p.coords.accuracy ?? null,
-        }),
+        };
+        cacheResult(result);
+        resolve(result);
+      },
       (err) => reject(mapWebError(err)),
       { enableHighAccuracy, timeout: timeoutMs, maximumAge: maximumAgeMs },
     );
   });
 
+/** Keep GPS warm — updates cached position in background (mobile browsers). */
+export const startGeoWatch = () => {
+  watchRefCount += 1;
+  if (watchRefCount > 1 || webWatchId != null || Capacitor.isNativePlatform()) return;
+  if (!("geolocation" in navigator)) return;
+
+  webWatchId = navigator.geolocation.watchPosition(
+    (p) => {
+      cacheResult({
+        latitude: p.coords.latitude,
+        longitude: p.coords.longitude,
+        accuracy: p.coords.accuracy ?? null,
+      });
+    },
+    () => {},
+    { enableHighAccuracy: false, maximumAge: 300_000, timeout: 60_000 },
+  );
+};
+
+export const stopGeoWatch = () => {
+  watchRefCount = Math.max(0, watchRefCount - 1);
+  if (watchRefCount > 0 || webWatchId == null) return;
+  navigator.geolocation.clearWatch(webWatchId);
+  webWatchId = null;
+};
+
 export const getGeoPosition = async (
   maximumAgeMs = 60_000,
-  timeoutMs = 30_000,
+  timeoutMs = 45_000,
+  allowCached = true,
 ): Promise<GeoPositionResult> => {
+  if (allowCached) {
+    const cached = getCachedGeoPosition(Math.max(maximumAgeMs, 300_000));
+    if (cached) return cached;
+  }
+
   if (Capacitor.isNativePlatform()) {
     const perm = await Geolocation.checkPermissions();
     if (perm.location !== "granted") {
@@ -77,11 +127,13 @@ export const getGeoPosition = async (
       enableHighAccuracy: true,
       timeout: timeoutMs,
     });
-    return {
+    const result = {
       latitude: pos.coords.latitude,
       longitude: pos.coords.longitude,
       accuracy: pos.coords.accuracy ?? null,
     };
+    cacheResult(result);
+    return result;
   }
 
   if (!("geolocation" in navigator)) {
@@ -89,21 +141,24 @@ export const getGeoPosition = async (
   }
 
   try {
-    return await webGetPosition(true, Math.min(timeoutMs, 20_000), maximumAgeMs);
+    return await webGetPosition(true, Math.min(timeoutMs, 25_000), maximumAgeMs);
   } catch (highAccErr) {
     try {
-      return await webGetPosition(false, timeoutMs, Math.max(maximumAgeMs, 120_000));
+      return await webGetPosition(false, timeoutMs, Math.max(maximumAgeMs, 300_000));
     } catch {
+      const stale = getCachedGeoPosition(900_000);
+      if (stale) return stale;
       throw highAccErr;
     }
   }
 };
 
 export const requestGeoPermissionInteractive = async (): Promise<boolean> => {
+  startGeoWatch();
   try {
-    await getGeoPosition(0, 25_000);
+    await getGeoPosition(0, 45_000, false);
     return true;
   } catch {
-    return false;
+    return getCachedGeoPosition() !== null;
   }
 };

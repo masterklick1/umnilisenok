@@ -119,19 +119,20 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [routeMode, setRouteMode] = useState<TravelMode>("driving");
   const [showTrail, setShowTrail] = useState(true);
   const [detectingPlace, setDetectingPlace] = useState(false);
-  const [manualParentOverride, setManualParentOverride] = useState<LatLng | null>(null);
   const [showParentManualForm, setShowParentManualForm] = useState(false);
   const [parentLatInput, setParentLatInput] = useState("");
   const [parentLngInput, setParentLngInput] = useState("");
 
   const {
     location: parentLocation,
+    effectiveLocation: effectiveParentLocation,
     permission: parentPermission,
     error: parentGeoError,
     loading: loadingParentGeo,
     lastUpdatedAt: parentLocUpdatedAt,
+    source: parentLocSource,
     refresh: refreshParentLocation,
-    clear: clearParentLocation,
+    setManualLocation: setParentManualLocation,
   } = useParentLocation({ active: true, routeActive: showRoute, refreshIntervalSec: 60 });
 
   const loadSettings = useCallback(async () => {
@@ -267,7 +268,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const isLocationFresh =
     location &&
     Date.now() - new Date(location.created_at).getTime() <
-      (settings?.location_interval_seconds ?? 60) * 2 * 1000;
+      (settings?.location_interval_seconds ?? 60) * 3 * 1000 + 30_000;
 
   useEffect(() => {
     setSavedPlaces(loadSavedPlaces(childId));
@@ -325,6 +326,18 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       const parent = await refreshParentLocation();
       applyCoordsAsPlace(parent.lat, parent.lng, preset, preset.name, true, "Определено по вашему GPS");
     } catch {
+      const homePlace = savedPlaces.find((p) => p.id === "home") ?? savedPlaces[0];
+      if (homePlace) {
+        applyCoordsAsPlace(
+          homePlace.lat,
+          homePlace.lng,
+          { ...preset, name: homePlace.name, emoji: homePlace.emoji },
+          homePlace.name,
+          false,
+          "Использовано сохранённое место (GPS недоступен)",
+        );
+        return;
+      }
       if (location) {
         applyCoordsAsPlace(
           location.latitude,
@@ -332,12 +345,21 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
           preset,
           preset.name,
           true,
-          `Ваш GPS недоступен — взяли место, где ${childName} сейчас`,
+          `GPS недоступен — взяли место, где ${childName} сейчас`,
+        );
+      } else if (effectiveParentLocation) {
+        applyCoordsAsPlace(
+          effectiveParentLocation.lat,
+          effectiveParentLocation.lng,
+          preset,
+          preset.name,
+          true,
+          "Использованы сохранённые координаты родителя",
         );
       } else {
         toast({
           title: "Не удалось определить место",
-          description: "Разрешите геопозицию, дождитесь координат ребёнка или укажите вручную.",
+          description: "Разрешите геопозицию или укажите координаты вручную.",
           variant: "destructive",
         });
       }
@@ -444,7 +466,6 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     setRouteMode(mode);
     try {
       const parent = await refreshParentLocation();
-      setManualParentOverride(null);
       setShowRoute(true);
       const dist = distanceMeters(parent, {
         lat: location.latitude,
@@ -470,8 +491,6 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     ? { lat: location.latitude, lng: location.longitude }
     : null;
 
-  const effectiveParentLocation = manualParentOverride ?? parentLocation;
-
   const distanceToChild =
     effectiveParentLocation && childPoint
       ? distanceMeters(effectiveParentLocation, childPoint)
@@ -481,14 +500,19 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     setShowParentManualForm(false);
     try {
       await refreshParentLocation();
-      setManualParentOverride(null);
       setShowRoute(true);
-      toast({ title: "Ваше место на карте", description: "Обновляется по GPS." });
-    } catch (e) {
+      toast({
+        title: "Ваше место на карте",
+        description:
+          parentLocSource === "manual"
+            ? "Используются сохранённые координаты."
+            : "Обновляется по GPS.",
+      });
+    } catch {
       setShowParentManualForm(true);
       toast({
         title: "GPS не ответил",
-        description: "Укажите координаты вручную ниже или разрешите геопозицию.",
+        description: "Укажите координаты вручную — они сохранятся для следующего раза.",
         variant: "destructive",
       });
     }
@@ -505,10 +529,10 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       });
       return;
     }
-    setManualParentOverride({ lat, lng });
+    setParentManualLocation({ lat, lng });
     setShowRoute(true);
     setShowParentManualForm(false);
-    toast({ title: "Ваше место установлено вручную" });
+    toast({ title: "Ваше место сохранено", description: "Будет использоваться, пока GPS недоступен." });
   };
 
   const applySearchedPlace = (payload: SelectedPlacePayload, save: boolean) => {
@@ -770,7 +794,6 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                         const ok = await requestGeoPermissionInteractive();
                         if (ok) {
                           await refreshParentLocation().catch(() => {});
-                          setManualParentOverride(null);
                           setShowRoute(true);
                           setShowParentManualForm(false);
                         }
@@ -858,10 +881,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
-                    setShowRoute(false);
-                    clearParentLocation();
-                  }}
+                  onClick={() => setShowRoute(false)}
                 >
                   Скрыть маршрут
                 </Button>
@@ -869,7 +889,8 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
 
               {parentLocUpdatedAt && effectiveParentLocation && (
                 <p className="text-xs text-muted-foreground">
-                  Ваше место обновлено{" "}
+                  Ваше место {parentLocSource === "manual" ? "(сохранено вручную) " : ""}
+                  обновлено{" "}
                   {formatDistanceToNow(new Date(parentLocUpdatedAt), { addSuffix: true, locale: ru })}
                   {showRoute ? " · автообновление каждую минуту" : ""}
                 </p>

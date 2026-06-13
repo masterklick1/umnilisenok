@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolveChildTrackingId } from "@/lib/resolve-user-role";
 import {
+  getCachedGeoPosition,
   getGeoPosition,
   queryGeoPermission,
+  startGeoWatch,
+  stopGeoWatch,
   type GeoPermissionState,
 } from "@/lib/geo-permission";
 
 const DEFAULT_INTERVAL_SEC = 60;
+const SETTINGS_POLL_MS = 30_000;
 
 export interface LocationTrackerStatus {
   permission: GeoPermissionState;
@@ -41,20 +46,10 @@ const emitStatus = (status: LocationTrackerStatus) => {
   window.dispatchEvent(new CustomEvent("location-tracker-status", { detail: status }));
 };
 
-/** Only real child accounts on their own device — auth.uid() must equal child_id in DB. */
-const resolveTrackingChildId = async (authUserId: string): Promise<string | null> => {
-  const { data } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", authUserId)
-    .maybeSingle();
-
-  return data?.role === "child" ? authUserId : null;
-};
-
 export const useLocationTracker = (enabled = true) => {
   const { user } = useAuth();
   const timerRef = useRef<number | null>(null);
+  const settingsPollRef = useRef<number | null>(null);
   const intervalSecRef = useRef(DEFAULT_INTERVAL_SEC);
   const [childId, setChildId] = useState<string | null>(null);
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
@@ -64,10 +59,25 @@ export const useLocationTracker = (enabled = true) => {
   const lastSentAtRef = useRef<string | null>(null);
   const lastErrorRef = useRef<string | null>(null);
   const tickInFlightRef = useRef(false);
+  const trackingEnabledRef = useRef(true);
+  const enabledRef = useRef(enabled);
+  const childIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     intervalSecRef.current = intervalSec;
   }, [intervalSec]);
+
+  useEffect(() => {
+    trackingEnabledRef.current = trackingEnabled;
+  }, [trackingEnabled]);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  useEffect(() => {
+    childIdRef.current = childId;
+  }, [childId]);
 
   const publishStatus = async () => {
     const permission = await queryGeoPermission();
@@ -76,7 +86,7 @@ export const useLocationTracker = (enabled = true) => {
       lastSentAt: lastSentAtRef.current,
       lastError: lastErrorRef.current,
       intervalSec: intervalSecRef.current,
-      trackingEnabled: trackingEnabled && !!childId && enabled,
+      trackingEnabled: trackingEnabledRef.current && !!childIdRef.current && enabledRef.current,
     });
   };
 
@@ -86,13 +96,64 @@ export const useLocationTracker = (enabled = true) => {
       return;
     }
     let active = true;
-    resolveTrackingChildId(user.id).then((id) => {
+
+    const resolve = async () => {
+      const id = await resolveChildTrackingId(user);
       if (active) setChildId(id);
-    });
+    };
+
+    resolve();
+    const interval = window.setInterval(resolve, 30_000);
+
     return () => {
       active = false;
+      window.clearInterval(interval);
     };
-  }, [user?.id]);
+  }, [user]);
+
+  const loadSettings = async (id: string) => {
+    const { data } = await supabase
+      .from("child_settings")
+      .select(
+        "location_interval_seconds, location_enabled, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m",
+      )
+      .eq("child_id", id)
+      .maybeSingle();
+
+    if (data) {
+      settingsRef.current = data as Settings;
+      const sec = Math.max(15, data.location_interval_seconds || DEFAULT_INTERVAL_SEC);
+      setIntervalSec(sec);
+      intervalSecRef.current = sec;
+      setTrackingEnabled(data.location_enabled !== false);
+      return;
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("child_settings")
+      .upsert(
+        {
+          child_id: id,
+          location_interval_seconds: DEFAULT_INTERVAL_SEC,
+          location_enabled: true,
+        },
+        { onConflict: "child_id" },
+      )
+      .select(
+        "location_interval_seconds, location_enabled, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m",
+      )
+      .maybeSingle();
+
+    if (error) {
+      lastErrorRef.current = `Настройки: ${error.message}`;
+    } else if (inserted) {
+      settingsRef.current = inserted as Settings;
+      const sec = Math.max(15, inserted.location_interval_seconds || DEFAULT_INTERVAL_SEC);
+      setIntervalSec(sec);
+      intervalSecRef.current = sec;
+      setTrackingEnabled(inserted.location_enabled !== false);
+    }
+  };
 
   useEffect(() => {
     if (!childId) return;
@@ -108,38 +169,8 @@ export const useLocationTracker = (enabled = true) => {
     };
 
     (async () => {
-      const { data } = await supabase
-        .from("child_settings")
-        .select(
-          "location_interval_seconds, location_enabled, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m",
-        )
-        .eq("child_id", childId)
-        .maybeSingle();
-      if (!active) return;
-      if (data) {
-        apply(data as Settings);
-      } else {
-        const { data: inserted, error } = await supabase
-          .from("child_settings")
-          .upsert(
-            {
-              child_id: childId,
-              location_interval_seconds: DEFAULT_INTERVAL_SEC,
-              location_enabled: true,
-            },
-            { onConflict: "child_id" },
-          )
-          .select(
-            "location_interval_seconds, location_enabled, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m",
-          )
-          .maybeSingle();
-        if (error) {
-          lastErrorRef.current = `Настройки: ${error.message}`;
-        } else if (inserted) {
-          apply(inserted as Settings);
-        }
-      }
-      publishStatus();
+      await loadSettings(childId);
+      if (active) publishStatus();
     })();
 
     const ch = supabase
@@ -154,8 +185,16 @@ export const useLocationTracker = (enabled = true) => {
       )
       .subscribe();
 
+    settingsPollRef.current = window.setInterval(() => {
+      if (active) loadSettings(childId).then(() => publishStatus());
+    }, SETTINGS_POLL_MS);
+
     return () => {
       active = false;
+      if (settingsPollRef.current) {
+        window.clearInterval(settingsPollRef.current);
+        settingsPollRef.current = null;
+      }
       supabase.removeChannel(ch);
     };
   }, [childId]);
@@ -171,6 +210,7 @@ export const useLocationTracker = (enabled = true) => {
     }
 
     let cancelled = false;
+    startGeoWatch();
 
     const checkGeofence = async (lat: number, lng: number) => {
       const s = settingsRef.current;
@@ -197,14 +237,21 @@ export const useLocationTracker = (enabled = true) => {
         .catch(() => {});
     };
 
+    const obtainPosition = async (forceFresh: boolean) => {
+      const maxAge = Math.max(intervalSecRef.current * 1000, 120_000);
+      if (!forceFresh) {
+        const cached = getCachedGeoPosition(maxAge * 2);
+        if (cached) return cached;
+      }
+      return getGeoPosition(maxAge, 45_000, !forceFresh);
+    };
+
     const tick = async (force = false) => {
       if (tickInFlightRef.current || cancelled) return;
-      if (!force && document.visibilityState === "hidden") return;
 
       tickInFlightRef.current = true;
       try {
-        const maxAge = Math.min(intervalSecRef.current * 1000, 120_000);
-        const pos = await getGeoPosition(maxAge, 35_000);
+        const pos = await obtainPosition(force);
 
         const { error } = await supabase.from("child_locations").insert([
           {
@@ -229,26 +276,20 @@ export const useLocationTracker = (enabled = true) => {
       }
     };
 
-    const startTimer = () => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-      tick(true);
-      timerRef.current = window.setInterval(() => tick(false), intervalSecRef.current * 1000);
-    };
-
-    startTimer();
+    tick(true);
+    timerRef.current = window.setInterval(() => tick(false), intervalSecRef.current * 1000);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") tick(true);
     };
     document.addEventListener("visibilitychange", onVisible);
 
-    const onForceSend = () => {
-      if (document.visibilityState === "visible") tick(true);
-    };
+    const onForceSend = () => tick(true);
     window.addEventListener("force-location-send", onForceSend);
 
     return () => {
       cancelled = true;
+      stopGeoWatch();
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("force-location-send", onForceSend);
       if (timerRef.current) {

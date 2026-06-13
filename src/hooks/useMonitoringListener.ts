@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
 import { useToast } from "@/hooks/use-toast";
-import { getGeoPosition } from "@/lib/geo-permission";
+import { getGeoPosition, getCachedGeoPosition } from "@/lib/geo-permission";
 
 interface MonitoringRequest {
   id: string;
@@ -93,7 +93,14 @@ async function handleAudio(req: MonitoringRequest, childId: string) {
 }
 
 async function handleLocation(req: MonitoringRequest, childId: string) {
-  const pos = await getGeoPosition(0, 35_000);
+  let pos;
+  try {
+    pos = await getGeoPosition(0, 45_000, false);
+  } catch {
+    const cached = getCachedGeoPosition(900_000);
+    if (!cached) throw new Error("GPS не ответил");
+    pos = cached;
+  }
 
   const { error: locError } = await supabase.from("child_locations").insert([
     {

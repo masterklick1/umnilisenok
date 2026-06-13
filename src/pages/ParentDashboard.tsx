@@ -12,6 +12,7 @@ import { AIRecommendations } from "@/components/parental/AIRecommendations";
 import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
+import { SelectedChildBar } from "@/components/parental/SelectedChildBar";
 import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle, House, Lock } from "lucide-react";
 import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
 import { MonitoringPanel } from "@/components/parental/MonitoringPanel";
@@ -40,6 +41,7 @@ export default function ParentDashboard() {
     createGameSession,
   } = useParentalControl();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [activeTab, setActiveTab] = useState("children");
   const { toast } = useToast();
   const [pushPerm, setPushPerm] = useState<NotificationPermission | "unsupported">(
     isPushSupported() ? getPushPermission() : "unsupported"
@@ -257,11 +259,29 @@ export default function ParentDashboard() {
   };
 
   const handleStartChildSession = (childId: string, childName: string) => {
-    // Store child session info and navigate to main app
     sessionStorage.setItem("activeChildId", childId);
     sessionStorage.setItem("activeChildName", childName);
     navigate("/");
   };
+
+  const openChildTab = (childId: string, tab: "safety" | "mirror") => {
+    setSelectedChild(childId);
+    setActiveTab(tab);
+  };
+
+  // Auto-select child who is playing on own phone right now
+  useEffect(() => {
+    if (selectedChild || children.length === 0) return;
+    const playingNow = children.find(
+      (c) =>
+        c.connected_via_invite &&
+        c.last_activity_at &&
+        Date.now() - new Date(c.last_activity_at).getTime() < 5 * 60 * 1000,
+    );
+    if (playingNow) {
+      setSelectedChild(playingNow.child_id);
+    }
+  }, [children, selectedChild, setSelectedChild]);
 
   const verifyParentPin = () => {
     const stored = getStoredPin();
@@ -411,35 +431,46 @@ export default function ParentDashboard() {
           </Card>
         )}
 
-        <Tabs defaultValue="children" className="space-y-6">
-          <TabsList className="grid grid-cols-7 w-full">
-            <TabsTrigger value="children" className="gap-1">
+        {selectedChildData && (
+          <SelectedChildBar
+            childName={selectedChildData.first_name || "Ребёнок"}
+            connectedViaInvite={selectedChildData.connected_via_invite}
+            lastActivityAt={selectedChildData.last_activity_at}
+            onOpenSafety={() => setActiveTab("safety")}
+            onOpenMirror={() => setActiveTab("mirror")}
+            onClear={() => setSelectedChild(null)}
+          />
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="flex w-full h-auto overflow-x-auto p-1 gap-1 justify-start no-scrollbar">
+            <TabsTrigger value="children" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Это устройство</span>
+              <span className="text-[10px] leading-tight">Дети</span>
             </TabsTrigger>
-            <TabsTrigger value="invite" className="gap-1">
+            <TabsTrigger value="invite" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]">
               <Link2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Телефон ребёнка</span>
+              <span className="text-[10px] leading-tight">Код</span>
             </TabsTrigger>
-            <TabsTrigger value="safety" className="gap-1" disabled={!selectedChild}>
+            <TabsTrigger value="safety" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <Shield className="w-4 h-4" />
-              <span className="hidden sm:inline">Защита</span>
+              <span className="text-[10px] leading-tight">Защита</span>
             </TabsTrigger>
-            <TabsTrigger value="mirror" className="gap-1" disabled={!selectedChild}>
+            <TabsTrigger value="mirror" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <Eye className="w-4 h-4" />
-              <span className="hidden sm:inline">Зеркало</span>
+              <span className="text-[10px] leading-tight">Зеркало</span>
             </TabsTrigger>
-            <TabsTrigger value="room" className="gap-1" disabled={!selectedChild}>
+            <TabsTrigger value="room" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <House className="w-4 h-4" />
-              <span className="hidden sm:inline">Домик</span>
+              <span className="text-[10px] leading-tight">Домик</span>
             </TabsTrigger>
-            <TabsTrigger value="analysis" className="gap-1" disabled={!selectedChild}>
+            <TabsTrigger value="analysis" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <Brain className="w-4 h-4" />
-              <span className="hidden sm:inline">ИИ</span>
+              <span className="text-[10px] leading-tight">ИИ</span>
             </TabsTrigger>
-            <TabsTrigger value="games" className="gap-1">
+            <TabsTrigger value="games" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]">
               <Gamepad2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Игры</span>
+              <span className="text-[10px] leading-tight">Игры</span>
             </TabsTrigger>
           </TabsList>
 
@@ -493,6 +524,8 @@ export default function ParentDashboard() {
                     isSelected={selectedChild === child.child_id}
                     onSelect={() => setSelectedChild(child.child_id)}
                     onStartSession={() => handleStartChildSession(child.child_id, child.first_name || "Ребёнок")}
+                    onOpenSafety={() => openChildTab(child.child_id, "safety")}
+                    onOpenMirror={() => openChildTab(child.child_id, "mirror")}
                   />
                 ))}
               </div>
@@ -502,6 +535,18 @@ export default function ParentDashboard() {
           <TabsContent value="safety" className="space-y-4">
             {selectedChildData ? (
               <>
+                {selectedChildData.connected_via_invite && (
+                  <Card className="border-green-200 bg-green-50/50">
+                    <CardContent className="py-3 px-4 text-sm">
+                      <p className="font-medium">📱 {selectedChildData.first_name} на своём телефоне</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Карта обновляется автоматически. Поставьте геозону «Школа» — получите
+                        уведомление, если ребёнок выйдет из зоны. Кнопка «Где он?» — мгновенная
+                        проверка места.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
                 <SafetyPanel
                   childId={selectedChildData.child_id}
                   childName={selectedChildData.first_name || "Ребёнок"}

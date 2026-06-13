@@ -163,6 +163,8 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     loadData();
     loadSettings();
 
+    const poll = window.setInterval(loadData, 10000);
+
     const channel = supabase
       .channel(`safety-${childId}`)
       .on(
@@ -197,9 +199,39 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       .subscribe();
 
     return () => {
+      window.clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [childId, childName, loadData, loadSettings, toast]);
+
+  const isLocationFresh =
+    location &&
+    Date.now() - new Date(location.created_at).getTime() <
+      (settings?.location_interval_seconds ?? 60) * 2 * 1000;
+
+  const applyGeofencePreset = (preset: "school" | "home") => {
+    if (!location) {
+      toast({
+        title: "Нет координат",
+        description: "Дождитесь, пока ребёнок откроет приложение и разрешит геопозицию.",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveSettings({
+      geofence_lat: location.latitude,
+      geofence_lng: location.longitude,
+      geofence_enabled: true,
+      geofence_radius_m: preset === "school" ? 200 : 120,
+    });
+    toast({
+      title: preset === "school" ? "Геозона «Школа» установлена" : "Геозона «Дом» установлена",
+      description:
+        preset === "school"
+          ? "Радиус 200 м вокруг текущей точки. Уведомим, если ребёнок выйдет из зоны."
+          : "Радиус 120 м вокруг текущей точки.",
+    });
+  };
 
   // Sign URLs for fulfilled monitoring results
   useEffect(() => {
@@ -248,6 +280,53 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
 
   return (
     <div className="space-y-4">
+      {/* Connection status */}
+      <Card className={isLocationFresh ? "border-green-300 bg-green-50/40" : "border-amber-200 bg-amber-50/40"}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="font-medium text-sm flex items-center gap-2">
+                {isLocationFresh ? (
+                  <>
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                    Связь с телефоном {childName} активна
+                  </>
+                ) : location ? (
+                  <>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    Данные устарели — попросите открыть приложение
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground" />
+                    Ожидаем первую геопозицию
+                  </>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {settings?.location_enabled
+                  ? `Автоотправка каждые ${formatInterval(settings.location_interval_seconds)}`
+                  : "Автоотправка выключена — включите ниже"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={requesting !== null}
+              onClick={() => request("location")}
+              className="gap-1"
+            >
+              {requesting === "location" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Navigation className="w-4 h-4" />
+              )}
+              Где сейчас?
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* SOS active banner */}
       {activeAlert && (
         <Card className="border-2 border-destructive bg-destructive/10 animate-pulse">
@@ -431,6 +510,22 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
               variant="outline"
               size="sm"
               disabled={!location || savingSettings}
+              onClick={() => applyGeofencePreset("school")}
+            >
+              🏫 Школа (здесь, 200 м)
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!location || savingSettings}
+              onClick={() => applyGeofencePreset("home")}
+            >
+              🏠 Дом (здесь, 120 м)
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!location || savingSettings}
               onClick={() =>
                 location &&
                 saveSettings({
@@ -441,7 +536,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
               }
             >
               <Crosshair className="w-4 h-4 mr-1" />
-              Центр = текущее место ребёнка
+              Текущее место
             </Button>
             {settings?.geofence_lat != null && (
               <Button

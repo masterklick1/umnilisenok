@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, Trophy, Flame, Smartphone } from "lucide-react";
+import { Star, Trophy, Flame, Smartphone, Shield, Eye } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -20,9 +20,18 @@ interface ChildCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onStartSession: () => void;
+  onOpenSafety?: () => void;
+  onOpenMirror?: () => void;
 }
 
-export const ChildCard = ({ child, isSelected, onSelect, onStartSession }: ChildCardProps) => {
+export const ChildCard = ({
+  child,
+  isSelected,
+  onSelect,
+  onStartSession,
+  onOpenSafety,
+  onOpenMirror,
+}: ChildCardProps) => {
   const isRecentlyActive =
     child.last_activity_at &&
     Date.now() - new Date(child.last_activity_at).getTime() < 5 * 60 * 1000;
@@ -81,7 +90,34 @@ export const ChildCard = ({ child, isSelected, onSelect, onStartSession }: Child
           </div>
         </div>
 
-        {!child.connected_via_invite && (
+        {child.connected_via_invite ? (
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenSafety?.();
+              }}
+            >
+              <Shield className="w-4 h-4" />
+              Защита
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenMirror?.();
+              }}
+            >
+              <Eye className="w-4 h-4" />
+              Зеркало
+            </Button>
+          </div>
+        ) : (
           <div className="mt-4 flex gap-2">
             <Button
               variant="default"

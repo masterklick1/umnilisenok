@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { Users, Baby } from "lucide-react";
 
 const signUpSchema = z.object({
   email: z.string().email({ message: "Неверный формат email" }),
@@ -19,7 +20,10 @@ const signInSchema = z.object({
   password: z.string().min(1, { message: "Введите пароль" }),
 });
 
+type Screen = "choose" | "parent";
+
 export default function AuthPage() {
+  const [screen, setScreen] = useState<Screen>("choose");
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,11 +33,21 @@ export default function AuthPage() {
   const { signUp, signIn, user } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect to parent dashboard if already logged in
   useEffect(() => {
-    if (user) {
-      navigate("/parent");
-    }
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.role === "child") {
+          sessionStorage.setItem("activeChildId", user.id);
+          navigate("/", { replace: true });
+        } else {
+          navigate("/parent", { replace: true });
+        }
+      });
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,9 +61,7 @@ export default function AuthPage() {
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
           result.error.errors.forEach((err) => {
-            if (err.path[0]) {
-              fieldErrors[err.path[0].toString()] = err.message;
-            }
+            if (err.path[0]) fieldErrors[err.path[0].toString()] = err.message;
           });
           setErrors(fieldErrors);
           setIsLoading(false);
@@ -58,13 +70,9 @@ export default function AuthPage() {
 
         const { error } = await signUp(email, password, firstName);
         if (!error) {
-          // Set role to parent after signup
           const { data: { user: newUser } } = await supabase.auth.getUser();
           if (newUser) {
-            await supabase
-              .from("profiles")
-              .update({ role: "parent" })
-              .eq("id", newUser.id);
+            await supabase.from("profiles").update({ role: "parent" }).eq("id", newUser.id);
           }
           navigate("/parent");
         }
@@ -73,9 +81,7 @@ export default function AuthPage() {
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
           result.error.errors.forEach((err) => {
-            if (err.path[0]) {
-              fieldErrors[err.path[0].toString()] = err.message;
-            }
+            if (err.path[0]) fieldErrors[err.path[0].toString()] = err.message;
           });
           setErrors(fieldErrors);
           setIsLoading(false);
@@ -83,9 +89,7 @@ export default function AuthPage() {
         }
 
         const { error } = await signIn(email, password);
-        if (!error) {
-          navigate("/parent");
-        }
+        if (!error) navigate("/parent");
       }
     } catch (error) {
       console.error("Auth error:", error);
@@ -94,14 +98,47 @@ export default function AuthPage() {
     }
   };
 
+  if (screen === "choose") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/20 via-background to-secondary/20">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="text-7xl mb-4">🦊</div>
+            <CardTitle className="text-3xl">Умный Лисёнок</CardTitle>
+            <CardDescription>Кто заходит в приложение?</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full h-20 text-lg flex-col gap-1 border-2"
+              onClick={() => setScreen("parent")}
+            >
+              <Users className="w-8 h-8" />
+              Я родитель
+            </Button>
+            <Button
+              size="lg"
+              className="w-full h-20 text-lg flex-col gap-1"
+              onClick={() => navigate("/join")}
+            >
+              <Baby className="w-8 h-8" />
+              Я ребёнок
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/20 via-background to-secondary/20">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="text-6xl mb-4">🦊</div>
-          <CardTitle className="text-3xl">Умный Лисенок</CardTitle>
+          <div className="text-6xl mb-4">👨‍👩‍👧</div>
+          <CardTitle className="text-2xl">Родитель</CardTitle>
           <CardDescription>
-            {isSignUp ? "Создайте аккаунт родителя" : "Войдите в аккаунт"}
+            {isSignUp ? "Создайте аккаунт" : "Войдите в аккаунт"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -117,9 +154,7 @@ export default function AuthPage() {
                   onChange={(e) => setFirstName(e.target.value)}
                   required
                 />
-                {errors.firstName && (
-                  <p className="text-sm text-destructive">{errors.firstName}</p>
-                )}
+                {errors.firstName && <p className="text-sm text-destructive">{errors.firstName}</p>}
               </div>
             )}
             <div className="space-y-2">
@@ -132,9 +167,7 @@ export default function AuthPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
+              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Пароль</Label>
@@ -146,23 +179,26 @@ export default function AuthPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
+              {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Загрузка..." : isSignUp ? "Зарегистрироваться" : "Войти"}
             </Button>
           </form>
-          <div className="mt-4 text-center">
+          <div className="mt-4 space-y-2 text-center">
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground hover:text-foreground"
             >
-              {isSignUp
-                ? "Уже есть аккаунт? Войти"
-                : "Нет аккаунта? Зарегистрироваться"}
+              {isSignUp ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setScreen("choose")}
+              className="block w-full text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Назад
             </button>
           </div>
         </CardContent>

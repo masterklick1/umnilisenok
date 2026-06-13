@@ -11,6 +11,8 @@ interface ChildProfile {
   level: number;
   experience: number;
   daily_streak: number;
+  last_activity_at?: string | null;
+  connected_via_invite?: boolean;
 }
 
 interface ChildActivity {
@@ -53,17 +55,65 @@ export const useParentalControl = () => {
   const [gameSessions, setGameSessions] = useState<GameSession[]>([]);
   const [analyzingChild, setAnalyzingChild] = useState(false);
 
-  // Fetch children
+  // Fetch children with last activity + invite source
   const fetchChildren = useCallback(async () => {
     if (!user?.id) return;
-    
+
     try {
       const { data, error } = await supabase.rpc("get_children_with_progress", {
         p_parent_id: user.id,
       });
 
       if (error) throw error;
-      setChildren(data || []);
+
+      const baseChildren = (data || []) as ChildProfile[];
+      const childIds = baseChildren.map((c) => c.child_id);
+
+      if (childIds.length === 0) {
+        setChildren([]);
+        return;
+      }
+
+      const [{ data: activityRows }, { data: inviteRows }] = await Promise.all([
+        supabase
+          .from("child_activity")
+          .select("child_id, created_at")
+          .in("child_id", childIds)
+          .order("created_at", { ascending: false })
+          .limit(200),
+        supabase
+          .from("child_invites")
+          .select("child_id")
+          .eq("parent_id", user.id)
+          .not("child_id", "is", null),
+      ]);
+
+      const lastActivityByChild = new Map<string, string>();
+      (activityRows || []).forEach((row: { child_id: string; created_at: string }) => {
+        if (!lastActivityByChild.has(row.child_id)) {
+          lastActivityByChild.set(row.child_id, row.created_at);
+        }
+      });
+
+      const inviteChildIds = new Set(
+        (inviteRows || [])
+          .map((row: { child_id: string | null }) => row.child_id)
+          .filter(Boolean) as string[],
+      );
+
+      const enriched = baseChildren.map((child) => ({
+        ...child,
+        last_activity_at: lastActivityByChild.get(child.child_id) ?? null,
+        connected_via_invite: inviteChildIds.has(child.child_id),
+      }));
+
+      enriched.sort((a, b) => {
+        const aTime = a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0;
+        const bTime = b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0;
+        return bTime - aTime;
+      });
+
+      setChildren(enriched);
     } catch (error) {
       console.error("Error fetching children:", error);
     } finally {
@@ -74,6 +124,12 @@ export const useParentalControl = () => {
   useEffect(() => {
     fetchChildren();
   }, [fetchChildren]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const refresh = window.setInterval(fetchChildren, 15000);
+    return () => window.clearInterval(refresh);
+  }, [fetchChildren, user?.id]);
 
   // Create child account
   const createChildAccount = async (firstName: string, avatarUrl?: string) => {
@@ -172,6 +228,16 @@ export const useParentalControl = () => {
   // Fetch child activities (for mirror)
   const fetchChildActivities = useCallback(async (childId: string) => {
     try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc("get_child_activities", {
+        p_child_id: childId,
+        p_limit: 50,
+      });
+
+      if (!rpcError) {
+        setChildActivities((rpcData as ChildActivity[]) || []);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("child_activity")
         .select("*")
@@ -186,11 +252,15 @@ export const useParentalControl = () => {
     }
   }, []);
 
-  // Subscribe to real-time child activities
+  // Realtime + polling for mirror (realtime alone is unreliable on mobile)
   useEffect(() => {
     if (!selectedChild) return;
 
     fetchChildActivities(selectedChild);
+
+    const poll = window.setInterval(() => {
+      fetchChildActivities(selectedChild);
+    }, 5000);
 
     const channel = supabase
       .channel(`child-activity-${selectedChild}`)
@@ -204,11 +274,12 @@ export const useParentalControl = () => {
         },
         (payload) => {
           setChildActivities((prev) => [payload.new as ChildActivity, ...prev].slice(0, 50));
-        }
+        },
       )
       .subscribe();
 
     return () => {
+      window.clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [selectedChild, fetchChildActivities]);

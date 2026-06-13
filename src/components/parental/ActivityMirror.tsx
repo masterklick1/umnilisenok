@@ -31,6 +31,7 @@ interface Activity {
 interface ActivityMirrorProps {
   childName: string;
   activities: Activity[];
+  connectedViaInvite?: boolean;
 }
 
 const getActivityIcon = (type: string) => {
@@ -52,7 +53,11 @@ const getActivityIcon = (type: string) => {
   }
 };
 
-export const ActivityMirror = ({ childName, activities }: ActivityMirrorProps) => {
+export const ActivityMirror = ({
+  childName,
+  activities,
+  connectedViaInvite,
+}: ActivityMirrorProps) => {
   const currentPage = activities.find((a) => a.activity_type === "page_view")?.page_path;
   const recentCorrect = activities.filter((a) => a.activity_type === "answer_correct").length;
   const recentWrong = activities.filter((a) => a.activity_type === "answer_wrong").length;
@@ -107,9 +112,21 @@ export const ActivityMirror = ({ childName, activities }: ActivityMirrorProps) =
         <CardContent>
           <ScrollArea className="h-[400px] pr-4">
             {activities.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Пока нет активности. Когда ребёнок начнёт заниматься, здесь появятся его действия.
-              </p>
+              <div className="text-center text-muted-foreground py-8 space-y-2">
+                <p>Пока нет активности от {childName}.</p>
+                {connectedViaInvite ? (
+                  <p className="text-xs max-w-sm mx-auto">
+                    Ребёнок играет на своём телефоне? Убедитесь, что выбрана карточка с меткой
+                    «📱 Свой телефон». Если в списке два одинаковых имени — выберите ту, где
+                    написано «Сейчас играет» или свежая «Активность».
+                  </p>
+                ) : (
+                  <p className="text-xs max-w-sm mx-auto">
+                    Этот аккаунт для игры на вашем телефоне. Если ребёнок на своём устройстве —
+                    выберите карточку с меткой «📱 Свой телефон».
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="space-y-3">
                 {activities.map((activity) => {

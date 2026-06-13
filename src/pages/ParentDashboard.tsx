@@ -528,12 +528,17 @@ export default function ParentDashboard() {
               <ActivityMirror
                 childName={selectedChildData.first_name || "Ребёнок"}
                 activities={childActivities}
+                connectedViaInvite={selectedChildData.connected_via_invite}
               />
             ) : (
               <Card>
-                <CardContent className="py-8 text-center">
+                <CardContent className="py-8 text-center space-y-2">
                   <p className="text-muted-foreground">
-                    Выберите ребёнка на вкладке "Дети"
+                    Выберите ребёнка на вкладке «Это устройство»
+                  </p>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    Если ребёнок на своём телефоне — выберите карточку с меткой «📱 Свой
+                    телефон» и зелёной отметкой «Сейчас играет».
                   </p>
                 </CardContent>
               </Card>

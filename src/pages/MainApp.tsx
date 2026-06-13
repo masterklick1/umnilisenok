@@ -15,6 +15,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { SOSButton } from "@/components/SOSButton";
 import { useLocationTracker } from "@/hooks/useLocationTracker";
 import { useMonitoringListener } from "@/hooks/useMonitoringListener";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 export const MainApp = () => {
   const { toast } = useToast();
@@ -25,6 +26,7 @@ export const MainApp = () => {
 
   useLocationTracker(true);
   useMonitoringListener();
+  useActivityTracker();
 
 
   useEffect(() => {

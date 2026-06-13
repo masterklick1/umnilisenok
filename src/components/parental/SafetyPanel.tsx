@@ -118,6 +118,11 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [showRoute, setShowRoute] = useState(false);
   const [routeMode, setRouteMode] = useState<TravelMode>("driving");
   const [showTrail, setShowTrail] = useState(true);
+  const [detectingPlace, setDetectingPlace] = useState(false);
+  const [manualParentOverride, setManualParentOverride] = useState<LatLng | null>(null);
+  const [showParentManualForm, setShowParentManualForm] = useState(false);
+  const [parentLatInput, setParentLatInput] = useState("");
+  const [parentLngInput, setParentLngInput] = useState("");
 
   const {
     location: parentLocation,
@@ -289,6 +294,76 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     }
   };
 
+  const applyCoordsAsPlace = (
+    lat: number,
+    lng: number,
+    preset: GeofencePreset,
+    nameOverride?: string,
+    save = true,
+    sourceHint?: string,
+  ) => {
+    const name = nameOverride || preset.name;
+    const label = formatPlaceLabel(preset.emoji, name);
+    const place: SavedPlace = {
+      id: preset.id.startsWith("custom") || preset.id === "addr" ? `custom-${Date.now()}` : preset.id,
+      name,
+      emoji: preset.emoji,
+      lat,
+      lng,
+      radius_m: preset.radius_m,
+    };
+    activateGeofence(lat, lng, preset.radius_m, label, save ? place : undefined);
+    toast({
+      title: `«${name}» установлено`,
+      description: sourceHint || preset.hint,
+    });
+  };
+
+  const applyMyPlaceAuto = async (preset: GeofencePreset) => {
+    setDetectingPlace(true);
+    try {
+      const parent = await refreshParentLocation();
+      applyCoordsAsPlace(parent.lat, parent.lng, preset, preset.name, true, "Определено по вашему GPS");
+    } catch {
+      if (location) {
+        applyCoordsAsPlace(
+          location.latitude,
+          location.longitude,
+          preset,
+          preset.name,
+          true,
+          `Ваш GPS недоступен — взяли место, где ${childName} сейчас`,
+        );
+      } else {
+        toast({
+          title: "Не удалось определить место",
+          description: "Разрешите геопозицию, дождитесь координат ребёнка или укажите вручную.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setDetectingPlace(false);
+    }
+  };
+
+  const applyManualPlace = (
+    lat: number,
+    lng: number,
+    name: string,
+    preset: GeofencePreset | null,
+  ) => {
+    const p =
+      preset ??
+      ({
+        id: "custom",
+        emoji: "📍",
+        name,
+        radius_m: settings?.geofence_radius_m ?? 150,
+        hint: "Указано вручную",
+      } as GeofencePreset);
+    applyCoordsAsPlace(lat, lng, p, name, true, "Координаты указаны вручную");
+  };
+
   const applyAtCurrentLocation = (preset: GeofencePreset, alsoSave: boolean) => {
     if (!location) {
       toast({
@@ -369,6 +444,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     setRouteMode(mode);
     try {
       const parent = await refreshParentLocation();
+      setManualParentOverride(null);
       setShowRoute(true);
       const dist = distanceMeters(parent, {
         lat: location.latitude,
@@ -394,8 +470,46 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     ? { lat: location.latitude, lng: location.longitude }
     : null;
 
+  const effectiveParentLocation = manualParentOverride ?? parentLocation;
+
   const distanceToChild =
-    parentLocation && childPoint ? distanceMeters(parentLocation, childPoint) : null;
+    effectiveParentLocation && childPoint
+      ? distanceMeters(effectiveParentLocation, childPoint)
+      : null;
+
+  const showMyLocationOnMap = async () => {
+    setShowParentManualForm(false);
+    try {
+      await refreshParentLocation();
+      setManualParentOverride(null);
+      setShowRoute(true);
+      toast({ title: "Ваше место на карте", description: "Обновляется по GPS." });
+    } catch (e) {
+      setShowParentManualForm(true);
+      toast({
+        title: "GPS не ответил",
+        description: "Укажите координаты вручную ниже или разрешите геопозицию.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const applyManualParentLocation = () => {
+    const lat = parseFloat(parentLatInput.replace(",", "."));
+    const lng = parseFloat(parentLngInput.replace(",", "."));
+    if (Number.isNaN(lat) || lat < -90 || lat > 90 || Number.isNaN(lng) || lng < -180 || lng > 180) {
+      toast({
+        title: "Неверные координаты",
+        description: "Пример: 55.751244 и 37.618423",
+        variant: "destructive",
+      });
+      return;
+    }
+    setManualParentOverride({ lat, lng });
+    setShowRoute(true);
+    setShowParentManualForm(false);
+    toast({ title: "Ваше место установлено вручную" });
+  };
 
   const applySearchedPlace = (payload: SelectedPlacePayload, save: boolean) => {
     const label = formatPlaceLabel(payload.emoji, payload.name);
@@ -623,7 +737,52 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         <CardContent className="space-y-3">
           {location ? (
             <>
-              {(parentPermission === "denied" || parentGeoError) && (
+              {(showParentManualForm || parentPermission === "denied" || parentGeoError) && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm space-y-2">
+                  <p>
+                    📍 <strong>Моё место вручную</strong> — если GPS не находит вас автоматически
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      inputMode="decimal"
+                      placeholder="Широта"
+                      value={parentLatInput}
+                      onChange={(e) => setParentLatInput(e.target.value)}
+                      className="h-9 font-mono text-sm"
+                    />
+                    <Input
+                      inputMode="decimal"
+                      placeholder="Долгота"
+                      value={parentLngInput}
+                      onChange={(e) => setParentLngInput(e.target.value)}
+                      className="h-9 font-mono text-sm"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={applyManualParentLocation}>
+                      Показать на карте
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={loadingParentGeo}
+                      onClick={async () => {
+                        const ok = await requestGeoPermissionInteractive();
+                        if (ok) {
+                          await refreshParentLocation().catch(() => {});
+                          setManualParentOverride(null);
+                          setShowRoute(true);
+                          setShowParentManualForm(false);
+                        }
+                      }}
+                    >
+                      {loadingParentGeo ? "…" : "Повторить GPS"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {(parentPermission === "denied" || parentGeoError) && !showParentManualForm && (
                 <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm space-y-2">
                   <p>
                     📍 <strong>Ваша геопозиция:</strong>{" "}
@@ -635,15 +794,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                     size="sm"
                     variant="outline"
                     disabled={loadingParentGeo}
-                    onClick={async () => {
-                      const ok = await requestGeoPermissionInteractive();
-                      if (ok) {
-                        await refreshParentLocation().catch(() => {});
-                        setShowRoute(true);
-                      }
-                    }}
+                    onClick={showMyLocationOnMap}
                   >
-                    {loadingParentGeo ? "…" : "Разрешить снова"}
+                    {loadingParentGeo ? "…" : "Определить или ввести вручную"}
                   </Button>
                 </div>
               )}
@@ -680,7 +833,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                   size="sm"
                   variant="outline"
                   disabled={loadingParentGeo}
-                  onClick={() => refreshParentLocation().then(() => setShowRoute(true)).catch(() => {})}
+                  onClick={showMyLocationOnMap}
                   className="gap-1"
                 >
                   {loadingParentGeo ? (
@@ -690,9 +843,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                   )}
                   Моё место
                 </Button>
-                {parentLocation && childPoint && (
+                {effectiveParentLocation && childPoint && (
                   <a
-                    href={googleMapsDirectionsUrl(parentLocation, childPoint, routeMode)}
+                    href={googleMapsDirectionsUrl(effectiveParentLocation, childPoint, routeMode)}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -714,7 +867,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 </Button>
               </div>
 
-              {parentLocUpdatedAt && parentLocation && (
+              {parentLocUpdatedAt && effectiveParentLocation && (
                 <p className="text-xs text-muted-foreground">
                   Ваше место обновлено{" "}
                   {formatDistanceToNow(new Date(parentLocUpdatedAt), { addSuffix: true, locale: ru })}
@@ -753,7 +906,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 label={childName}
                 height={340}
                 movementPath={showTrail ? movementPath : []}
-                parentLocation={parentLocation}
+                parentLocation={effectiveParentLocation}
                 showRoute={showRoute}
                 routeMode={routeMode}
                 geofence={
@@ -761,13 +914,16 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                     ? { lat: settings.geofence_lat, lng: settings.geofence_lng, radius: settings.geofence_radius_m }
                     : null
                 }
-                onMapClick={(lat, lng) =>
-                  saveSettings({ geofence_lat: lat, geofence_lng: lng, geofence_enabled: true })
-                }
+                onMapClick={(lat, lng) => {
+                  saveSettings({ geofence_lat: lat, geofence_lng: lng, geofence_enabled: true });
+                  persistGeofenceLabel(childId, "📍 На карте");
+                  setActiveZoneLabel("📍 На карте");
+                }}
               />
               {settings?.geofence_enabled && (
                 <p className="text-xs text-muted-foreground">
-                  💡 Кликните на карте, чтобы переместить центр безопасной зоны
+                  💡 Кликните на карте, чтобы поставить или переместить центр зоны (удобно, если адрес
+                  не находится)
                 </p>
               )}
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -872,7 +1028,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             <Shield className="w-5 h-5" /> Безопасная зона (геозона)
           </CardTitle>
           <CardDescription>
-            Найдите садик или школу по адресу — или укажите вручную, где ребёнок сейчас.
+            Найдите садик или школу по адресу — или «Моё место»: авто по GPS либо координаты вручную.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -902,6 +1058,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
               location ? { lat: location.latitude, lng: location.longitude } : null
             }
             disabled={savingSettings}
+            detectingPlace={detectingPlace}
+            onAutoDetectPlace={applyMyPlaceAuto}
+            onManualPlace={applyManualPlace}
             onSelectPlace={applySearchedPlace}
             onManualCurrent={(preset) => applyAtCurrentLocation(preset, true)}
           />

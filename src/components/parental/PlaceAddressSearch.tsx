@@ -7,6 +7,7 @@ import {
   GEOFENCE_PRESETS,
   type GeofencePreset,
 } from "@/lib/saved-places";
+import { MyPlacePicker } from "@/components/parental/MyPlacePicker";
 import {
   isGoogleMapsConfigured,
   loadGoogleMaps,
@@ -27,6 +28,9 @@ interface PlaceAddressSearchProps {
   childName: string;
   childLocation?: { lat: number; lng: number } | null;
   disabled?: boolean;
+  detectingPlace?: boolean;
+  onAutoDetectPlace: (preset: GeofencePreset) => void;
+  onManualPlace: (lat: number, lng: number, name: string, preset: GeofencePreset | null) => void;
   onSelectPlace: (place: SelectedPlacePayload, save: boolean) => void;
   onManualCurrent: (preset: GeofencePreset) => void;
 }
@@ -35,6 +39,9 @@ export const PlaceAddressSearch = ({
   childName,
   childLocation,
   disabled,
+  detectingPlace,
+  onAutoDetectPlace,
+  onManualPlace,
   onSelectPlace,
   onManualCurrent,
 }: PlaceAddressSearchProps) => {
@@ -160,6 +167,16 @@ export const PlaceAddressSearch = ({
 
   return (
     <div className="space-y-3">
+      <MyPlacePicker
+        childName={childName}
+        activePreset={activePreset}
+        disabled={disabled}
+        detecting={detectingPlace}
+        hasChildLocation={!!childLocation}
+        onAutoDetect={() => onAutoDetectPlace(activePreset ?? GEOFENCE_PRESETS[2])}
+        onManualSubmit={(lat, lng, name) => onManualPlace(lat, lng, name, activePreset)}
+      />
+
       <div>
         <Label className="text-xs text-muted-foreground uppercase tracking-wide">
           Умный поиск места
@@ -220,6 +237,10 @@ export const PlaceAddressSearch = ({
       {searchError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs space-y-2">
           <p className="text-amber-900">{searchError}</p>
+          <p className="text-amber-800">
+            Не нашли? Нажмите «Определить автоматически» или «Вручную» выше — координаты с GPS или
+            с карты Google.
+          </p>
           {activePreset && (
             <Button
               type="button"
@@ -230,7 +251,7 @@ export const PlaceAddressSearch = ({
               onClick={() => onManualCurrent(activePreset)}
             >
               <MapPin className="w-4 h-4 mr-1" />
-              Вручную: зона = где {childName} сейчас ({activePreset.emoji} {activePreset.name})
+              Зона = где {childName} сейчас ({activePreset.emoji} {activePreset.name})
             </Button>
           )}
         </div>

@@ -114,7 +114,7 @@ export function InvitePanel() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            На телефоне ребёнка отсканируй QR или открой ссылку (не localhost!). Ссылка ведёт на опубликованное приложение.
+            Ребёнок нажимает «Я ребёнок» → сканирует этот QR или вводит код. Email и пароль ребёнку не нужны.
           </p>
         </CardContent>
       </Card>

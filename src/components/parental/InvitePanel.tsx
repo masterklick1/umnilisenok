@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, QrCode, Share2, Trash2, RefreshCw } from "lucide-react";
+import { joinInviteUrl } from "@/lib/app-url";
 
 interface Invite {
   id: string;
@@ -72,7 +73,7 @@ export function InvitePanel() {
     load();
   };
 
-  const joinUrl = (code: string) => `${window.location.origin}/join?code=${code}`;
+  const joinUrl = (code: string) => joinInviteUrl(code);
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -113,7 +114,7 @@ export function InvitePanel() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            На телефоне ребёнка отсканируй QR, открой ссылку или введи 6-значный код — детский аккаунт создастся и автоматически привяжется к тебе.
+            На телефоне ребёнка отсканируй QR или открой ссылку (не localhost!). Ссылка ведёт на опубликованное приложение.
           </p>
         </CardContent>
       </Card>

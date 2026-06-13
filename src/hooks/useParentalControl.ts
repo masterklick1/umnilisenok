@@ -119,20 +119,27 @@ export const useParentalControl = () => {
 
       if (profileError) console.error("Profile update error:", profileError);
 
-      // Link parent-child using SECURITY DEFINER function
+      // Restore parent session BEFORE linking — signUp switches auth to child,
+      // but link_parent_child requires auth.uid() = parent_id
+      if (parentSession) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: parentSession.access_token,
+          refresh_token: parentSession.refresh_token,
+        });
+        if (sessionError) throw sessionError;
+      }
+
       const { error: linkError } = await supabase.rpc("link_parent_child", {
         p_parent_id: parentId,
         p_child_id: childId,
       });
 
-      if (linkError) throw linkError;
-
-      // Restore parent session
-      if (parentSession) {
-        await supabase.auth.setSession({
-          access_token: parentSession.access_token,
-          refresh_token: parentSession.refresh_token,
-        });
+      if (linkError) {
+        // Fallback: direct insert under parent session (RLS allows parent insert)
+        const { error: insertError } = await supabase
+          .from("parent_child_links")
+          .insert({ parent_id: parentId, child_id: childId });
+        if (insertError) throw insertError;
       }
 
       toast({
@@ -152,7 +159,10 @@ export const useParentalControl = () => {
       }
       toast({
         title: "Ошибка",
-        description: "Не удалось создать аккаунт ребёнка",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Не удалось создать аккаунт ребёнка",
         variant: "destructive",
       });
       return { error };

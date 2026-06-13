@@ -6,13 +6,25 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer, Shield, ShieldAlert, Crosshair } from "lucide-react";
+import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer, Shield, ShieldAlert, Crosshair, BookmarkPlus, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { LocationMap } from "@/components/LocationMap";
+import {
+  GEOFENCE_PRESETS,
+  formatPlaceLabel,
+  loadGeofenceLabel,
+  loadSavedPlaces,
+  persistGeofenceLabel,
+  removeSavedPlace,
+  upsertSavedPlace,
+  type GeofencePreset,
+  type SavedPlace,
+} from "@/lib/saved-places";
 
 interface Props {
   childId: string;
@@ -89,6 +101,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [geoEvents, setGeoEvents] = useState<GeofenceEvent[]>([]);
+  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
+  const [activeZoneLabel, setActiveZoneLabel] = useState<string | null>(null);
+  const [customPlaceName, setCustomPlaceName] = useState("");
 
   const loadSettings = useCallback(async () => {
     const { data } = await supabase
@@ -209,28 +224,97 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     Date.now() - new Date(location.created_at).getTime() <
       (settings?.location_interval_seconds ?? 60) * 2 * 1000;
 
-  const applyGeofencePreset = (preset: "school" | "home") => {
+  useEffect(() => {
+    setSavedPlaces(loadSavedPlaces(childId));
+    setActiveZoneLabel(loadGeofenceLabel(childId));
+  }, [childId]);
+
+  const activateGeofence = async (
+    lat: number,
+    lng: number,
+    radius_m: number,
+    label: string,
+    saveAsPlace?: SavedPlace,
+  ) => {
+    await saveSettings({
+      geofence_lat: lat,
+      geofence_lng: lng,
+      geofence_radius_m: radius_m,
+      geofence_enabled: true,
+    });
+    persistGeofenceLabel(childId, label);
+    setActiveZoneLabel(label);
+    if (saveAsPlace) {
+      setSavedPlaces(upsertSavedPlace(childId, saveAsPlace));
+    }
+  };
+
+  const applyAtCurrentLocation = (preset: GeofencePreset, alsoSave: boolean) => {
     if (!location) {
       toast({
         title: "Нет координат",
-        description: "Дождитесь, пока ребёнок откроет приложение и разрешит геопозицию.",
+        description: `Когда ${childName} будет в нужном месте — откройте приложение на его телефоне и нажмите снова.`,
         variant: "destructive",
       });
       return;
     }
-    saveSettings({
-      geofence_lat: location.latitude,
-      geofence_lng: location.longitude,
-      geofence_enabled: true,
-      geofence_radius_m: preset === "school" ? 200 : 120,
-    });
+    const label = formatPlaceLabel(preset.emoji, preset.name);
+    const place: SavedPlace = {
+      id: preset.id,
+      name: preset.name,
+      emoji: preset.emoji,
+      lat: location.latitude,
+      lng: location.longitude,
+      radius_m: preset.radius_m,
+    };
+    activateGeofence(
+      location.latitude,
+      location.longitude,
+      preset.radius_m,
+      label,
+      alsoSave ? place : undefined,
+    );
     toast({
-      title: preset === "school" ? "Геозона «Школа» установлена" : "Геозона «Дом» установлена",
-      description:
-        preset === "school"
-          ? "Радиус 200 м вокруг текущей точки. Уведомим, если ребёнок выйдет из зоны."
-          : "Радиус 120 м вокруг текущей точки.",
+      title: `Зона «${preset.name}» включена`,
+      description: `${preset.hint}. Уведомим, если ${childName} выйдет из зоны.${alsoSave ? " Место сохранено." : ""}`,
     });
+  };
+
+  const applySavedPlace = (place: SavedPlace) => {
+    const label = formatPlaceLabel(place.emoji, place.name);
+    activateGeofence(place.lat, place.lng, place.radius_m, label);
+    toast({
+      title: `Зона «${place.name}» включена`,
+      description: `Следим за сохранённым местом (радиус ${place.radius_m} м).`,
+    });
+  };
+
+  const saveCustomPlace = () => {
+    if (!location) {
+      toast({
+        title: "Нет координат",
+        description: "Дождитесь геопозиции с телефона ребёнка.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const name = customPlaceName.trim() || "Моё место";
+    const id = `custom-${Date.now()}`;
+    const place: SavedPlace = {
+      id,
+      name,
+      emoji: "📍",
+      lat: location.latitude,
+      lng: location.longitude,
+      radius_m: settings?.geofence_radius_m ?? 150,
+    };
+    activateGeofence(place.lat, place.lng, place.radius_m, formatPlaceLabel(place.emoji, place.name), place);
+    setCustomPlaceName("");
+    toast({ title: `Место «${name}» сохранено`, description: "Можно переключать одним нажатием." });
+  };
+
+  const deleteSavedPlace = (placeId: string) => {
+    setSavedPlaces(removeSavedPlace(childId, placeId));
   };
 
   // Sign URLs for fulfilled monitoring results
@@ -489,10 +573,19 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             <Shield className="w-5 h-5" /> Безопасная зона (геозона)
           </CardTitle>
           <CardDescription>
-            Уведомление, если ребёнок выходит за пределы заданного круга.
+            Когда ребёнок в нужном месте — выберите «Садик», «Школа» или сохраните своё. Уведомим при
+            выходе из зоны.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {activeZoneLabel && settings?.geofence_enabled && (
+            <div className="rounded-lg bg-primary/10 px-3 py-2 text-sm">
+              <span className="font-medium">Сейчас следим: </span>
+              {activeZoneLabel}
+              <span className="text-muted-foreground"> · радиус {settings.geofence_radius_m} м</span>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <Label htmlFor="geofence-enabled" className="cursor-pointer">
               Включить геозону
@@ -505,47 +598,130 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             />
           </div>
 
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!location || savingSettings}
-              onClick={() => applyGeofencePreset("school")}
-            >
-              🏫 Школа (здесь, 200 м)
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!location || savingSettings}
-              onClick={() => applyGeofencePreset("home")}
-            >
-              🏠 Дом (здесь, 120 м)
-            </Button>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+              Где ребёнок сейчас — поставить зону
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Ребёнок должен быть в этом месте (садик, школа…). Нажмите кнопку — зона запомнится здесь.
+              Долгое нажатие не нужно: «+» сохранит место навсегда.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {GEOFENCE_PRESETS.map((preset) => (
+                <div key={preset.id} className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs h-auto py-2 px-2"
+                    disabled={!location || savingSettings}
+                    onClick={() => applyAtCurrentLocation(preset, false)}
+                  >
+                    {preset.emoji} {preset.name}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    disabled={!location || savingSettings}
+                    title={`Сохранить «${preset.name}» навсегда`}
+                    onClick={() => applyAtCurrentLocation(preset, true)}
+                  >
+                    <BookmarkPlus className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-2 border-t">
+            <Label htmlFor="custom-place">Своё название места</Label>
+            <div className="flex gap-2">
+              <Input
+                id="custom-place"
+                placeholder="Например: Садик на Ленина"
+                value={customPlaceName}
+                onChange={(e) => setCustomPlaceName(e.target.value)}
+                disabled={!location || savingSettings}
+              />
+              <Button
+                variant="secondary"
+                disabled={!location || savingSettings}
+                onClick={saveCustomPlace}
+                className="shrink-0 gap-1"
+              >
+                <BookmarkPlus className="w-4 h-4" />
+                Сохранить
+              </Button>
+            </div>
+          </div>
+
+          {savedPlaces.length > 0 && (
+            <div className="space-y-2 pt-2 border-t">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                Мои сохранённые места
+              </Label>
+              <ScrollArea className="max-h-[180px]">
+                <div className="space-y-2 pr-2">
+                  {savedPlaces.map((place) => (
+                    <div
+                      key={place.id}
+                      className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 justify-start text-xs h-auto py-2"
+                        disabled={savingSettings}
+                        onClick={() => applySavedPlace(place)}
+                      >
+                        {place.emoji} {place.name}
+                        <span className="text-muted-foreground ml-1">· {place.radius_m} м</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-destructive"
+                        onClick={() => deleteSavedPlace(place.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          <div className="flex gap-2 flex-wrap pt-2 border-t">
             <Button
               variant="outline"
               size="sm"
               disabled={!location || savingSettings}
               onClick={() =>
                 location &&
-                saveSettings({
-                  geofence_lat: location.latitude,
-                  geofence_lng: location.longitude,
-                  geofence_enabled: true,
-                })
+                activateGeofence(
+                  location.latitude,
+                  location.longitude,
+                  settings?.geofence_radius_m ?? 300,
+                  "📍 Текущее место",
+                )
               }
             >
               <Crosshair className="w-4 h-4 mr-1" />
-              Текущее место
+              Зона = где сейчас
             </Button>
             {settings?.geofence_lat != null && (
               <Button
                 variant="ghost"
                 size="sm"
                 disabled={savingSettings}
-                onClick={() => saveSettings({ geofence_lat: null, geofence_lng: null, geofence_enabled: false })}
+                onClick={() => {
+                  saveSettings({ geofence_lat: null, geofence_lng: null, geofence_enabled: false });
+                  persistGeofenceLabel(childId, null);
+                  setActiveZoneLabel(null);
+                }}
               >
-                Очистить
+                Очистить зону
               </Button>
             )}
           </div>
@@ -574,7 +750,8 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
 
           {settings?.geofence_enabled && settings.geofence_lat != null && (
             <p className="text-xs text-muted-foreground font-mono">
-              Центр: {settings.geofence_lat.toFixed(5)}, {settings.geofence_lng?.toFixed(5)}
+              {activeZoneLabel ? `${activeZoneLabel} · ` : ""}
+              {settings.geofence_lat.toFixed(5)}, {settings.geofence_lng?.toFixed(5)}
             </p>
           )}
 

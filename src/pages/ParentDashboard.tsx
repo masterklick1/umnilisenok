@@ -540,9 +540,9 @@ export default function ParentDashboard() {
                     <CardContent className="py-3 px-4 text-sm">
                       <p className="font-medium">📱 {selectedChildData.first_name} на своём телефоне</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Карта обновляется автоматически. Поставьте геозону «Школа» — получите
-                        уведомление, если ребёнок выйдет из зоны. Кнопка «Где он?» — мгновенная
-                        проверка места.
+                        Карта обновляется автоматически. Поставьте зону «Садик», «Школа» или своё
+                        место — получите уведомление, если ребёнок выйдет. Кнопка «Где сейчас?» —
+                        мгновенная проверка.
                       </p>
                     </CardContent>
                   </Card>

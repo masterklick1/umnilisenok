@@ -45,7 +45,7 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     { type: "puzzles" as ExerciseType, title: "Головоломки", description: "Что дальше?", emoji: "🧩" },
     { type: "spatial" as ExerciseType, title: "Пространство", description: "Зеркальные фигуры", emoji: "🎲" },
     { type: "division" as ExerciseType, title: "Деление", description: "Раздели поровну", emoji: "➗" },
-    { type: "addbig" as ExerciseType, title: "Счёт до 100", description: "Сложение больших чисел", emoji: "➕" },
+    { type: "addbig" as ExerciseType, title: "Сложение до 100", description: "Складываем большие числа", emoji: "➕" },
   ];
 
   const count100Data = useMemo(() => {
@@ -223,7 +223,7 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     const r = divisionData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-xl font-semibold mb-4">Раздели поровну на {r.a} частей</h2>
+        <h2 className="text-xl font-semibold mb-4">Раздели поровну</h2>
         <div className="text-6xl font-bold text-primary mb-8">{r.c} ÷ {r.a} = ?</div>
         <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
           {r.opts.map((o) => (

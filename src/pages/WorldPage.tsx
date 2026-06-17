@@ -311,7 +311,7 @@ export default function WorldPage() {
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
   const { addStars } = useUserProgress();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [mode, setMode] = useState<"learn" | "quiz" | null>(null);
+  const [mode, setMode] = useState<"learn" | "quiz" | "describe" | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [quizOptions, setQuizOptions] = useState<Item[]>([]);
   const [score, setScore] = useState(0);
@@ -334,6 +334,15 @@ export default function WorldPage() {
 
   const startQuiz = () => {
     setMode("quiz");
+    setCurrentIndex(0);
+    setScore(0);
+    setTotal(0);
+    setShowResult(null);
+    generateNewQuestion();
+  };
+
+  const startDescribe = () => {
+    setMode("describe");
     setCurrentIndex(0);
     setScore(0);
     setTotal(0);
@@ -462,23 +471,37 @@ export default function WorldPage() {
               ← Выбрать тему
             </Button>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card 
-                className="p-8 text-center hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20"
+                className="group relative overflow-hidden p-8 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.03] transition-all duration-300 bg-gradient-to-br from-green-100 to-emerald-100"
                 onClick={startLearning}
               >
-                <div className="text-5xl mb-4">📖</div>
-                <h3 className="text-2xl font-bold mb-2">Учить</h3>
-                <p className="text-muted-foreground">Познакомься с темой "{selectedTopic.name}"</p>
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+                <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">📖</div>
+                <h3 className="relative z-10 text-2xl font-extrabold mb-2">Учить</h3>
+                <p className="relative z-10 text-muted-foreground">Познакомься с темой "{selectedTopic.name}"</p>
               </Card>
 
               <Card 
-                className="p-8 text-center hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-secondary/10 to-secondary/5 border-2 border-secondary/20"
+                className="group relative overflow-hidden p-8 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.03] transition-all duration-300 bg-gradient-to-br from-sky-100 to-cyan-100"
+                style={{ animationDelay: "70ms" }}
                 onClick={startQuiz}
               >
-                <div className="text-5xl mb-4">🎯</div>
-                <h3 className="text-2xl font-bold mb-2">Викторина</h3>
-                <p className="text-muted-foreground">Проверь свои знания</p>
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+                <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">🎯</div>
+                <h3 className="relative z-10 text-2xl font-extrabold mb-2">Викторина</h3>
+                <p className="relative z-10 text-muted-foreground">Угадай предмет по картинке</p>
+              </Card>
+
+              <Card 
+                className="group relative overflow-hidden p-8 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.03] transition-all duration-300 bg-gradient-to-br from-amber-100 to-orange-100"
+                style={{ animationDelay: "140ms" }}
+                onClick={startDescribe}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+                <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">🔎</div>
+                <h3 className="relative z-10 text-2xl font-extrabold mb-2">Угадай по описанию</h3>
+                <p className="relative z-10 text-muted-foreground">Выбери по подсказке</p>
               </Card>
             </div>
           </div>
@@ -555,6 +578,58 @@ export default function WorldPage() {
                     }`}
                   >
                     {option.name}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+
+            {showResult !== null && (
+              <div className={`text-center p-6 rounded-lg animate-scale-in ${
+                showResult ? "bg-green-100 dark:bg-green-900/20" : "bg-red-100 dark:bg-red-900/20"
+              }`}>
+                <div className="text-6xl mb-2">
+                  {showResult ? "🎉" : "💪"}
+                </div>
+                <div className="text-2xl font-bold">
+                  {showResult ? "Правильно!" : "Попробуй ещё!"}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {mode === "describe" && currentItem && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow">
+              <div className="text-lg font-semibold">
+                Счёт: {score} / {total}
+              </div>
+              <Button variant="outline" onClick={resetMode}>
+                Выбрать режим
+              </Button>
+            </div>
+
+            <Card className="p-8 text-center">
+              <div className="text-2xl mb-4 text-muted-foreground">Кто или что это?</div>
+              <div className="text-2xl font-semibold mb-6">«{currentItem.description}»</div>
+              <Button size="sm" variant="outline" className="mb-8" onClick={() => speak(itemSound(currentItem))}>
+                <Volume2 className="mr-2 h-4 w-4" /> Послушать
+              </Button>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
+                {quizOptions.map((option) => (
+                  <Button
+                    key={option.name}
+                    size="lg"
+                    onClick={() => checkAnswer(option)}
+                    disabled={showResult !== null}
+                    className={`text-5xl h-24 transition-all ${
+                      showResult !== null && option.name === currentItem.name
+                        ? "bg-green-500 hover:bg-green-600"
+                        : ""
+                    }`}
+                  >
+                    {option.emoji}
                   </Button>
                 ))}
               </div>

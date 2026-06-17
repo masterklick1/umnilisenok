@@ -5,6 +5,7 @@ import { ArrowLeft, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useUserProgress } from "@/hooks/useUserProgress";
 import { speak } from "@/lib/sound";
 
 type Letter = {
@@ -68,6 +69,7 @@ export default function AlphabetPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { logCorrectAnswer, logWrongAnswer, logActivity } = useActivityTracker();
+  const { addStars } = useUserProgress();
   const [mode, setMode] = useState<"learn" | "quiz" | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [quizOptions, setQuizOptions] = useState<Letter[]>([]);
@@ -120,11 +122,12 @@ export default function AlphabetPage() {
     
     if (correct) {
       setScore(score + 1);
+      addStars(1, "alphabet");
       logCorrectAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter });
       speak("Правильно! Молодец!");
       toast({
         title: "Правильно! 🎉",
-        description: "Отличная работа!",
+        description: "Отличная работа! +1 ⭐",
       });
     } else {
       logWrongAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter, selected: selected.letter });

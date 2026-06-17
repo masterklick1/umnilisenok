@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useUserProgress } from "@/hooks/useUserProgress";
 import { speak } from "@/lib/sound";
 
 type Mode = "odd" | "sequence" | "memory" | null;
@@ -38,6 +39,20 @@ const oddPuzzles = [
   { items: ["🚗", "🚌", "🚲", "🐟"], odd: 3, hint: "Три транспорта и рыба" },
   { items: ["☀️", "⭐", "🌙", "🍎"], odd: 3, hint: "Три на небе и яблоко" },
   { items: ["🔴", "🔴", "🔵", "🔴"], odd: 2, hint: "Три красных и один синий" },
+  { items: ["🐝", "🦋", "🐞", "🐟"], odd: 3, hint: "Три насекомых и рыбка" },
+  { items: ["🚗", "🐱", "🚕", "🚙"], odd: 1, hint: "Три машины и кот" },
+  { items: ["🌹", "🐶", "🌻", "🌷"], odd: 1, hint: "Три цветка и собака" },
+  { items: ["🥕", "🥦", "🎈", "🌽"], odd: 2, hint: "Три овоща и шарик" },
+  { items: ["✈️", "🚁", "🐢", "🚀"], odd: 2, hint: "Три летающих и черепаха" },
+  { items: ["📕", "📗", "🍔", "📘"], odd: 2, hint: "Три книги и бургер" },
+  { items: ["🎸", "🥁", "🎺", "🍦"], odd: 3, hint: "Три инструмента и мороженое" },
+  { items: ["🦁", "🐯", "🐻", "🚲"], odd: 3, hint: "Три зверя и велосипед" },
+  { items: ["🐟", "🐠", "🐬", "🐔"], odd: 3, hint: "Три из моря и курица" },
+  { items: ["🍓", "🍒", "⚽", "🍑"], odd: 2, hint: "Три ягоды и мяч" },
+  { items: ["🔺", "🔺", "🔵", "🔺"], odd: 2, hint: "Три треугольника и круг" },
+  { items: ["👕", "🍕", "👖", "🧦"], odd: 1, hint: "Три вещи и пицца" },
+  { items: ["🍇", "🍉", "🐮", "🍍"], odd: 2, hint: "Три фрукта и корова" },
+  { items: ["⭐", "🚌", "🌙", "☀️"], odd: 1, hint: "Три на небе и автобус" },
 ];
 
 const OddOneOut = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
@@ -86,6 +101,18 @@ const sequencePuzzles = [
   { seq: ["🟡", "🟡", "🟢", "🟡", "🟡", "?"], options: ["🟡", "🟢", "🔵"], answer: 1 },
   { seq: ["1️⃣", "2️⃣", "3️⃣", "?"], options: ["5️⃣", "4️⃣", "6️⃣"], answer: 1 },
   { seq: ["🍎", "🍌", "🍎", "🍌", "?"], options: ["🍇", "🍎", "🍓"], answer: 1 },
+  { seq: ["🟢", "🟡", "🟢", "🟡", "?"], options: ["🟢", "🟡", "🔴"], answer: 0 },
+  { seq: ["🔺", "🔵", "🔺", "🔵", "?"], options: ["🔵", "🔺", "🟢"], answer: 1 },
+  { seq: ["🐰", "🐰", "🐢", "🐰", "🐰", "?"], options: ["🐰", "🐢", "🐱"], answer: 1 },
+  { seq: ["☀️", "🌙", "☀️", "🌙", "?"], options: ["⭐", "☀️", "🌙"], answer: 1 },
+  { seq: ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "?"], options: ["6️⃣", "5️⃣", "7️⃣"], answer: 1 },
+  { seq: ["🔴", "🟠", "🟡", "🟢", "?"], options: ["🔵", "🟤", "⚪"], answer: 0 },
+  { seq: ["🐶", "🐱", "🐭", "🐶", "🐱", "?"], options: ["🐭", "🐶", "🐱"], answer: 0 },
+  { seq: ["⬆️", "⬇️", "⬆️", "⬇️", "?"], options: ["➡️", "⬆️", "⬇️"], answer: 1 },
+  { seq: ["🥝", "🍓", "🥝", "🍓", "?"], options: ["🍓", "🥝", "🍒"], answer: 1 },
+  { seq: ["😀", "😴", "😀", "😴", "?"], options: ["😀", "😴", "😡"], answer: 0 },
+  { seq: ["🟦", "🟦", "🟥", "🟦", "🟦", "?"], options: ["🟦", "🟥", "🟩"], answer: 1 },
+  { seq: ["🍦", "🍩", "🍦", "🍩", "?"], options: ["🍰", "🍦", "🍩"], answer: 1 },
 ];
 
 const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
@@ -208,6 +235,7 @@ export default function IntellectPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
+  const { addStars } = useUserProgress();
   const [mode, setMode] = useState<Mode>(null);
   const [score, setScore] = useState(0);
 
@@ -215,8 +243,9 @@ export default function IntellectPage() {
     if (correct) {
       setScore((s) => s + 1);
       playJoy();
+      addStars(1, null);
       logCorrectAnswer({ section: "intellect", mode });
-      toast({ title: "Правильно! 🎉" });
+      toast({ title: "Правильно! 🎉", description: "+1 ⭐" });
     } else {
       speak("Попробуй ещё раз!");
       logWrongAnswer({ section: "intellect", mode });

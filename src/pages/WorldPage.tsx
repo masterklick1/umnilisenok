@@ -5,6 +5,7 @@ import { ArrowLeft, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useUserProgress } from "@/hooks/useUserProgress";
 import { speak } from "@/lib/sound";
 
 type Item = {
@@ -35,6 +36,10 @@ const topics: Topic[] = [
       { name: "Медведь", emoji: "🐻", description: "Большой и сильный, любит мёд", sound: "Это медведь. Большой и сильный, любит мёд" },
       { name: "Рыба", emoji: "🐟", description: "Живёт в воде", sound: "Это рыба. Живёт в воде" },
       { name: "Птица", emoji: "🐦", description: "Умеет летать", sound: "Это птица. Умеет летать" },
+      { name: "Тигр", emoji: "🐯", description: "Полосатый хищник из джунглей", sound: "Это тигр. Полосатый хищник из джунглей" },
+      { name: "Обезьяна", emoji: "🐵", description: "Любит бананы и прыгает по деревьям", sound: "Это обезьяна. Любит бананы и прыгает по деревьям" },
+      { name: "Лягушка", emoji: "🐸", description: "Прыгает и говорит 'ква'", sound: "Это лягушка. Прыгает и говорит ква" },
+      { name: "Пингвин", emoji: "🐧", description: "Живёт там, где холодно", sound: "Это пингвин. Живёт там, где холодно" },
     ]
   },
   {
@@ -50,6 +55,10 @@ const topics: Topic[] = [
       { name: "Радуга", emoji: "🌈", description: "Появляется после дождя", sound: "Это радуга. Появляется после дождя" },
       { name: "Гриб", emoji: "🍄", description: "Растёт в лесу", sound: "Это гриб. Растёт в лесу" },
       { name: "Яблоко", emoji: "🍎", description: "Вкусный фрукт", sound: "Это яблоко. Вкусный фрукт" },
+      { name: "Луна", emoji: "🌙", description: "Светит ночью на небе", sound: "Это луна. Светит ночью на небе" },
+      { name: "Звезда", emoji: "⭐", description: "Сверкает в ночном небе", sound: "Это звезда. Сверкает в ночном небе" },
+      { name: "Снег", emoji: "❄️", description: "Белый и холодный, падает зимой", sound: "Это снег. Белый и холодный, падает зимой" },
+      { name: "Гора", emoji: "⛰️", description: "Очень высокая и каменная", sound: "Это гора. Очень высокая и каменная" },
     ]
   },
   {
@@ -65,6 +74,10 @@ const topics: Topic[] = [
       { name: "Велосипед", emoji: "🚲", description: "Крутишь педали и едешь", sound: "Это велосипед. Крутишь педали и едешь" },
       { name: "Скорая помощь", emoji: "🚑", description: "Везёт больных в больницу", sound: "Это скорая помощь. Везёт больных в больницу" },
       { name: "Пожарная машина", emoji: "🚒", description: "Тушит пожары", sound: "Это пожарная машина. Тушит пожары" },
+      { name: "Вертолёт", emoji: "🚁", description: "Летает с большими лопастями", sound: "Это вертолёт. Летает с большими лопастями" },
+      { name: "Ракета", emoji: "🚀", description: "Летит в космос", sound: "Это ракета. Летит в космос" },
+      { name: "Трактор", emoji: "🚜", description: "Работает в поле", sound: "Это трактор. Работает в поле" },
+      { name: "Метро", emoji: "🚇", description: "Поезд под землёй", sound: "Это метро. Поезд под землёй" },
     ]
   },
   {
@@ -80,6 +93,38 @@ const topics: Topic[] = [
       { name: "Полицейский", emoji: "👮", description: "Следит за порядком", sound: "Это полицейский. Следит за порядком" },
       { name: "Космонавт", emoji: "👨‍🚀", description: "Летает в космос", sound: "Это космонавт. Летает в космос" },
       { name: "Художник", emoji: "👨‍🎨", description: "Рисует картины", sound: "Это художник. Рисует картины" },
+      { name: "Фермер", emoji: "🧑‍🌾", description: "Выращивает овощи и ухаживает за животными", sound: "Это фермер. Выращивает овощи и ухаживает за животными" },
+      { name: "Учёный", emoji: "🧑‍🔬", description: "Делает опыты и открытия", sound: "Это учёный. Делает опыты и открытия" },
+    ]
+  },
+  {
+    id: "food",
+    name: "Еда",
+    emoji: "🍔",
+    items: [
+      { name: "Хлеб", emoji: "🍞", description: "Его едят каждый день", sound: "Это хлеб. Его едят каждый день" },
+      { name: "Сыр", emoji: "🧀", description: "Жёлтый и вкусный", sound: "Это сыр. Жёлтый и вкусный" },
+      { name: "Яйцо", emoji: "🥚", description: "Из него готовят омлет", sound: "Это яйцо. Из него готовят омлет" },
+      { name: "Молоко", emoji: "🥛", description: "Белое и полезное", sound: "Это молоко. Белое и полезное" },
+      { name: "Суп", emoji: "🍲", description: "Тёплый и сытный", sound: "Это суп. Тёплый и сытный" },
+      { name: "Пицца", emoji: "🍕", description: "Любимое блюдо многих детей", sound: "Это пицца. Любимое блюдо многих детей" },
+      { name: "Мороженое", emoji: "🍦", description: "Холодное и сладкое", sound: "Это мороженое. Холодное и сладкое" },
+      { name: "Банан", emoji: "🍌", description: "Жёлтый и сладкий фрукт", sound: "Это банан. Жёлтый и сладкий фрукт" },
+    ]
+  },
+  {
+    id: "body",
+    name: "Части тела",
+    emoji: "👀",
+    items: [
+      { name: "Глаза", emoji: "👀", description: "Ими мы видим", sound: "Это глаза. Ими мы видим" },
+      { name: "Рука", emoji: "✋", description: "Ею мы берём предметы", sound: "Это рука. Ею мы берём предметы" },
+      { name: "Нога", emoji: "🦶", description: "Ею мы ходим и бегаем", sound: "Это нога. Ею мы ходим и бегаем" },
+      { name: "Ухо", emoji: "👂", description: "Им мы слышим звуки", sound: "Это ухо. Им мы слышим звуки" },
+      { name: "Нос", emoji: "👃", description: "Им мы чувствуем запахи", sound: "Это нос. Им мы чувствуем запахи" },
+      { name: "Рот", emoji: "👄", description: "Им мы говорим и едим", sound: "Это рот. Им мы говорим и едим" },
+      { name: "Зуб", emoji: "🦷", description: "Им мы жуём еду", sound: "Это зуб. Им мы жуём еду" },
+      { name: "Сердце", emoji: "❤️", description: "Оно стучит у нас в груди", sound: "Это сердце. Оно стучит у нас в груди" },
     ]
   },
 ];
@@ -104,6 +149,7 @@ export default function WorldPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
+  const { addStars } = useUserProgress();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [mode, setMode] = useState<"learn" | "quiz" | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -169,10 +215,11 @@ export default function WorldPage() {
     if (correct) {
       setScore(score + 1);
       speak("Правильно! Молодец!");
-      logCorrectAnswer({ topic: selectedTopic.id, item: selected.name });
+      addStars(1, "world");
+      logCorrectAnswer({ section: "world", topic: selectedTopic.id, item: selected.name });
       toast({
         title: "Правильно! 🎉",
-        description: "Отличная работа!",
+        description: "Отличная работа! +1 ⭐",
       });
     } else {
       speak("Не правильно. Ещё раз подумай!");

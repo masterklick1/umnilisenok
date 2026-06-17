@@ -352,45 +352,31 @@ export default function IntellectPage() {
         </div>
 
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🧩</div>
-          <h1 className="text-4xl font-bold mb-2">Интеллект</h1>
+          <div className="text-6xl mb-4 animate-bounce-gentle">🧩</div>
+          <h1 className="text-4xl font-extrabold text-gradient mb-2">Интеллект</h1>
           <p className="text-lg text-muted-foreground">Логика, внимание и память</p>
         </div>
 
         {!mode && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card
-              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
-              onClick={() => setMode("odd")}
-            >
-              <div className="text-5xl mb-3">🔍</div>
-              <h3 className="text-xl font-bold">Найди лишнее</h3>
-              <p className="text-sm text-muted-foreground mt-2">Внимание</p>
-            </Card>
-            <Card
-              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
-              onClick={() => setMode("sequence")}
-            >
-              <div className="text-5xl mb-3">➡️</div>
-              <h3 className="text-xl font-bold">Продолжи ряд</h3>
-              <p className="text-sm text-muted-foreground mt-2">Логика</p>
-            </Card>
-            <Card
-              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
-              onClick={() => setMode("memory")}
-            >
-              <div className="text-5xl mb-3">🧠</div>
-              <h3 className="text-xl font-bold">Найди пару</h3>
-              <p className="text-sm text-muted-foreground mt-2">Память</p>
-            </Card>
-            <Card
-              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
-              onClick={() => setMode("count")}
-            >
-              <div className="text-5xl mb-3">🔢</div>
-              <h3 className="text-xl font-bold">Сосчитай</h3>
-              <p className="text-sm text-muted-foreground mt-2">Счёт</p>
-            </Card>
+            {[
+              { m: "odd" as Mode, emoji: "🔍", title: "Найди лишнее", tag: "Внимание", grad: "from-amber-100 to-orange-100" },
+              { m: "sequence" as Mode, emoji: "➡️", title: "Продолжи ряд", tag: "Логика", grad: "from-sky-100 to-blue-100" },
+              { m: "memory" as Mode, emoji: "🧠", title: "Найди пару", tag: "Память", grad: "from-fuchsia-100 to-purple-100" },
+              { m: "count" as Mode, emoji: "🔢", title: "Сосчитай", tag: "Счёт", grad: "from-emerald-100 to-teal-100" },
+            ].map((g, i) => (
+              <Card
+                key={g.title}
+                className={`group relative overflow-hidden p-6 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.05] transition-all duration-300 bg-gradient-to-br ${g.grad}`}
+                style={{ animationDelay: `${i * 60}ms` }}
+                onClick={() => setMode(g.m)}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+                <div className="relative z-10 text-5xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{g.emoji}</div>
+                <h3 className="relative z-10 text-lg font-extrabold">{g.title}</h3>
+                <p className="relative z-10 text-sm text-muted-foreground mt-1 font-medium">{g.tag}</p>
+              </Card>
+            ))}
           </div>
         )}
 

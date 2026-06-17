@@ -169,7 +169,7 @@ export default function AlphabetPage() {
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">📚</div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-extrabold text-gradient mb-2">
             Алфавит
           </h1>
           <p className="text-lg text-muted-foreground">
@@ -180,21 +180,24 @@ export default function AlphabetPage() {
         {!mode && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
             <Card 
-              className="p-8 text-center hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20"
+              className="group relative overflow-hidden p-8 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.03] transition-all duration-300 bg-gradient-to-br from-rose-100 to-orange-100"
               onClick={startLearning}
             >
-              <div className="text-5xl mb-4">📖</div>
-              <h3 className="text-2xl font-bold mb-2">Учить буквы</h3>
-              <p className="text-muted-foreground">Познакомься со всеми буквами алфавита</p>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+              <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">📖</div>
+              <h3 className="relative z-10 text-2xl font-extrabold mb-2">Учить буквы</h3>
+              <p className="relative z-10 text-muted-foreground">Познакомься со всеми буквами алфавита</p>
             </Card>
 
             <Card 
-              className="p-8 text-center hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-secondary/10 to-secondary/5 border-2 border-secondary/20"
+              className="group relative overflow-hidden p-8 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.03] transition-all duration-300 bg-gradient-to-br from-sky-100 to-cyan-100"
+              style={{ animationDelay: "80ms" }}
               onClick={startQuiz}
             >
-              <div className="text-5xl mb-4">🎯</div>
-              <h3 className="text-2xl font-bold mb-2">Викторина</h3>
-              <p className="text-muted-foreground">Проверь свои знания букв</p>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+              <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">🎯</div>
+              <h3 className="relative z-10 text-2xl font-extrabold mb-2">Викторина</h3>
+              <p className="relative z-10 text-muted-foreground">Проверь свои знания букв</p>
             </Card>
           </div>
         )}

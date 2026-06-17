@@ -276,6 +276,19 @@ const topics: Topic[] = [
   },
 ];
 
+const topicGradients = [
+  "from-blue-100 to-cyan-100",
+  "from-green-100 to-emerald-100",
+  "from-amber-100 to-orange-100",
+  "from-purple-100 to-pink-100",
+  "from-rose-100 to-red-100",
+  "from-teal-100 to-cyan-100",
+  "from-fuchsia-100 to-purple-100",
+  "from-lime-100 to-green-100",
+  "from-sky-100 to-blue-100",
+  "from-yellow-100 to-amber-100",
+];
+
 const generateQuizOptions = (correctItem: Item, allItems: Item[]): Item[] => {
   const options = [correctItem];
   const availableItems = allItems.filter(item => item.name !== correctItem.name);
@@ -417,7 +430,7 @@ export default function WorldPage() {
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">🌍</div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-extrabold text-gradient mb-2">
             Окружающий мир
           </h1>
           <p className="text-lg text-muted-foreground">
@@ -426,16 +439,18 @@ export default function WorldPage() {
         </div>
 
         {!selectedTopic && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-8">
-            {topics.map((topic) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mt-8">
+            {topics.map((topic, i) => (
               <Card
                 key={topic.id}
-                className="p-8 text-center hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20 hover:border-primary/40"
+                className={`group relative overflow-hidden p-6 sm:p-8 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.04] transition-all duration-300 bg-gradient-to-br ${topicGradients[i % topicGradients.length]}`}
+                style={{ animationDelay: `${i * 50}ms` }}
                 onClick={() => selectTopic(topic)}
               >
-                <div className="text-5xl mb-4">{topic.emoji}</div>
-                <h3 className="text-2xl font-bold">{topic.name}</h3>
-                <p className="text-muted-foreground mt-2">{topic.items.length} карточек</p>
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+                <div className="relative z-10 text-5xl sm:text-6xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{topic.emoji}</div>
+                <h3 className="relative z-10 text-xl sm:text-2xl font-extrabold">{topic.name}</h3>
+                <p className="relative z-10 text-muted-foreground mt-1 text-sm font-medium">{topic.items.length} карточек</p>
               </Card>
             ))}
           </div>

@@ -25,8 +25,9 @@ const CreativityPage = () => {
             <ArrowLeft className="w-5 h-5" />
             Назад
           </Button>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            🎨 Творчество
+          <h1 className="text-3xl font-extrabold flex items-center gap-2">
+            <span>🎨</span>
+            <span className="text-gradient">Творчество</span>
           </h1>
           <div className="w-24" />
         </div>

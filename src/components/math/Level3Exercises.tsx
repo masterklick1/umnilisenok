@@ -7,7 +7,7 @@ import { useUserProgress } from "@/hooks/useUserProgress";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { speak } from "@/lib/sound";
 
-type ExerciseType = "count20" | "problems" | "measurement" | "charts";
+type ExerciseType = "count20" | "problems" | "measurement" | "charts" | "doubles" | "missing";
 
 interface Level3ExercisesProps {
   onBack: () => void;
@@ -45,6 +45,8 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
     { type: "problems" as ExerciseType, title: "Решаем задачи", description: "Сложение и вычитание", emoji: "📝" },
     { type: "measurement" as ExerciseType, title: "Измеряем", description: "Длина и размер", emoji: "📏" },
     { type: "charts" as ExerciseType, title: "Графики", description: "Простые диаграммы", emoji: "📊" },
+    { type: "doubles" as ExerciseType, title: "Удвоение", description: "Сколько станет вдвое?", emoji: "✖️" },
+    { type: "missing" as ExerciseType, title: "Найди пропуск", description: "Какого числа не хватает?", emoji: "❓" },
   ];
 
   const count20Data = useMemo(() => {
@@ -96,6 +98,25 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
     const values = labels.map(() => Math.floor(Math.random() * 5) + 1);
     const maxIdx = values.indexOf(Math.max(...values));
     return { labels, values, correct: labels[maxIdx] };
+  }, [currentExercise, round]);
+
+  const doublesData = useMemo(() => {
+    if (currentExercise !== "doubles") return null;
+    const n = Math.floor(Math.random() * 9) + 1;
+    const ans = n * 2;
+    const opts = new Set<number>([ans]);
+    while (opts.size < 4) opts.add(Math.max(1, Math.min(20, ans + Math.floor(Math.random() * 7) - 3)));
+    return { n, ans, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [currentExercise, round]);
+
+  const missingData = useMemo(() => {
+    if (currentExercise !== "missing") return null;
+    const a = Math.floor(Math.random() * 8) + 1;
+    const b = Math.floor(Math.random() * 8) + 1;
+    const c = a + b;
+    const opts = new Set<number>([b]);
+    while (opts.size < 4) opts.add(Math.max(1, Math.min(16, b + Math.floor(Math.random() * 7) - 3)));
+    return { a, b, c, opts: [...opts].sort(() => Math.random() - 0.5) };
   }, [currentExercise, round]);
 
   if (!currentExercise) {
@@ -213,6 +234,40 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
           {r.labels.map((l) => (
             <Button key={l} variant="outline" className="h-16 text-4xl"
               onClick={() => handle(l === r.correct, r.correct, "charts")}>{l}</Button>
+          ))}
+        </div>
+      </Wrapper>
+    );
+  }
+
+  // ===== Удвоение =====
+  if (currentExercise === "doubles" && doublesData) {
+    const r = doublesData;
+    return (
+      <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
+        <h2 className="text-2xl font-bold mb-6">Удвой число!</h2>
+        <div className="text-6xl font-bold text-primary mb-8">{r.n} + {r.n} = ?</div>
+        <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+          {r.opts.map((o) => (
+            <Button key={o} size="lg" className="text-2xl h-16"
+              onClick={() => handle(o === r.ans, String(r.ans), "doubles")}>{o}</Button>
+          ))}
+        </div>
+      </Wrapper>
+    );
+  }
+
+  // ===== Найди пропуск =====
+  if (currentExercise === "missing" && missingData) {
+    const r = missingData;
+    return (
+      <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
+        <h2 className="text-2xl font-bold mb-6">Какого числа не хватает?</h2>
+        <div className="text-5xl font-bold text-primary mb-8">{r.a} + ❓ = {r.c}</div>
+        <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+          {r.opts.map((o) => (
+            <Button key={o} size="lg" className="text-2xl h-16"
+              onClick={() => handle(o === r.b, String(r.b), "missing")}>{o}</Button>
           ))}
         </div>
       </Wrapper>

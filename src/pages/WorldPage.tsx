@@ -12,7 +12,7 @@ type Item = {
   name: string;
   emoji: string;
   description: string;
-  sound: string;
+  sound?: string;
 };
 
 type Topic = {
@@ -22,110 +22,257 @@ type Topic = {
   items: Item[];
 };
 
+const itemSound = (item: Item) => item.sound || `Это ${item.name}. ${item.description}`;
+
 const topics: Topic[] = [
   {
     id: "animals",
     name: "Животные",
     emoji: "🐾",
     items: [
-      { name: "Кот", emoji: "🐱", description: "Домашнее животное, говорит 'мяу'", sound: "Это кот. Домашнее животное, говорит мяу" },
-      { name: "Собака", emoji: "🐶", description: "Домашнее животное, говорит 'гав'", sound: "Это собака. Домашнее животное, говорит гав" },
-      { name: "Корова", emoji: "🐮", description: "Даёт молоко, говорит 'му'", sound: "Это корова. Даёт молоко, говорит му" },
-      { name: "Лев", emoji: "🦁", description: "Царь зверей, живёт в Африке", sound: "Это лев. Царь зверей, живёт в Африке" },
-      { name: "Слон", emoji: "🐘", description: "Самое большое животное на суше", sound: "Это слон. Самое большое животное на суше" },
-      { name: "Медведь", emoji: "🐻", description: "Большой и сильный, любит мёд", sound: "Это медведь. Большой и сильный, любит мёд" },
-      { name: "Рыба", emoji: "🐟", description: "Живёт в воде", sound: "Это рыба. Живёт в воде" },
-      { name: "Птица", emoji: "🐦", description: "Умеет летать", sound: "Это птица. Умеет летать" },
-      { name: "Тигр", emoji: "🐯", description: "Полосатый хищник из джунглей", sound: "Это тигр. Полосатый хищник из джунглей" },
-      { name: "Обезьяна", emoji: "🐵", description: "Любит бананы и прыгает по деревьям", sound: "Это обезьяна. Любит бананы и прыгает по деревьям" },
-      { name: "Лягушка", emoji: "🐸", description: "Прыгает и говорит 'ква'", sound: "Это лягушка. Прыгает и говорит ква" },
-      { name: "Пингвин", emoji: "🐧", description: "Живёт там, где холодно", sound: "Это пингвин. Живёт там, где холодно" },
-    ]
+      { name: "Кот", emoji: "🐱", description: "Домашнее животное, говорит 'мяу'" },
+      { name: "Собака", emoji: "🐶", description: "Домашнее животное, говорит 'гав'" },
+      { name: "Корова", emoji: "🐮", description: "Даёт молоко, говорит 'му'" },
+      { name: "Лев", emoji: "🦁", description: "Царь зверей, живёт в Африке" },
+      { name: "Слон", emoji: "🐘", description: "Самое большое животное на суше" },
+      { name: "Медведь", emoji: "🐻", description: "Большой и сильный, любит мёд" },
+      { name: "Рыба", emoji: "🐟", description: "Живёт в воде" },
+      { name: "Птица", emoji: "🐦", description: "Умеет летать" },
+      { name: "Тигр", emoji: "🐯", description: "Полосатый хищник из джунглей" },
+      { name: "Обезьяна", emoji: "🐵", description: "Любит бананы и прыгает по деревьям" },
+      { name: "Лягушка", emoji: "🐸", description: "Прыгает и говорит 'ква'" },
+      { name: "Пингвин", emoji: "🐧", description: "Живёт там, где холодно" },
+      { name: "Заяц", emoji: "🐰", description: "Любит морковку и быстро прыгает" },
+      { name: "Лиса", emoji: "🦊", description: "Рыжая и хитрая" },
+      { name: "Лошадь", emoji: "🐴", description: "Быстро бегает и катает людей" },
+      { name: "Овечка", emoji: "🐑", description: "Даёт тёплую шерсть" },
+    ],
   },
   {
     id: "nature",
     name: "Природа",
     emoji: "🌳",
     items: [
-      { name: "Дерево", emoji: "🌳", description: "Растёт много лет, даёт кислород", sound: "Это дерево. Растёт много лет, даёт кислород" },
-      { name: "Цветок", emoji: "🌸", description: "Красивый и ароматный", sound: "Это цветок. Красивый и ароматный" },
-      { name: "Солнце", emoji: "☀️", description: "Даёт свет и тепло", sound: "Это солнце. Даёт свет и тепло" },
-      { name: "Облако", emoji: "☁️", description: "Плывёт по небу", sound: "Это облако. Плывёт по небу" },
-      { name: "Дождь", emoji: "🌧️", description: "Вода падает с неба", sound: "Это дождь. Вода падает с неба" },
-      { name: "Радуга", emoji: "🌈", description: "Появляется после дождя", sound: "Это радуга. Появляется после дождя" },
-      { name: "Гриб", emoji: "🍄", description: "Растёт в лесу", sound: "Это гриб. Растёт в лесу" },
-      { name: "Яблоко", emoji: "🍎", description: "Вкусный фрукт", sound: "Это яблоко. Вкусный фрукт" },
-      { name: "Луна", emoji: "🌙", description: "Светит ночью на небе", sound: "Это луна. Светит ночью на небе" },
-      { name: "Звезда", emoji: "⭐", description: "Сверкает в ночном небе", sound: "Это звезда. Сверкает в ночном небе" },
-      { name: "Снег", emoji: "❄️", description: "Белый и холодный, падает зимой", sound: "Это снег. Белый и холодный, падает зимой" },
-      { name: "Гора", emoji: "⛰️", description: "Очень высокая и каменная", sound: "Это гора. Очень высокая и каменная" },
-    ]
+      { name: "Дерево", emoji: "🌳", description: "Растёт много лет, даёт кислород" },
+      { name: "Цветок", emoji: "🌸", description: "Красивый и ароматный" },
+      { name: "Солнце", emoji: "☀️", description: "Даёт свет и тепло" },
+      { name: "Облако", emoji: "☁️", description: "Плывёт по небу" },
+      { name: "Дождь", emoji: "🌧️", description: "Вода падает с неба" },
+      { name: "Радуга", emoji: "🌈", description: "Появляется после дождя" },
+      { name: "Гриб", emoji: "🍄", description: "Растёт в лесу" },
+      { name: "Яблоко", emoji: "🍎", description: "Вкусный фрукт" },
+      { name: "Луна", emoji: "🌙", description: "Светит ночью на небе" },
+      { name: "Звезда", emoji: "⭐", description: "Сверкает в ночном небе" },
+      { name: "Снег", emoji: "❄️", description: "Белый и холодный, падает зимой" },
+      { name: "Гора", emoji: "⛰️", description: "Очень высокая и каменная" },
+      { name: "Море", emoji: "🌊", description: "Большая солёная вода" },
+      { name: "Огонь", emoji: "🔥", description: "Горячий и яркий" },
+      { name: "Лист", emoji: "🍂", description: "Падает с деревьев осенью" },
+    ],
   },
   {
     id: "transport",
     name: "Транспорт",
     emoji: "🚗",
     items: [
-      { name: "Машина", emoji: "🚗", description: "Едет по дороге", sound: "Это машина. Едет по дороге" },
-      { name: "Автобус", emoji: "🚌", description: "Возит много людей", sound: "Это автобус. Возит много людей" },
-      { name: "Самолёт", emoji: "✈️", description: "Летает по небу", sound: "Это самолёт. Летает по небу" },
-      { name: "Корабль", emoji: "🚢", description: "Плывёт по воде", sound: "Это корабль. Плывёт по воде" },
-      { name: "Поезд", emoji: "🚂", description: "Едет по рельсам", sound: "Это поезд. Едет по рельсам" },
-      { name: "Велосипед", emoji: "🚲", description: "Крутишь педали и едешь", sound: "Это велосипед. Крутишь педали и едешь" },
-      { name: "Скорая помощь", emoji: "🚑", description: "Везёт больных в больницу", sound: "Это скорая помощь. Везёт больных в больницу" },
-      { name: "Пожарная машина", emoji: "🚒", description: "Тушит пожары", sound: "Это пожарная машина. Тушит пожары" },
-      { name: "Вертолёт", emoji: "🚁", description: "Летает с большими лопастями", sound: "Это вертолёт. Летает с большими лопастями" },
-      { name: "Ракета", emoji: "🚀", description: "Летит в космос", sound: "Это ракета. Летит в космос" },
-      { name: "Трактор", emoji: "🚜", description: "Работает в поле", sound: "Это трактор. Работает в поле" },
-      { name: "Метро", emoji: "🚇", description: "Поезд под землёй", sound: "Это метро. Поезд под землёй" },
-    ]
+      { name: "Машина", emoji: "🚗", description: "Едет по дороге" },
+      { name: "Автобус", emoji: "🚌", description: "Возит много людей" },
+      { name: "Самолёт", emoji: "✈️", description: "Летает по небу" },
+      { name: "Корабль", emoji: "🚢", description: "Плывёт по воде" },
+      { name: "Поезд", emoji: "🚂", description: "Едет по рельсам" },
+      { name: "Велосипед", emoji: "🚲", description: "Крутишь педали и едешь" },
+      { name: "Скорая помощь", emoji: "🚑", description: "Везёт больных в больницу" },
+      { name: "Пожарная машина", emoji: "🚒", description: "Тушит пожары" },
+      { name: "Вертолёт", emoji: "🚁", description: "Летает с большими лопастями" },
+      { name: "Ракета", emoji: "🚀", description: "Летит в космос" },
+      { name: "Трактор", emoji: "🚜", description: "Работает в поле" },
+      { name: "Метро", emoji: "🚇", description: "Поезд под землёй" },
+      { name: "Такси", emoji: "🚕", description: "Возит людей за деньги" },
+      { name: "Лодка", emoji: "⛵", description: "Плывёт по воде под парусом" },
+    ],
   },
   {
     id: "professions",
     name: "Профессии",
     emoji: "👨‍⚕️",
     items: [
-      { name: "Врач", emoji: "👨‍⚕️", description: "Лечит людей", sound: "Это врач. Лечит людей" },
-      { name: "Учитель", emoji: "👨‍🏫", description: "Учит детей в школе", sound: "Это учитель. Учит детей в школе" },
-      { name: "Пожарный", emoji: "👨‍🚒", description: "Тушит пожары", sound: "Это пожарный. Тушит пожары" },
-      { name: "Строитель", emoji: "👷", description: "Строит дома", sound: "Это строитель. Строит дома" },
-      { name: "Повар", emoji: "👨‍🍳", description: "Готовит еду", sound: "Это повар. Готовит еду" },
-      { name: "Полицейский", emoji: "👮", description: "Следит за порядком", sound: "Это полицейский. Следит за порядком" },
-      { name: "Космонавт", emoji: "👨‍🚀", description: "Летает в космос", sound: "Это космонавт. Летает в космос" },
-      { name: "Художник", emoji: "👨‍🎨", description: "Рисует картины", sound: "Это художник. Рисует картины" },
-      { name: "Фермер", emoji: "🧑‍🌾", description: "Выращивает овощи и ухаживает за животными", sound: "Это фермер. Выращивает овощи и ухаживает за животными" },
-      { name: "Учёный", emoji: "🧑‍🔬", description: "Делает опыты и открытия", sound: "Это учёный. Делает опыты и открытия" },
-    ]
+      { name: "Врач", emoji: "👨‍⚕️", description: "Лечит людей" },
+      { name: "Учитель", emoji: "👨‍🏫", description: "Учит детей в школе" },
+      { name: "Пожарный", emoji: "👨‍🚒", description: "Тушит пожары" },
+      { name: "Строитель", emoji: "👷", description: "Строит дома" },
+      { name: "Повар", emoji: "👨‍🍳", description: "Готовит еду" },
+      { name: "Полицейский", emoji: "👮", description: "Следит за порядком" },
+      { name: "Космонавт", emoji: "👨‍🚀", description: "Летает в космос" },
+      { name: "Художник", emoji: "👨‍🎨", description: "Рисует картины" },
+      { name: "Фермер", emoji: "🧑‍🌾", description: "Выращивает овощи и ухаживает за животными" },
+      { name: "Учёный", emoji: "🧑‍🔬", description: "Делает опыты и открытия" },
+      { name: "Музыкант", emoji: "🧑‍🎤", description: "Играет музыку и поёт" },
+      { name: "Пилот", emoji: "🧑‍✈️", description: "Управляет самолётом" },
+    ],
   },
   {
     id: "food",
     name: "Еда",
     emoji: "🍔",
     items: [
-      { name: "Хлеб", emoji: "🍞", description: "Его едят каждый день", sound: "Это хлеб. Его едят каждый день" },
-      { name: "Сыр", emoji: "🧀", description: "Жёлтый и вкусный", sound: "Это сыр. Жёлтый и вкусный" },
-      { name: "Яйцо", emoji: "🥚", description: "Из него готовят омлет", sound: "Это яйцо. Из него готовят омлет" },
-      { name: "Молоко", emoji: "🥛", description: "Белое и полезное", sound: "Это молоко. Белое и полезное" },
-      { name: "Суп", emoji: "🍲", description: "Тёплый и сытный", sound: "Это суп. Тёплый и сытный" },
-      { name: "Пицца", emoji: "🍕", description: "Любимое блюдо многих детей", sound: "Это пицца. Любимое блюдо многих детей" },
-      { name: "Мороженое", emoji: "🍦", description: "Холодное и сладкое", sound: "Это мороженое. Холодное и сладкое" },
-      { name: "Банан", emoji: "🍌", description: "Жёлтый и сладкий фрукт", sound: "Это банан. Жёлтый и сладкий фрукт" },
-    ]
+      { name: "Хлеб", emoji: "🍞", description: "Его едят каждый день" },
+      { name: "Сыр", emoji: "🧀", description: "Жёлтый и вкусный" },
+      { name: "Яйцо", emoji: "🥚", description: "Из него готовят омлет" },
+      { name: "Молоко", emoji: "🥛", description: "Белое и полезное" },
+      { name: "Суп", emoji: "🍲", description: "Тёплый и сытный" },
+      { name: "Пицца", emoji: "🍕", description: "Любимое блюдо многих детей" },
+      { name: "Мороженое", emoji: "🍦", description: "Холодное и сладкое" },
+      { name: "Банан", emoji: "🍌", description: "Жёлтый и сладкий фрукт" },
+      { name: "Морковь", emoji: "🥕", description: "Оранжевый овощ, полезный для глаз" },
+      { name: "Конфета", emoji: "🍬", description: "Сладкая, её любят дети" },
+      { name: "Сок", emoji: "🧃", description: "Вкусный напиток из фруктов" },
+      { name: "Торт", emoji: "🍰", description: "Сладкий, его едят на праздник" },
+      { name: "Печенье", emoji: "🍪", description: "Сладкое и хрустящее" },
+      { name: "Виноград", emoji: "🍇", description: "Сладкие ягоды на грозди" },
+    ],
   },
   {
     id: "body",
     name: "Части тела",
     emoji: "👀",
     items: [
-      { name: "Глаза", emoji: "👀", description: "Ими мы видим", sound: "Это глаза. Ими мы видим" },
-      { name: "Рука", emoji: "✋", description: "Ею мы берём предметы", sound: "Это рука. Ею мы берём предметы" },
-      { name: "Нога", emoji: "🦶", description: "Ею мы ходим и бегаем", sound: "Это нога. Ею мы ходим и бегаем" },
-      { name: "Ухо", emoji: "👂", description: "Им мы слышим звуки", sound: "Это ухо. Им мы слышим звуки" },
-      { name: "Нос", emoji: "👃", description: "Им мы чувствуем запахи", sound: "Это нос. Им мы чувствуем запахи" },
-      { name: "Рот", emoji: "👄", description: "Им мы говорим и едим", sound: "Это рот. Им мы говорим и едим" },
-      { name: "Зуб", emoji: "🦷", description: "Им мы жуём еду", sound: "Это зуб. Им мы жуём еду" },
-      { name: "Сердце", emoji: "❤️", description: "Оно стучит у нас в груди", sound: "Это сердце. Оно стучит у нас в груди" },
-    ]
+      { name: "Глаза", emoji: "👀", description: "Ими мы видим" },
+      { name: "Рука", emoji: "✋", description: "Ею мы берём предметы" },
+      { name: "Нога", emoji: "🦶", description: "Ею мы ходим и бегаем" },
+      { name: "Ухо", emoji: "👂", description: "Им мы слышим звуки" },
+      { name: "Нос", emoji: "👃", description: "Им мы чувствуем запахи" },
+      { name: "Рот", emoji: "👄", description: "Им мы говорим и едим" },
+      { name: "Зуб", emoji: "🦷", description: "Им мы жуём еду" },
+      { name: "Сердце", emoji: "❤️", description: "Оно стучит у нас в груди" },
+      { name: "Язык", emoji: "👅", description: "Им мы чувствуем вкус" },
+      { name: "Мозг", emoji: "🧠", description: "Им мы думаем" },
+    ],
+  },
+  {
+    id: "colors",
+    name: "Цвета",
+    emoji: "🎨",
+    items: [
+      { name: "Красный", emoji: "🔴", description: "Цвет помидора и клубники" },
+      { name: "Синий", emoji: "🔵", description: "Цвет неба и моря" },
+      { name: "Жёлтый", emoji: "🟡", description: "Цвет солнца и банана" },
+      { name: "Зелёный", emoji: "🟢", description: "Цвет травы и листьев" },
+      { name: "Оранжевый", emoji: "🟠", description: "Цвет апельсина и моркови" },
+      { name: "Фиолетовый", emoji: "🟣", description: "Цвет сливы и баклажана" },
+      { name: "Коричневый", emoji: "🟤", description: "Цвет шоколада и дерева" },
+      { name: "Чёрный", emoji: "⚫", description: "Цвет ночи и угля" },
+      { name: "Белый", emoji: "⚪", description: "Цвет снега и молока" },
+      { name: "Розовый", emoji: "🩷", description: "Цвет цветка и жвачки" },
+    ],
+  },
+  {
+    id: "shapes",
+    name: "Фигуры",
+    emoji: "🔷",
+    items: [
+      { name: "Круг", emoji: "⭕", description: "Круглый, как солнышко" },
+      { name: "Квадрат", emoji: "🟦", description: "У него четыре равные стороны" },
+      { name: "Треугольник", emoji: "🔺", description: "У него три стороны" },
+      { name: "Звезда", emoji: "⭐", description: "У неё пять лучиков" },
+      { name: "Сердце", emoji: "❤️", description: "Символ любви" },
+      { name: "Ромб", emoji: "🔶", description: "Похож на повёрнутый квадрат" },
+      { name: "Прямоугольник", emoji: "🟧", description: "Похож на дверь или книгу" },
+      { name: "Овал", emoji: "🥚", description: "Вытянутый круг, как яйцо" },
+    ],
+  },
+  {
+    id: "weather",
+    name: "Погода",
+    emoji: "☀️",
+    items: [
+      { name: "Солнечно", emoji: "☀️", description: "Светит яркое солнце" },
+      { name: "Дождь", emoji: "🌧️", description: "С неба капает вода" },
+      { name: "Снег", emoji: "🌨️", description: "Падают белые снежинки" },
+      { name: "Гроза", emoji: "⛈️", description: "Сверкает молния и гремит гром" },
+      { name: "Ветер", emoji: "💨", description: "Дует и качает деревья" },
+      { name: "Радуга", emoji: "🌈", description: "Цветная дуга после дождя" },
+      { name: "Туман", emoji: "🌫️", description: "Всё вокруг становится белым" },
+      { name: "Облачно", emoji: "☁️", description: "Небо закрыто облаками" },
+    ],
+  },
+  {
+    id: "family",
+    name: "Семья",
+    emoji: "👨‍👩‍👧",
+    items: [
+      { name: "Мама", emoji: "👩", description: "Самый родной человек" },
+      { name: "Папа", emoji: "👨", description: "Сильный и заботливый" },
+      { name: "Бабушка", emoji: "👵", description: "Мама мамы или папы" },
+      { name: "Дедушка", emoji: "👴", description: "Папа мамы или папы" },
+      { name: "Брат", emoji: "👦", description: "Мальчик в семье" },
+      { name: "Сестра", emoji: "👧", description: "Девочка в семье" },
+      { name: "Малыш", emoji: "👶", description: "Самый маленький в семье" },
+      { name: "Семья", emoji: "👨‍👩‍👧", description: "Все вместе и дружно" },
+    ],
+  },
+  {
+    id: "sport",
+    name: "Спорт",
+    emoji: "⚽",
+    items: [
+      { name: "Футбол", emoji: "⚽", description: "Играют мячом ногами" },
+      { name: "Баскетбол", emoji: "🏀", description: "Бросают мяч в корзину" },
+      { name: "Теннис", emoji: "🎾", description: "Бьют по мячу ракеткой" },
+      { name: "Плавание", emoji: "🏊", description: "Плавают в бассейне" },
+      { name: "Велоспорт", emoji: "🚴", description: "Гонки на велосипеде" },
+      { name: "Бег", emoji: "🏃", description: "Кто быстрее добежит" },
+      { name: "Лыжи", emoji: "⛷️", description: "Катаются по снегу" },
+      { name: "Коньки", emoji: "⛸️", description: "Катаются по льду" },
+      { name: "Бокс", emoji: "🥊", description: "Борьба в перчатках" },
+      { name: "Гимнастика", emoji: "🤸", description: "Кувырки и прыжки" },
+    ],
+  },
+  {
+    id: "music",
+    name: "Музыка",
+    emoji: "🎵",
+    items: [
+      { name: "Гитара", emoji: "🎸", description: "Играют, перебирая струны" },
+      { name: "Барабан", emoji: "🥁", description: "По нему стучат палочками" },
+      { name: "Труба", emoji: "🎺", description: "В неё дуют, и она поёт" },
+      { name: "Пианино", emoji: "🎹", description: "Нажимают на клавиши" },
+      { name: "Скрипка", emoji: "🎻", description: "Играют смычком" },
+      { name: "Микрофон", emoji: "🎤", description: "В него поют песни" },
+      { name: "Саксофон", emoji: "🎷", description: "Большой золотой инструмент" },
+      { name: "Ноты", emoji: "🎵", description: "Из них состоит музыка" },
+    ],
+  },
+  {
+    id: "clothes",
+    name: "Одежда",
+    emoji: "👕",
+    items: [
+      { name: "Футболка", emoji: "👕", description: "Носят летом" },
+      { name: "Штаны", emoji: "👖", description: "Носят на ногах" },
+      { name: "Платье", emoji: "👗", description: "Носят девочки" },
+      { name: "Куртка", emoji: "🧥", description: "Носят, когда холодно" },
+      { name: "Шапка", emoji: "🧢", description: "Носят на голове" },
+      { name: "Носки", emoji: "🧦", description: "Носят на ногах под обувью" },
+      { name: "Туфли", emoji: "👞", description: "Красивая обувь" },
+      { name: "Кроссовки", emoji: "👟", description: "Удобная обувь для спорта" },
+      { name: "Варежки", emoji: "🧤", description: "Греют руки зимой" },
+      { name: "Шарф", emoji: "🧣", description: "Греет шею зимой" },
+    ],
+  },
+  {
+    id: "space",
+    name: "Космос",
+    emoji: "🪐",
+    items: [
+      { name: "Солнце", emoji: "☀️", description: "Большая горячая звезда" },
+      { name: "Луна", emoji: "🌙", description: "Спутник нашей Земли" },
+      { name: "Звезда", emoji: "⭐", description: "Светит далеко в космосе" },
+      { name: "Планета", emoji: "🪐", description: "Большой шар в космосе" },
+      { name: "Ракета", emoji: "🚀", description: "Летит к звёздам" },
+      { name: "Космонавт", emoji: "👨‍🚀", description: "Человек, летающий в космос" },
+      { name: "Комета", emoji: "☄️", description: "Летит с длинным хвостом" },
+      { name: "Земля", emoji: "🌍", description: "Планета, на которой мы живём" },
+    ],
   },
 ];
 
@@ -223,7 +370,7 @@ export default function WorldPage() {
       });
     } else {
       speak("Не правильно. Ещё раз подумай!");
-      logWrongAnswer({ topic: selectedTopic.id, expected: selectedTopic.items[currentIndex].name, got: selected.name });
+      logWrongAnswer({ section: "world", topic: selectedTopic.id, expected: selectedTopic.items[currentIndex].name, got: selected.name });
       toast({
         title: "Попробуй ещё раз! 💪",
         description: `Правильный ответ: ${selectedTopic.items[currentIndex].name}`,
@@ -279,7 +426,7 @@ export default function WorldPage() {
         </div>
 
         {!selectedTopic && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-8">
             {topics.map((topic) => (
               <Card
                 key={topic.id}
@@ -339,7 +486,7 @@ export default function WorldPage() {
               <Button
                 size="lg"
                 variant="secondary"
-                onClick={() => speak(currentItem.sound)}
+                onClick={() => speak(itemSound(currentItem))}
                 className="mb-8"
               >
                 <Volume2 className="mr-2 h-5 w-5" />

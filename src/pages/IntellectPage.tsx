@@ -8,7 +8,7 @@ import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { speak } from "@/lib/sound";
 
-type Mode = "odd" | "sequence" | "memory" | null;
+type Mode = "odd" | "sequence" | "memory" | "count" | null;
 
 const playJoy = () => {
   try {
@@ -53,6 +53,22 @@ const oddPuzzles = [
   { items: ["👕", "🍕", "👖", "🧦"], odd: 1, hint: "Три вещи и пицца" },
   { items: ["🍇", "🍉", "🐮", "🍍"], odd: 2, hint: "Три фрукта и корова" },
   { items: ["⭐", "🚌", "🌙", "☀️"], odd: 1, hint: "Три на небе и автобус" },
+  { items: ["🐔", "🦆", "🦉", "🐴"], odd: 3, hint: "Три птицы и лошадь" },
+  { items: ["🍞", "🧀", "🥚", "🚲"], odd: 3, hint: "Три продукта и велосипед" },
+  { items: ["👟", "👞", "🍎", "🥾"], odd: 2, hint: "Три обуви и яблоко" },
+  { items: ["🌧️", "❄️", "☀️", "🐱"], odd: 3, hint: "Три погоды и кот" },
+  { items: ["🎹", "🎻", "🍔", "🎸"], odd: 2, hint: "Три инструмента и бургер" },
+  { items: ["🐸", "🐢", "🐍", "🦅"], odd: 3, hint: "Три ползучих и орёл" },
+  { items: ["🍅", "🥒", "🥔", "🍰"], odd: 3, hint: "Три овоща и торт" },
+  { items: ["🚂", "🚃", "🚄", "🐶"], odd: 3, hint: "Три поезда и собака" },
+  { items: ["⚪", "⚪", "⚫", "⚪"], odd: 2, hint: "Три белых и чёрный" },
+  { items: ["🟩", "🟩", "🟩", "🟥"], odd: 3, hint: "Три зелёных и красный" },
+  { items: ["🍯", "🍪", "🍩", "🧦"], odd: 3, hint: "Три сладких и носок" },
+  { items: ["🦷", "👁️", "👂", "🚗"], odd: 3, hint: "Три части тела и машина" },
+  { items: ["🌻", "🌼", "🐝", "🌹"], odd: 2, hint: "Три цветка и пчела" },
+  { items: ["📚", "✏️", "📒", "🍌"], odd: 3, hint: "Три для учёбы и банан" },
+  { items: ["🐮", "🐷", "🐑", "🦈"], odd: 3, hint: "Три домашних и акула" },
+  { items: ["🎈", "🎁", "🎂", "🥦"], odd: 3, hint: "Три праздничных и брокколи" },
 ];
 
 const OddOneOut = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
@@ -113,6 +129,18 @@ const sequencePuzzles = [
   { seq: ["😀", "😴", "😀", "😴", "?"], options: ["😀", "😴", "😡"], answer: 0 },
   { seq: ["🟦", "🟦", "🟥", "🟦", "🟦", "?"], options: ["🟦", "🟥", "🟩"], answer: 1 },
   { seq: ["🍦", "🍩", "🍦", "🍩", "?"], options: ["🍰", "🍦", "🍩"], answer: 1 },
+  { seq: ["🐤", "🐤", "🐤", "?"], options: ["🐤", "🐶", "🐱"], answer: 0 },
+  { seq: ["🔵", "🔵", "🟢", "🔵", "🔵", "?"], options: ["🔵", "🟢", "🔴"], answer: 1 },
+  { seq: ["🌟", "🌙", "🌟", "🌙", "?"], options: ["🌙", "🌟", "☀️"], answer: 1 },
+  { seq: ["🍒", "🍋", "🍒", "🍋", "?"], options: ["🍋", "🍒", "🍓"], answer: 1 },
+  { seq: ["⬅️", "➡️", "⬅️", "➡️", "?"], options: ["⬆️", "⬅️", "➡️"], answer: 1 },
+  { seq: ["🟪", "🟨", "🟪", "🟨", "?"], options: ["🟪", "🟨", "🟥"], answer: 0 },
+  { seq: ["🐕", "🐈", "🐕", "🐈", "?"], options: ["🐈", "🐕", "🐁"], answer: 1 },
+  { seq: ["1️⃣", "1️⃣", "2️⃣", "2️⃣", "3️⃣", "?"], options: ["3️⃣", "4️⃣", "5️⃣"], answer: 0 },
+  { seq: ["🚗", "🚕", "🚗", "🚕", "?"], options: ["🚌", "🚗", "🚕"], answer: 1 },
+  { seq: ["❤️", "💙", "❤️", "💙", "?"], options: ["💚", "❤️", "💙"], answer: 1 },
+  { seq: ["🌸", "🌿", "🌸", "🌿", "?"], options: ["🌿", "🌸", "🌹"], answer: 1 },
+  { seq: ["⚽", "🏀", "⚽", "🏀", "?"], options: ["🎾", "⚽", "🏀"], answer: 1 },
 ];
 
 const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
@@ -164,11 +192,12 @@ const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 };
 
 // --- Память: найди пару ---
-const memoryEmojis = ["🐶", "🐱", "🐰", "🐻", "🐼", "🦁"];
+const memoryPool = ["🐶", "🐱", "🐰", "🐻", "🐼", "🦁", "🦊", "🐯", "🐸", "🐵", "🐷", "🦄", "🐮", "🐔", "🦉", "🐢"];
 
 const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
   const cards = useMemo(() => {
-    const pairs = [...memoryEmojis, ...memoryEmojis];
+    const chosen = [...memoryPool].sort(() => Math.random() - 0.5).slice(0, 8);
+    const pairs = [...chosen, ...chosen];
     return pairs
       .sort(() => Math.random() - 0.5)
       .map((emoji, id) => ({ id, emoji }));
@@ -231,6 +260,60 @@ const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
   );
 };
 
+// --- Сосчитай предметы ---
+const countEmojis = ["🍎", "⭐", "🎈", "🐰", "🌸", "🚗", "🍓", "🦋", "⚽", "🐥"];
+
+const CountGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const [round, setRound] = useState(0);
+  const [locked, setLocked] = useState<number | null>(null);
+  const data = useMemo(() => {
+    const count = Math.floor(Math.random() * 7) + 3; // 3..9
+    const emoji = countEmojis[Math.floor(Math.random() * countEmojis.length)];
+    const opts = new Set<number>([count]);
+    while (opts.size < 4) opts.add(Math.max(1, Math.min(10, count + Math.floor(Math.random() * 5) - 2)));
+    return { count, emoji, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [round]);
+
+  const handle = (n: number) => {
+    if (locked !== null) return;
+    setLocked(n);
+    const correct = n === data.count;
+    onAnswer(correct);
+    setTimeout(() => {
+      setLocked(null);
+      setRound((r) => r + 1);
+    }, 1300);
+  };
+
+  return (
+    <Card className="p-8 text-center">
+      <h3 className="text-2xl font-bold mb-2">Сосчитай</h3>
+      <p className="text-muted-foreground mb-6">Сколько здесь предметов?</p>
+      <div className="flex justify-center gap-2 mb-8 text-5xl flex-wrap max-w-lg mx-auto">
+        {[...Array(data.count)].map((_, i) => (
+          <span key={i} className="animate-bounce-gentle" style={{ animationDelay: `${i * 80}ms` }}>
+            {data.emoji}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-4 max-w-md mx-auto">
+        {data.opts.map((n) => (
+          <button
+            key={n}
+            onClick={() => handle(n)}
+            disabled={locked !== null}
+            className={`text-3xl font-bold p-4 rounded-2xl transition-all bg-muted hover:bg-primary/20 ${
+              locked === n ? (n === data.count ? "bg-green-200 scale-110" : "bg-red-200") : ""
+            } ${locked !== null && n === data.count ? "ring-4 ring-green-500" : ""}`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
 export default function IntellectPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -275,7 +358,7 @@ export default function IntellectPage() {
         </div>
 
         {!mode && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card
               className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
               onClick={() => setMode("odd")}
@@ -300,12 +383,21 @@ export default function IntellectPage() {
               <h3 className="text-xl font-bold">Найди пару</h3>
               <p className="text-sm text-muted-foreground mt-2">Память</p>
             </Card>
+            <Card
+              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
+              onClick={() => setMode("count")}
+            >
+              <div className="text-5xl mb-3">🔢</div>
+              <h3 className="text-xl font-bold">Сосчитай</h3>
+              <p className="text-sm text-muted-foreground mt-2">Счёт</p>
+            </Card>
           </div>
         )}
 
         {mode === "odd" && <OddOneOut onAnswer={handleAnswer} />}
         {mode === "sequence" && <Sequence onAnswer={handleAnswer} />}
         {mode === "memory" && <MemoryGame onAnswer={handleAnswer} />}
+        {mode === "count" && <CountGame onAnswer={handleAnswer} />}
       </div>
     </div>
   );

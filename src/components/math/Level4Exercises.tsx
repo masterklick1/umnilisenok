@@ -7,7 +7,7 @@ import { useUserProgress } from "@/hooks/useUserProgress";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { speak } from "@/lib/sound";
 
-type ExerciseType = "count100" | "multiplication" | "puzzles" | "spatial";
+type ExerciseType = "count100" | "multiplication" | "puzzles" | "spatial" | "division" | "addbig";
 
 interface Level4ExercisesProps {
   onBack: () => void;
@@ -44,6 +44,8 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     { type: "multiplication" as ExerciseType, title: "Умножение", description: "Группы одинаковых", emoji: "✖️" },
     { type: "puzzles" as ExerciseType, title: "Головоломки", description: "Что дальше?", emoji: "🧩" },
     { type: "spatial" as ExerciseType, title: "Пространство", description: "Зеркальные фигуры", emoji: "🎲" },
+    { type: "division" as ExerciseType, title: "Деление", description: "Раздели поровну", emoji: "➗" },
+    { type: "addbig" as ExerciseType, title: "Счёт до 100", description: "Сложение больших чисел", emoji: "➕" },
   ];
 
   const count100Data = useMemo(() => {
@@ -81,6 +83,27 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     const opts = [...figures].sort(() => Math.random() - 0.5).slice(0, 4);
     if (!opts.includes(target)) opts[0] = target;
     return { target, opts: opts.sort(() => Math.random() - 0.5) };
+  }, [currentExercise, round]);
+
+  const divisionData = useMemo(() => {
+    if (currentExercise !== "division") return null;
+    const a = Math.floor(Math.random() * 4) + 2; // 2..5
+    const b = Math.floor(Math.random() * 4) + 2; // 2..5
+    const c = a * b;
+    const ans = b;
+    const opts = new Set<number>([ans]);
+    while (opts.size < 4) opts.add(Math.max(1, Math.min(12, ans + Math.floor(Math.random() * 5) - 2)));
+    return { a, c, ans, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [currentExercise, round]);
+
+  const addbigData = useMemo(() => {
+    if (currentExercise !== "addbig") return null;
+    const a = (Math.floor(Math.random() * 8) + 1) * 10 + Math.floor(Math.random() * 10); // 10..89
+    const b = Math.floor(Math.random() * (99 - a)) + 1; // keep sum <= 99
+    const ans = a + b;
+    const opts = new Set<number>([ans]);
+    while (opts.size < 4) opts.add(Math.max(1, Math.min(100, ans + Math.floor(Math.random() * 11) - 5)));
+    return { a, b, ans, opts: [...opts].sort(() => Math.random() - 0.5) };
   }, [currentExercise, round]);
 
   if (!currentExercise) {
@@ -189,6 +212,40 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
           {r.opts.map((o, i) => (
             <Button key={i} variant="outline" className="h-24 text-6xl"
               onClick={() => handle(o === r.target, r.target, "spatial")}>{o}</Button>
+          ))}
+        </div>
+      </Wrapper>
+    );
+  }
+
+  // ===== Деление =====
+  if (currentExercise === "division" && divisionData) {
+    const r = divisionData;
+    return (
+      <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
+        <h2 className="text-xl font-semibold mb-4">Раздели поровну на {r.a} частей</h2>
+        <div className="text-6xl font-bold text-primary mb-8">{r.c} ÷ {r.a} = ?</div>
+        <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+          {r.opts.map((o) => (
+            <Button key={o} size="lg" className="text-2xl h-16"
+              onClick={() => handle(o === r.ans, String(r.ans), "division")}>{o}</Button>
+          ))}
+        </div>
+      </Wrapper>
+    );
+  }
+
+  // ===== Сложение больших чисел =====
+  if (currentExercise === "addbig" && addbigData) {
+    const r = addbigData;
+    return (
+      <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
+        <h2 className="text-xl font-semibold mb-4">Посчитай сумму</h2>
+        <div className="text-6xl font-bold text-primary mb-8">{r.a} + {r.b} = ?</div>
+        <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+          {r.opts.map((o) => (
+            <Button key={o} size="lg" className="text-2xl h-16"
+              onClick={() => handle(o === r.ans, String(r.ans), "addbig")}>{o}</Button>
           ))}
         </div>
       </Wrapper>

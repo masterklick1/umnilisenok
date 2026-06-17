@@ -85,7 +85,7 @@ const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div className="text-lg font-semibold">Читаем слоги 🔤</div>
+        <div className="text-lg font-semibold">Читаем слоги ✏️</div>
         <Button variant="outline" onClick={onExit}>Выбрать режим</Button>
       </div>
       <Card className="p-12 text-center">
@@ -323,7 +323,7 @@ export default function AlphabetPage() {
 
   const menuItems = [
     { m: "learn" as Mode, emoji: "📖", title: "Учить буквы", desc: "Все буквы алфавита", grad: "from-rose-100 to-orange-100", onClick: startLearning },
-    { m: "syllables" as Mode, emoji: "🔤", title: "Слоги", desc: "Учимся читать слоги", grad: "from-amber-100 to-yellow-100", onClick: () => setMode("syllables") },
+    { m: "syllables" as Mode, emoji: "✏️", title: "Слоги", desc: "Учимся читать слоги", grad: "from-amber-100 to-yellow-100", onClick: () => setMode("syllables") },
     { m: "quiz" as Mode, emoji: "🎯", title: "Викторина", desc: "Найди букву для слова", grad: "from-sky-100 to-cyan-100", onClick: startQuiz },
     { m: "vowels" as Mode, emoji: "🔵", title: "Гласная или согласная", desc: "Определи букву", grad: "from-violet-100 to-purple-100", onClick: () => setMode("vowels") },
     { m: "missing" as Mode, emoji: "❓", title: "Пропущенная буква", desc: "Какая буква пропала?", grad: "from-emerald-100 to-teal-100", onClick: () => setMode("missing") },

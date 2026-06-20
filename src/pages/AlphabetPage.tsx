@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useUserProgress } from "@/hooks/useUserProgress";
 import { speak } from "@/lib/sound";
 
 type Letter = {
@@ -13,6 +14,8 @@ type Letter = {
   word: string;
   emoji: string;
 };
+
+type Mode = "learn" | "quiz" | "syllables" | "vowels" | "missing" | null;
 
 const russianAlphabet: Letter[] = [
   { letter: "А", sound: "а", word: "Арбуз", emoji: "🍉" },
@@ -50,6 +53,10 @@ const russianAlphabet: Letter[] = [
   { letter: "Я", sound: "я", word: "Яблоко", emoji: "🍎" },
 ];
 
+const VOWELS = ["А", "Е", "Ё", "И", "О", "У", "Ы", "Э", "Ю", "Я"];
+const SYLLABLE_CONSONANTS = ["Б", "В", "Г", "Д", "Ж", "З", "К", "Л", "М", "Н", "П", "Р", "С", "Т", "Ф", "Х"];
+const SYLLABLE_VOWELS = ["А", "О", "У", "Ы", "И", "Э"];
+
 const generateQuizOptions = (correctLetter: Letter): Letter[] => {
   const options = [correctLetter];
   const availableLetters = russianAlphabet.filter(l => l.letter !== correctLetter.letter);
@@ -64,16 +71,177 @@ const generateQuizOptions = (correctLetter: Letter): Letter[] => {
   return options.sort(() => Math.random() - 0.5);
 };
 
+type ResultFn = (ok: boolean, correct?: string) => void;
+
+// ===== Слоги (чтение слогов) =====
+const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
+  const randomSyllable = () => {
+    const c = SYLLABLE_CONSONANTS[Math.floor(Math.random() * SYLLABLE_CONSONANTS.length)];
+    const v = SYLLABLE_VOWELS[Math.floor(Math.random() * SYLLABLE_VOWELS.length)];
+    return c + v.toLowerCase();
+  };
+  const [syllable, setSyllable] = useState(() => randomSyllable());
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="text-lg font-semibold">Читаем слоги ✏️</div>
+        <Button variant="outline" onClick={onExit}>Выбрать режим</Button>
+      </div>
+      <Card className="p-12 text-center">
+        <div className="text-8xl font-extrabold text-primary mb-8">{syllable}</div>
+        <Button size="lg" variant="secondary" className="mb-8" onClick={() => speak(syllable)}>
+          <Volume2 className="mr-2 h-5 w-5" /> Послушать слог
+        </Button>
+        <p className="text-muted-foreground">Прочитай слог вслух, а потом проверь себя кнопкой</p>
+      </Card>
+      <div className="flex justify-center">
+        <Button size="lg" onClick={() => { const s = randomSyllable(); setSyllable(s); speak(s); }}>
+          Следующий слог →
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// ===== Гласная или согласная =====
+const VowelsMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => void }) => {
+  const [score, setScore] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [round, setRound] = useState(0);
+  const [locked, setLocked] = useState<"vowel" | "consonant" | null>(null);
+
+  const data = useMemo(() => {
+    const pool = russianAlphabet.filter((l) => l.letter !== "Ъ" && l.letter !== "Ь");
+    const l = pool[Math.floor(Math.random() * pool.length)];
+    return { letter: l.letter, isVowel: VOWELS.includes(l.letter) };
+  }, [round]);
+
+  const pick = (choice: "vowel" | "consonant") => {
+    if (locked) return;
+    setLocked(choice);
+    const ok = (choice === "vowel") === data.isVowel;
+    setTotal((t) => t + 1);
+    if (ok) setScore((s) => s + 1);
+    onResult(ok, data.isVowel ? "гласная" : "согласная");
+    setTimeout(() => { setLocked(null); setRound((r) => r + 1); }, 1300);
+  };
+
+  const btnClass = (choice: "vowel" | "consonant") =>
+    locked
+      ? (choice === "vowel") === data.isVowel
+        ? "bg-green-500 hover:bg-green-600"
+        : locked === choice
+          ? "bg-red-500 hover:bg-red-600"
+          : ""
+      : "";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow">
+        <div className="text-lg font-semibold">Счёт: {score} / {total}</div>
+        <Button variant="outline" onClick={onExit}>Выбрать режим</Button>
+      </div>
+      <Card className="p-8 text-center">
+        <p className="text-2xl text-muted-foreground mb-4">Это гласная или согласная?</p>
+        <div className="text-8xl font-extrabold text-primary mb-8">{data.letter}</div>
+        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+          <Button size="lg" disabled={locked !== null} className={`h-20 text-xl ${btnClass("vowel")}`} onClick={() => pick("vowel")}>
+            Гласная
+          </Button>
+          <Button size="lg" disabled={locked !== null} className={`h-20 text-xl ${btnClass("consonant")}`} onClick={() => pick("consonant")}>
+            Согласная
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+// ===== Пропущенная буква =====
+const MissingMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => void }) => {
+  const [score, setScore] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [round, setRound] = useState(0);
+  const [locked, setLocked] = useState<string | null>(null);
+
+  const data = useMemo(() => {
+    const i = Math.floor(Math.random() * (russianAlphabet.length - 2));
+    const a = russianAlphabet[i].letter;
+    const mid = russianAlphabet[i + 1].letter;
+    const c = russianAlphabet[i + 2].letter;
+    const opts = new Set<string>([mid]);
+    while (opts.size < 3) {
+      opts.add(russianAlphabet[Math.floor(Math.random() * russianAlphabet.length)].letter);
+    }
+    return { a, mid, c, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [round]);
+
+  const pick = (letter: string) => {
+    if (locked) return;
+    setLocked(letter);
+    const ok = letter === data.mid;
+    setTotal((t) => t + 1);
+    if (ok) setScore((s) => s + 1);
+    onResult(ok, data.mid);
+    setTimeout(() => { setLocked(null); setRound((r) => r + 1); }, 1300);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow">
+        <div className="text-lg font-semibold">Счёт: {score} / {total}</div>
+        <Button variant="outline" onClick={onExit}>Выбрать режим</Button>
+      </div>
+      <Card className="p-8 text-center">
+        <p className="text-2xl text-muted-foreground mb-6">Какая буква пропала?</p>
+        <div className="flex justify-center items-center gap-3 mb-8">
+          <span className="text-7xl font-extrabold text-primary">{data.a}</span>
+          <span className="text-7xl font-extrabold text-accent bg-accent/10 rounded-2xl px-4 animate-pulse-soft">?</span>
+          <span className="text-7xl font-extrabold text-primary">{data.c}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+          {data.opts.map((o) => (
+            <Button
+              key={o}
+              size="lg"
+              disabled={locked !== null}
+              className={`text-4xl h-24 ${locked && o === data.mid ? "bg-green-500 hover:bg-green-600" : locked === o ? "bg-red-500 hover:bg-red-600" : ""}`}
+              onClick={() => pick(o)}
+            >
+              {o}
+            </Button>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+};
+
 export default function AlphabetPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { logCorrectAnswer, logWrongAnswer, logActivity } = useActivityTracker();
-  const [mode, setMode] = useState<"learn" | "quiz" | null>(null);
+  const { addStars } = useUserProgress();
+  const [mode, setMode] = useState<Mode>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [quizOptions, setQuizOptions] = useState<Letter[]>([]);
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);
   const [showResult, setShowResult] = useState<boolean | null>(null);
+
+  const handleResult = (modeName: string): ResultFn => (ok, correct) => {
+    if (ok) {
+      addStars(1, "alphabet");
+      logCorrectAnswer({ section: "alphabet", mode: modeName });
+      speak("Правильно! Молодец!");
+      toast({ title: "Правильно! 🎉", description: "+1 ⭐" });
+    } else {
+      logWrongAnswer({ section: "alphabet", mode: modeName });
+      speak("Попробуй ещё раз!");
+      toast({ title: "Попробуй ещё! 💪", description: correct ? `Правильно: ${correct}` : "Попробуй ещё", variant: "destructive" });
+    }
+  };
 
   const startLearning = () => {
     setMode("learn");
@@ -120,11 +288,12 @@ export default function AlphabetPage() {
     
     if (correct) {
       setScore(score + 1);
+      addStars(1, "alphabet");
       logCorrectAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter });
       speak("Правильно! Молодец!");
       toast({
         title: "Правильно! 🎉",
-        description: "Отличная работа!",
+        description: "Отличная работа! +1 ⭐",
       });
     } else {
       logWrongAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter, selected: selected.letter });
@@ -152,6 +321,14 @@ export default function AlphabetPage() {
     setShowResult(null);
   };
 
+  const menuItems = [
+    { m: "learn" as Mode, emoji: "📖", title: "Учить буквы", desc: "Все буквы алфавита", grad: "from-rose-100 to-orange-100", onClick: startLearning },
+    { m: "syllables" as Mode, emoji: "✏️", title: "Слоги", desc: "Учимся читать слоги", grad: "from-amber-100 to-yellow-100", onClick: () => setMode("syllables") },
+    { m: "quiz" as Mode, emoji: "🎯", title: "Викторина", desc: "Найди букву для слова", grad: "from-sky-100 to-cyan-100", onClick: startQuiz },
+    { m: "vowels" as Mode, emoji: "🔵", title: "Гласная или согласная", desc: "Определи букву", grad: "from-violet-100 to-purple-100", onClick: () => setMode("vowels") },
+    { m: "missing" as Mode, emoji: "❓", title: "Пропущенная буква", desc: "Какая буква пропала?", grad: "from-emerald-100 to-teal-100", onClick: () => setMode("missing") },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-primary/5 p-4">
       <div className="container mx-auto max-w-4xl">
@@ -166,7 +343,7 @@ export default function AlphabetPage() {
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">📚</div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-extrabold text-gradient mb-2">
             Алфавит
           </h1>
           <p className="text-lg text-muted-foreground">
@@ -175,24 +352,20 @@ export default function AlphabetPage() {
         </div>
 
         {!mode && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <Card 
-              className="p-8 text-center hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20"
-              onClick={startLearning}
-            >
-              <div className="text-5xl mb-4">📖</div>
-              <h3 className="text-2xl font-bold mb-2">Учить буквы</h3>
-              <p className="text-muted-foreground">Познакомься со всеми буквами алфавита</p>
-            </Card>
-
-            <Card 
-              className="p-8 text-center hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-secondary/10 to-secondary/5 border-2 border-secondary/20"
-              onClick={startQuiz}
-            >
-              <div className="text-5xl mb-4">🎯</div>
-              <h3 className="text-2xl font-bold mb-2">Викторина</h3>
-              <p className="text-muted-foreground">Проверь свои знания букв</p>
-            </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+            {menuItems.map((it, i) => (
+              <Card
+                key={it.title}
+                className={`group relative overflow-hidden p-8 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.03] transition-all duration-300 bg-gradient-to-br ${it.grad}`}
+                style={{ animationDelay: `${i * 70}ms` }}
+                onClick={it.onClick}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+                <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{it.emoji}</div>
+                <h3 className="relative z-10 text-2xl font-extrabold mb-2">{it.title}</h3>
+                <p className="relative z-10 text-muted-foreground">{it.desc}</p>
+              </Card>
+            ))}
           </div>
         )}
 
@@ -239,6 +412,10 @@ export default function AlphabetPage() {
             </div>
           </div>
         )}
+
+        {mode === "syllables" && <SyllablesMode onExit={resetMode} />}
+        {mode === "vowels" && <VowelsMode onResult={handleResult("vowels")} onExit={resetMode} />}
+        {mode === "missing" && <MissingMode onResult={handleResult("missing")} onExit={resetMode} />}
 
         {mode === "quiz" && (
           <div className="space-y-6">

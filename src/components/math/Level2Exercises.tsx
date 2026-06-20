@@ -7,7 +7,7 @@ import { useUserProgress } from "@/hooks/useUserProgress";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { speak } from "@/lib/sound";
 
-type ExerciseType = "abacus" | "building" | "3dshapes" | "patterns";
+type ExerciseType = "abacus" | "building" | "3dshapes" | "patterns" | "neighbors" | "comparenum";
 
 interface Level2ExercisesProps {
   onBack: () => void;
@@ -25,6 +25,8 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   const [buildingProblem, setBuildingProblem] = useState(generateBuildingProblem());
   const [shape3dRound, setShape3dRound] = useState(0);
   const [patternRound, setPatternRound] = useState(0);
+  const [neighborRound, setNeighborRound] = useState(0);
+  const [compareNumRound, setCompareNumRound] = useState(0);
 
   function generateBuildingProblem() {
     const n1 = Math.floor(Math.random() * 5) + 1;
@@ -63,6 +65,8 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     { type: "building" as ExerciseType, title: "Строим домики", description: "Сложение и вычитание", emoji: "🏗️" },
     { type: "3dshapes" as ExerciseType, title: "Объёмные фигуры", description: "Куб, шар, пирамида", emoji: "🎲" },
     { type: "patterns" as ExerciseType, title: "Узоры", description: "Найди закономерность", emoji: "🔢" },
+    { type: "neighbors" as ExerciseType, title: "Соседи числа", description: "Что идёт после?", emoji: "🔢" },
+    { type: "comparenum" as ExerciseType, title: "Сравни числа", description: "Где число больше?", emoji: "⚖️" },
   ];
 
   const shapes3d = useMemo(() => {
@@ -85,6 +89,18 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     const opts = [...new Set([next, ...palette])].slice(0, 4).sort(() => Math.random() - 0.5);
     return { seq, next, opts };
   }, [patternRound]);
+
+  const neighborData = useMemo(() => {
+    const n = Math.floor(Math.random() * 9) + 1;
+    return { n, ans: n + 1 };
+  }, [neighborRound]);
+
+  const compareNumData = useMemo(() => {
+    const a = Math.floor(Math.random() * 10) + 1;
+    let b = Math.floor(Math.random() * 10) + 1;
+    while (b === a) b = Math.floor(Math.random() * 10) + 1;
+    return { a, b, bigger: a > b ? "a" as const : "b" as const };
+  }, [compareNumRound]);
 
   if (!currentExercise) {
     return (
@@ -232,6 +248,62 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
             >
               {c}
             </Button>
+          ))}
+        </div>
+      </Wrapper>
+    );
+  }
+
+  if (currentExercise === "neighbors") {
+    const r = neighborData;
+    return (
+      <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
+        <h2 className="text-2xl font-bold mb-6">Какое число идёт после {r.n}?</h2>
+        <div className="text-6xl mb-8">{r.n} → ?</div>
+        <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
+          {[...Array(10)].map((_, i) => (
+            <Button
+              key={i}
+              size="lg"
+              className="text-2xl h-16"
+              onClick={() => {
+                checkAnswer(i + 1, r.ans);
+                setTimeout(() => setNeighborRound((x) => x + 1), 1200);
+              }}
+            >
+              {i + 1}
+            </Button>
+          ))}
+        </div>
+      </Wrapper>
+    );
+  }
+
+  if (currentExercise === "comparenum") {
+    const r = compareNumData;
+    const pick = (side: "a" | "b") => {
+      setTotal((t) => t + 1);
+      if (side === r.bigger) {
+        reward("Верно");
+        logCorrectAnswer({ section: "math", level: 2, exercise: "comparenum" });
+      } else {
+        wrong(String(r[r.bigger]));
+        logWrongAnswer({ section: "math", level: 2, exercise: "comparenum" });
+      }
+      setTimeout(() => setCompareNumRound((x) => x + 1), 1200);
+    };
+    return (
+      <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
+        <h2 className="text-2xl font-bold mb-8">Где число больше?</h2>
+        <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
+          {(["a", "b"] as const).map((side) => (
+            <button
+              key={side}
+              onClick={() => pick(side)}
+              className="text-6xl font-bold p-8 rounded-2xl bg-blue-100 hover:bg-blue-200 transition-all"
+            >
+              {r[side]}
+            </button>
           ))}
         </div>
       </Wrapper>

@@ -1,6 +1,6 @@
 const PREF_KEY = "child_keep_screen_on";
 
-type WakeLockSentinel = { release: () => Promise<void> };
+type WakeLockSentinel = { release: () => Promise<void>; addEventListener?: (e: string, cb: () => void) => void };
 
 let sentinel: WakeLockSentinel | null = null;
 

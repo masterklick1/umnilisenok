@@ -128,8 +128,13 @@ export const MainApp = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 pb-32">
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-background via-primary/5 to-accent/5 pb-32">
+      {/* Decorative background blobs */}
+      <div className="blob bg-primary/40 w-72 h-72 -top-16 -left-16" />
+      <div className="blob bg-secondary/40 w-80 h-80 top-1/3 -right-24" />
+      <div className="blob bg-accent/40 w-64 h-64 bottom-10 left-1/4" />
+
+      <div className="relative z-10 container mx-auto px-4 py-6 max-w-2xl">
         {/* Header with Score, Level, Avatar and Parent Button */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -160,56 +165,65 @@ export const MainApp = () => {
         <UserWelcome name={childName} />
 
         {/* Fox Avatar */}
-        <div className="flex justify-center my-8">
-          <div className="relative w-48 h-48 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-2xl animate-float">
-            <div className="text-7xl">🦊</div>
+        <div className="flex justify-center my-10">
+          <div className="relative animate-float">
+            {/* glow rings */}
+            <div className="absolute inset-0 -m-6 rounded-full bg-primary/20 blur-2xl animate-pulse-soft" />
+            <div className="absolute inset-0 -m-3 rounded-full bg-gradient-to-br from-accent/40 to-secondary/40 blur-md" />
+            <div className="relative w-48 h-48 rounded-full bg-gradient-to-br from-primary via-primary/80 to-accent flex items-center justify-center shadow-2xl ring-4 ring-white/60">
+              <div className="text-8xl drop-shadow-lg">🦊</div>
+            </div>
+            {/* sparkles */}
+            <div className="absolute -top-1 right-4 text-3xl" style={{ animation: "sparkle 2.5s ease-in-out infinite" }}>✨</div>
+            <div className="absolute bottom-2 -left-2 text-2xl" style={{ animation: "sparkle 2.5s ease-in-out infinite 0.8s" }}>⭐</div>
+            <div className="absolute top-6 -right-3 text-xl" style={{ animation: "sparkle 2.5s ease-in-out infinite 1.6s" }}>💫</div>
           </div>
         </div>
 
         {/* Subject Cards - Vertical List */}
         <div className="space-y-4">
           <SubjectCard
-            icon={<Calculator className="w-7 h-7 text-blue-600" />}
+            icon={<Calculator className="w-8 h-8 text-blue-600" />}
             title="Математика"
             subtitle="Цифры и счёт 1-10"
             onClick={() => navigate("/math")}
-            bgColor="bg-blue-100"
+            bgColor="bg-gradient-to-br from-blue-100 to-cyan-100"
             decorativeElements="1+1"
           />
           
           <SubjectCard
-            icon={<BookOpen className="w-7 h-7 text-red-600" />}
+            icon={<BookOpen className="w-8 h-8 text-rose-600" />}
             title="Азбука"
             subtitle="Учим буквы"
             onClick={() => navigate("/alphabet")}
-            bgColor="bg-red-100"
+            bgColor="bg-gradient-to-br from-rose-100 to-orange-100"
             decorativeElements="АБВ"
           />
           
           <SubjectCard
-            icon={<Leaf className="w-7 h-7 text-green-600" />}
+            icon={<Leaf className="w-8 h-8 text-green-600" />}
             title="Мир вокруг"
             subtitle="Природа и животные"
             onClick={() => navigate("/world")}
-            bgColor="bg-green-100"
+            bgColor="bg-gradient-to-br from-green-100 to-emerald-100"
             decorativeElements="🌿"
           />
           
           <SubjectCard
-            icon={<Palette className="w-7 h-7 text-purple-600" />}
+            icon={<Palette className="w-8 h-8 text-purple-600" />}
             title="Творчество"
             subtitle="Рисуем и красим"
             onClick={() => navigate("/creativity")}
-            bgColor="bg-purple-100"
+            bgColor="bg-gradient-to-br from-purple-100 to-pink-100"
             decorativeElements="🎨"
           />
           
           <SubjectCard
-            icon={<Brain className="w-7 h-7 text-orange-600" />}
+            icon={<Brain className="w-8 h-8 text-amber-600" />}
             title="Интеллект"
             subtitle="Пазлы и логика"
             onClick={() => navigate("/intellect")}
-            bgColor="bg-yellow-100"
+            bgColor="bg-gradient-to-br from-amber-100 to-yellow-100"
             decorativeElements="🧩"
           />
         </div>

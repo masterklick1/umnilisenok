@@ -5,9 +5,10 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useUserProgress } from "@/hooks/useUserProgress";
 import { speak } from "@/lib/sound";
 
-type Mode = "odd" | "sequence" | "memory" | null;
+type Mode = "odd" | "sequence" | "memory" | "count" | null;
 
 const playJoy = () => {
   try {
@@ -38,6 +39,36 @@ const oddPuzzles = [
   { items: ["🚗", "🚌", "🚲", "🐟"], odd: 3, hint: "Три транспорта и рыба" },
   { items: ["☀️", "⭐", "🌙", "🍎"], odd: 3, hint: "Три на небе и яблоко" },
   { items: ["🔴", "🔴", "🔵", "🔴"], odd: 2, hint: "Три красных и один синий" },
+  { items: ["🐝", "🦋", "🐞", "🐟"], odd: 3, hint: "Три насекомых и рыбка" },
+  { items: ["🚗", "🐱", "🚕", "🚙"], odd: 1, hint: "Три машины и кот" },
+  { items: ["🌹", "🐶", "🌻", "🌷"], odd: 1, hint: "Три цветка и собака" },
+  { items: ["🥕", "🥦", "🎈", "🌽"], odd: 2, hint: "Три овоща и шарик" },
+  { items: ["✈️", "🚁", "🐢", "🚀"], odd: 2, hint: "Три летающих и черепаха" },
+  { items: ["📕", "📗", "🍔", "📘"], odd: 2, hint: "Три книги и бургер" },
+  { items: ["🎸", "🥁", "🎺", "🍦"], odd: 3, hint: "Три инструмента и мороженое" },
+  { items: ["🦁", "🐯", "🐻", "🚲"], odd: 3, hint: "Три зверя и велосипед" },
+  { items: ["🐟", "🐠", "🐬", "🐔"], odd: 3, hint: "Три из моря и курица" },
+  { items: ["🍓", "🍒", "⚽", "🍑"], odd: 2, hint: "Три ягоды и мяч" },
+  { items: ["🔺", "🔺", "🔵", "🔺"], odd: 2, hint: "Три треугольника и круг" },
+  { items: ["👕", "🍕", "👖", "🧦"], odd: 1, hint: "Три вещи и пицца" },
+  { items: ["🍇", "🍉", "🐮", "🍍"], odd: 2, hint: "Три фрукта и корова" },
+  { items: ["⭐", "🚌", "🌙", "☀️"], odd: 1, hint: "Три на небе и автобус" },
+  { items: ["🐔", "🦆", "🦉", "🐴"], odd: 3, hint: "Три птицы и лошадь" },
+  { items: ["🍞", "🧀", "🥚", "🚲"], odd: 3, hint: "Три продукта и велосипед" },
+  { items: ["👟", "👞", "🍎", "🥾"], odd: 2, hint: "Три обуви и яблоко" },
+  { items: ["🌧️", "❄️", "☀️", "🐱"], odd: 3, hint: "Три погоды и кот" },
+  { items: ["🎹", "🎻", "🍔", "🎸"], odd: 2, hint: "Три инструмента и бургер" },
+  { items: ["🐸", "🐢", "🐍", "🦅"], odd: 3, hint: "Три ползучих и орёл" },
+  { items: ["🍅", "🥒", "🥔", "🍰"], odd: 3, hint: "Три овоща и торт" },
+  { items: ["🚂", "🚃", "🚄", "🐶"], odd: 3, hint: "Три поезда и собака" },
+  { items: ["⚪", "⚪", "⚫", "⚪"], odd: 2, hint: "Три белых и чёрный" },
+  { items: ["🟩", "🟩", "🟩", "🟥"], odd: 3, hint: "Три зелёных и красный" },
+  { items: ["🍯", "🍪", "🍩", "🧦"], odd: 3, hint: "Три сладких и носок" },
+  { items: ["🦷", "👁️", "👂", "🚗"], odd: 3, hint: "Три части тела и машина" },
+  { items: ["🌻", "🌼", "🐝", "🌹"], odd: 2, hint: "Три цветка и пчела" },
+  { items: ["📚", "✏️", "📒", "🍌"], odd: 3, hint: "Три для учёбы и банан" },
+  { items: ["🐮", "🐷", "🐑", "🦈"], odd: 3, hint: "Три домашних и акула" },
+  { items: ["🎈", "🎁", "🎂", "🥦"], odd: 3, hint: "Три праздничных и брокколи" },
 ];
 
 const OddOneOut = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
@@ -86,6 +117,30 @@ const sequencePuzzles = [
   { seq: ["🟡", "🟡", "🟢", "🟡", "🟡", "?"], options: ["🟡", "🟢", "🔵"], answer: 1 },
   { seq: ["1️⃣", "2️⃣", "3️⃣", "?"], options: ["5️⃣", "4️⃣", "6️⃣"], answer: 1 },
   { seq: ["🍎", "🍌", "🍎", "🍌", "?"], options: ["🍇", "🍎", "🍓"], answer: 1 },
+  { seq: ["🟢", "🟡", "🟢", "🟡", "?"], options: ["🟢", "🟡", "🔴"], answer: 0 },
+  { seq: ["🔺", "🔵", "🔺", "🔵", "?"], options: ["🔵", "🔺", "🟢"], answer: 1 },
+  { seq: ["🐰", "🐰", "🐢", "🐰", "🐰", "?"], options: ["🐰", "🐢", "🐱"], answer: 1 },
+  { seq: ["☀️", "🌙", "☀️", "🌙", "?"], options: ["⭐", "☀️", "🌙"], answer: 1 },
+  { seq: ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "?"], options: ["6️⃣", "5️⃣", "7️⃣"], answer: 1 },
+  { seq: ["🔴", "🟠", "🟡", "🟢", "?"], options: ["🔵", "🟤", "⚪"], answer: 0 },
+  { seq: ["🐶", "🐱", "🐭", "🐶", "🐱", "?"], options: ["🐭", "🐶", "🐱"], answer: 0 },
+  { seq: ["⬆️", "⬇️", "⬆️", "⬇️", "?"], options: ["➡️", "⬆️", "⬇️"], answer: 1 },
+  { seq: ["🥝", "🍓", "🥝", "🍓", "?"], options: ["🍓", "🥝", "🍒"], answer: 1 },
+  { seq: ["😀", "😴", "😀", "😴", "?"], options: ["😀", "😴", "😡"], answer: 0 },
+  { seq: ["🟦", "🟦", "🟥", "🟦", "🟦", "?"], options: ["🟦", "🟥", "🟩"], answer: 1 },
+  { seq: ["🍦", "🍩", "🍦", "🍩", "?"], options: ["🍰", "🍦", "🍩"], answer: 1 },
+  { seq: ["🐤", "🐤", "🐤", "?"], options: ["🐤", "🐶", "🐱"], answer: 0 },
+  { seq: ["🔵", "🔵", "🟢", "🔵", "🔵", "?"], options: ["🔵", "🟢", "🔴"], answer: 1 },
+  { seq: ["🌟", "🌙", "🌟", "🌙", "?"], options: ["🌙", "🌟", "☀️"], answer: 1 },
+  { seq: ["🍒", "🍋", "🍒", "🍋", "?"], options: ["🍋", "🍒", "🍓"], answer: 1 },
+  { seq: ["⬅️", "➡️", "⬅️", "➡️", "?"], options: ["⬆️", "⬅️", "➡️"], answer: 1 },
+  { seq: ["🟪", "🟨", "🟪", "🟨", "?"], options: ["🟪", "🟨", "🟥"], answer: 0 },
+  { seq: ["🐕", "🐈", "🐕", "🐈", "?"], options: ["🐈", "🐕", "🐁"], answer: 1 },
+  { seq: ["1️⃣", "1️⃣", "2️⃣", "2️⃣", "3️⃣", "?"], options: ["3️⃣", "4️⃣", "5️⃣"], answer: 0 },
+  { seq: ["🚗", "🚕", "🚗", "🚕", "?"], options: ["🚌", "🚗", "🚕"], answer: 1 },
+  { seq: ["❤️", "💙", "❤️", "💙", "?"], options: ["💚", "❤️", "💙"], answer: 1 },
+  { seq: ["🌸", "🌿", "🌸", "🌿", "?"], options: ["🌿", "🌸", "🌹"], answer: 1 },
+  { seq: ["⚽", "🏀", "⚽", "🏀", "?"], options: ["🎾", "⚽", "🏀"], answer: 1 },
 ];
 
 const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
@@ -137,11 +192,12 @@ const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 };
 
 // --- Память: найди пару ---
-const memoryEmojis = ["🐶", "🐱", "🐰", "🐻", "🐼", "🦁"];
+const memoryPool = ["🐶", "🐱", "🐰", "🐻", "🐼", "🦁", "🦊", "🐯", "🐸", "🐵", "🐷", "🦄", "🐮", "🐔", "🦉", "🐢"];
 
 const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
   const cards = useMemo(() => {
-    const pairs = [...memoryEmojis, ...memoryEmojis];
+    const chosen = [...memoryPool].sort(() => Math.random() - 0.5).slice(0, 8);
+    const pairs = [...chosen, ...chosen];
     return pairs
       .sort(() => Math.random() - 0.5)
       .map((emoji, id) => ({ id, emoji }));
@@ -204,10 +260,65 @@ const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
   );
 };
 
+// --- Сосчитай предметы ---
+const countEmojis = ["🍎", "⭐", "🎈", "🐰", "🌸", "🚗", "🍓", "🦋", "⚽", "🐥"];
+
+const CountGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const [round, setRound] = useState(0);
+  const [locked, setLocked] = useState<number | null>(null);
+  const data = useMemo(() => {
+    const count = Math.floor(Math.random() * 7) + 3; // 3..9
+    const emoji = countEmojis[Math.floor(Math.random() * countEmojis.length)];
+    const opts = new Set<number>([count]);
+    while (opts.size < 4) opts.add(Math.max(1, Math.min(10, count + Math.floor(Math.random() * 5) - 2)));
+    return { count, emoji, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [round]);
+
+  const handle = (n: number) => {
+    if (locked !== null) return;
+    setLocked(n);
+    const correct = n === data.count;
+    onAnswer(correct);
+    setTimeout(() => {
+      setLocked(null);
+      setRound((r) => r + 1);
+    }, 1300);
+  };
+
+  return (
+    <Card className="p-8 text-center">
+      <h3 className="text-2xl font-bold mb-2">Сосчитай</h3>
+      <p className="text-muted-foreground mb-6">Сколько здесь предметов?</p>
+      <div className="flex justify-center gap-2 mb-8 text-5xl flex-wrap max-w-lg mx-auto">
+        {[...Array(data.count)].map((_, i) => (
+          <span key={i} className="animate-bounce-gentle" style={{ animationDelay: `${i * 80}ms` }}>
+            {data.emoji}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-4 max-w-md mx-auto">
+        {data.opts.map((n) => (
+          <button
+            key={n}
+            onClick={() => handle(n)}
+            disabled={locked !== null}
+            className={`text-3xl font-bold p-4 rounded-2xl transition-all bg-muted hover:bg-primary/20 ${
+              locked === n ? (n === data.count ? "bg-green-200 scale-110" : "bg-red-200") : ""
+            } ${locked !== null && n === data.count ? "ring-4 ring-green-500" : ""}`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+};
+
 export default function IntellectPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
+  const { addStars } = useUserProgress();
   const [mode, setMode] = useState<Mode>(null);
   const [score, setScore] = useState(0);
 
@@ -215,8 +326,9 @@ export default function IntellectPage() {
     if (correct) {
       setScore((s) => s + 1);
       playJoy();
+      addStars(1, null);
       logCorrectAnswer({ section: "intellect", mode });
-      toast({ title: "Правильно! 🎉" });
+      toast({ title: "Правильно! 🎉", description: "+1 ⭐" });
     } else {
       speak("Попробуй ещё раз!");
       logWrongAnswer({ section: "intellect", mode });
@@ -240,43 +352,38 @@ export default function IntellectPage() {
         </div>
 
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🧩</div>
-          <h1 className="text-4xl font-bold mb-2">Интеллект</h1>
+          <div className="text-6xl mb-4 animate-bounce-gentle">🧩</div>
+          <h1 className="text-4xl font-extrabold text-gradient mb-2">Интеллект</h1>
           <p className="text-lg text-muted-foreground">Логика, внимание и память</p>
         </div>
 
         {!mode && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card
-              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
-              onClick={() => setMode("odd")}
-            >
-              <div className="text-5xl mb-3">🔍</div>
-              <h3 className="text-xl font-bold">Найди лишнее</h3>
-              <p className="text-sm text-muted-foreground mt-2">Внимание</p>
-            </Card>
-            <Card
-              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
-              onClick={() => setMode("sequence")}
-            >
-              <div className="text-5xl mb-3">➡️</div>
-              <h3 className="text-xl font-bold">Продолжи ряд</h3>
-              <p className="text-sm text-muted-foreground mt-2">Логика</p>
-            </Card>
-            <Card
-              className="p-6 text-center cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary"
-              onClick={() => setMode("memory")}
-            >
-              <div className="text-5xl mb-3">🧠</div>
-              <h3 className="text-xl font-bold">Найди пару</h3>
-              <p className="text-sm text-muted-foreground mt-2">Память</p>
-            </Card>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { m: "odd" as Mode, emoji: "🔍", title: "Найди лишнее", tag: "Внимание", grad: "from-amber-100 to-orange-100" },
+              { m: "sequence" as Mode, emoji: "➡️", title: "Продолжи ряд", tag: "Логика", grad: "from-sky-100 to-blue-100" },
+              { m: "memory" as Mode, emoji: "🧠", title: "Найди пару", tag: "Память", grad: "from-fuchsia-100 to-purple-100" },
+              { m: "count" as Mode, emoji: "🔢", title: "Сосчитай", tag: "Счёт", grad: "from-emerald-100 to-teal-100" },
+            ].map((g, i) => (
+              <Card
+                key={g.title}
+                className={`group relative overflow-hidden p-6 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.05] transition-all duration-300 bg-gradient-to-br ${g.grad}`}
+                style={{ animationDelay: `${i * 60}ms` }}
+                onClick={() => setMode(g.m)}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
+                <div className="relative z-10 text-5xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{g.emoji}</div>
+                <h3 className="relative z-10 text-lg font-extrabold">{g.title}</h3>
+                <p className="relative z-10 text-sm text-muted-foreground mt-1 font-medium">{g.tag}</p>
+              </Card>
+            ))}
           </div>
         )}
 
         {mode === "odd" && <OddOneOut onAnswer={handleAnswer} />}
         {mode === "sequence" && <Sequence onAnswer={handleAnswer} />}
         {mode === "memory" && <MemoryGame onAnswer={handleAnswer} />}
+        {mode === "count" && <CountGame onAnswer={handleAnswer} />}
       </div>
     </div>
   );

@@ -86,7 +86,7 @@ export default function MathPage() {
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">🔢</div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-extrabold text-gradient mb-2">
             Математический мир
           </h1>
           <p className="text-lg text-muted-foreground">
@@ -95,21 +95,23 @@ export default function MathPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {levels.map((level) => (
+          {levels.map((level, i) => (
             <Card
               key={level.level}
-              className={`p-6 cursor-pointer hover:shadow-xl transition-all bg-gradient-to-br ${level.gradient} border-2 ${level.border} group`}
+              className={`group relative overflow-hidden p-6 cursor-pointer rounded-3xl card-glow animate-pop-in hover:scale-[1.03] transition-all duration-300 bg-gradient-to-br ${level.gradient} border-2 ${level.border}`}
+              style={{ animationDelay: `${i * 70}ms` }}
               onClick={() => {
                 logActivity("select_level", { section: "math", level: level.level });
                 setSelectedLevel(level.level);
               }}
             >
-              <div className="text-5xl mb-3 group-hover:scale-110 transition-transform">
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-black/5" />
+              <div className="relative z-10 text-6xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
                 {level.emoji}
               </div>
-              <div className="text-sm text-muted-foreground mb-1">{level.age}</div>
-              <h3 className="text-2xl font-bold mb-2">{level.title}</h3>
-              <p className="text-muted-foreground">{level.description}</p>
+              <div className="relative z-10 inline-block text-xs font-bold text-foreground/70 mb-2 px-3 py-1 rounded-full bg-card/70">{level.age}</div>
+              <h3 className="relative z-10 text-2xl font-extrabold mb-2">{level.title}</h3>
+              <p className="relative z-10 text-muted-foreground">{level.description}</p>
             </Card>
           ))}
         </div>

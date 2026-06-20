@@ -145,7 +145,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       .select("location_enabled, location_interval_seconds, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m")
       .eq("child_id", childId)
       .maybeSingle();
-    setSettings({ ...DEFAULT_SETTINGS, ...((data as any) ?? {}) });
+    setSettings({ ...DEFAULT_SETTINGS, ...(data ?? {}) });
   }, [childId]);
 
   const saveSettings = async (patch: Partial<Settings>) => {
@@ -166,7 +166,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
           geofence_radius_m: next.geofence_radius_m,
           updated_by: user.id,
           updated_at: new Date().toISOString(),
-        } as any,
+        },
         { onConflict: "child_id" }
       );
     setSavingSettings(false);
@@ -204,7 +204,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         .order("created_at", { ascending: false })
         .limit(10),
       supabase
-        .from("geofence_events" as any)
+        .from("geofence_events")
         .select("*")
         .eq("child_id", childId)
         .order("created_at", { ascending: false })
@@ -251,7 +251,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "geofence_events", filter: `child_id=eq.${childId}` },
         (payload) => {
-          const ev = payload.new as any as GeofenceEvent;
+          const ev = payload.new as GeofenceEvent;
           loadData();
           toast({
             title: ev.event_type === "exit" ? "⚠️ Ребёнок вышел из зоны" : "✅ Ребёнок вернулся в зону",

@@ -225,7 +225,7 @@ export const useLocationTracker = (enabled = true) => {
       lastInsideRef.current = inside;
       if (prev === null || prev === inside) return;
 
-      await supabase.from("geofence_events" as any).insert({
+      await supabase.from("geofence_events").insert({
         child_id: childId,
         event_type: inside ? "enter" : "exit",
         latitude: lat,

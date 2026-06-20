@@ -27,7 +27,7 @@ export default function JoinPage() {
       const result = await connectChildWithInviteCode(raw);
       setConnecting(false);
 
-      if (!result.ok) {
+      if (result.ok === false) {
         toast({ title: "Не получилось", description: result.error, variant: "destructive" });
         return;
       }

@@ -9,7 +9,7 @@ export const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { isDemo } = useAuth();
   const { isParent } = useUserRole();
 
   const handleAIChat = () => {
@@ -17,6 +17,18 @@ export const BottomNavigation = () => {
       title: "ИИ-учитель скоро появится! 🤖",
       description: "Мы работаем над созданием умного помощника для обучения",
     });
+  };
+
+  const handleVirtualHome = () => {
+    if (isDemo) {
+      toast({
+        title: "Комната доступна после аккаунта 🏠",
+        description: "В демо можно пройти уроки, а личная комната сохраняется для зарегистрированного ребёнка.",
+      });
+      return;
+    }
+
+    navigate("/home");
   };
 
   const isActive = (path: string) => location.pathname === path;
@@ -39,7 +51,7 @@ export const BottomNavigation = () => {
       <Button
         size="icon"
         variant="outline"
-        onClick={() => navigate("/home")}
+        onClick={handleVirtualHome}
         className={`w-12 h-12 rounded-xl bg-card shadow-lg border-2 transition-all ${
           isActive("/home") 
             ? "border-secondary bg-secondary/10" 

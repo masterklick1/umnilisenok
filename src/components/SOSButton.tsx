@@ -20,12 +20,20 @@ import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 
 export const SOSButton = () => {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
 
   const sendSOS = async () => {
     if (!user?.id) return;
+    if (isDemo) {
+      toast({
+        title: "SOS доступен после подключения",
+        description: "В демо можно смотреть уроки, а безопасность и уведомления включаются в аккаунте ребёнка.",
+      });
+      return;
+    }
+
     setSending(true);
 
     try {

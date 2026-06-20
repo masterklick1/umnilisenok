@@ -1,10 +1,13 @@
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { isDemoUser } from "@/lib/demo-session";
 
 export type ResolvedRole = "parent" | "child" | null;
 
 /** Profile role + metadata fallback; self-heal invite child accounts stuck as parent. */
 export async function resolveUserRole(user: User): Promise<ResolvedRole> {
+  if (isDemoUser(user)) return "child";
+
   const { data } = await supabase
     .from("profiles")
     .select("role")

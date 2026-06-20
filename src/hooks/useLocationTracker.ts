@@ -256,6 +256,7 @@ export const useLocationTracker = (enabled = true) => {
         const { error } = await supabase.from("child_locations").insert([
           {
             child_id: childId,
+            device_source: "phone",
             latitude: pos.latitude,
             longitude: pos.longitude,
             accuracy: pos.accuracy,

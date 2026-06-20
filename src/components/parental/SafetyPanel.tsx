@@ -46,6 +46,7 @@ interface Location {
   latitude: number;
   longitude: number;
   accuracy: number | null;
+  device_source?: "phone" | "watch" | string;
   created_at: string;
 }
 
@@ -72,6 +73,9 @@ const formatInterval = (sec: number) => {
   const m = Math.round(sec / 60);
   return m < 60 ? `${m} мин` : `${Math.round(m / 60)} ч`;
 };
+
+const formatDeviceSource = (source?: string | null) =>
+  source === "watch" ? "⌚ часы" : "📱 телефон";
 
 interface Settings {
   location_enabled: boolean;
@@ -922,7 +926,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                   </Label>
                 </div>
                 <span className="text-muted-foreground">
-                  👶 ребёнок · 👨 вы · 🟠 трек · 🔵 маршрут
+                  👶 ребёнок · 👨 вы · 📱/⌚ источник · 🟠 трек · 🔵 маршрут
                 </span>
               </div>
 
@@ -959,6 +963,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                     Обновлено{" "}
                     {formatDistanceToNow(new Date(location.created_at), { addSuffix: true, locale: ru })}
                   </p>
+                  <Badge variant="outline" className="mt-1">
+                    {formatDeviceSource(location.device_source)}
+                  </Badge>
                   <p className="font-mono text-xs">
                     {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
                     {location.accuracy && (

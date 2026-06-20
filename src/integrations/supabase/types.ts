@@ -162,6 +162,7 @@ export type Database = {
           battery_level: number | null
           child_id: string
           created_at: string
+          device_source: string
           id: string
           latitude: number
           longitude: number
@@ -171,6 +172,7 @@ export type Database = {
           battery_level?: number | null
           child_id: string
           created_at?: string
+          device_source?: string
           id?: string
           latitude: number
           longitude: number
@@ -180,6 +182,7 @@ export type Database = {
           battery_level?: number | null
           child_id?: string
           created_at?: string
+          device_source?: string
           id?: string
           latitude?: number
           longitude?: number

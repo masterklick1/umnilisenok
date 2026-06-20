@@ -105,6 +105,7 @@ async function handleLocation(req: MonitoringRequest, childId: string) {
   const { error: locError } = await supabase.from("child_locations").insert([
     {
       child_id: childId,
+      device_source: "phone",
       latitude: pos.latitude,
       longitude: pos.longitude,
       accuracy: pos.accuracy,
@@ -120,6 +121,7 @@ async function handleLocation(req: MonitoringRequest, childId: string) {
         latitude: pos.latitude,
         longitude: pos.longitude,
         accuracy: pos.accuracy,
+        device_source: "phone",
       },
       fulfilled_at: new Date().toISOString(),
     })

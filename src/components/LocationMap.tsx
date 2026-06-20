@@ -12,6 +12,9 @@ interface Geofence {
   lat: number;
   lng: number;
   radius: number;
+  label?: string;
+  color?: string;
+  id?: string;
 }
 
 interface Props {
@@ -20,7 +23,10 @@ interface Props {
   accuracy?: number | null;
   label?: string;
   height?: number;
+  /** Legacy single zone (highlighted) */
   geofence?: Geofence | null;
+  /** All saved smart places shown on map */
+  geofences?: Geofence[];
   onMapClick?: (lat: number, lng: number) => void;
   movementPath?: LatLng[];
   parentLocation?: LatLng | null;
@@ -35,6 +41,7 @@ export const LocationMap = ({
   label,
   height = 320,
   geofence,
+  geofences = [],
   onMapClick,
   movementPath = [],
   parentLocation = null,
@@ -48,6 +55,7 @@ export const LocationMap = ({
   const accuracyCircleRef = useRef<any>(null);
   const geofenceCircleRef = useRef<any>(null);
   const geofenceMarkerRef = useRef<any>(null);
+  const placeCirclesRef = useRef<Map<string, { circle: any; marker: any }>>(new Map());
   const pathLineRef = useRef<any>(null);
   const fallbackLineRef = useRef<any>(null);
   const directionsRendererRef = useRef<any>(null);
@@ -148,7 +156,62 @@ export const LocationMap = ({
           pathLineRef.current.setMap(null);
         }
 
-        // Geofence
+        // Saved smart places (multiple circles)
+        const activeIds = new Set<string>();
+        for (const zone of geofences) {
+          const key = zone.id ?? `${zone.lat},${zone.lng}`;
+          activeIds.add(key);
+          const color = zone.color ?? "#22c55e";
+          const gCenter = { lat: zone.lat, lng: zone.lng };
+          let entry = placeCirclesRef.current.get(key);
+          if (!entry) {
+            const circle = new google.maps.Circle({
+              map: mapRef.current,
+              center: gCenter,
+              radius: zone.radius,
+              strokeColor: color,
+              strokeOpacity: 0.75,
+              strokeWeight: 2,
+              fillColor: color,
+              fillOpacity: 0.08,
+            });
+            const marker = new google.maps.Marker({
+              map: mapRef.current,
+              position: gCenter,
+              title: zone.label || "Место",
+              label: zone.label
+                ? { text: zone.label.slice(0, 2), fontSize: "11px" }
+                : undefined,
+              icon: zone.label
+                ? undefined
+                : {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 5,
+                    fillColor: color,
+                    fillOpacity: 1,
+                    strokeColor: "#fff",
+                    strokeWeight: 2,
+                  },
+            });
+            entry = { circle, marker };
+            placeCirclesRef.current.set(key, entry);
+          } else {
+            entry.circle.setCenter(gCenter);
+            entry.circle.setRadius(zone.radius);
+            entry.circle.setOptions({ strokeColor: color, fillColor: color });
+            entry.marker.setPosition(gCenter);
+            if (zone.label) entry.marker.setTitle(zone.label);
+          }
+        }
+        for (const [key, entry] of placeCirclesRef.current) {
+          if (!activeIds.has(key)) {
+            entry.circle.setMap(null);
+            entry.marker.setMap(null);
+            placeCirclesRef.current.delete(key);
+          }
+        }
+
+        // Legacy active geofence highlight (dashed border feel via thicker stroke)
         if (geofence) {
           const gCenter = { lat: geofence.lat, lng: geofence.lng };
           if (!geofenceCircleRef.current) {
@@ -156,20 +219,20 @@ export const LocationMap = ({
               map: mapRef.current,
               center: gCenter,
               radius: geofence.radius,
-              strokeColor: "#22c55e",
-              strokeOpacity: 0.8,
-              strokeWeight: 2,
-              fillColor: "#22c55e",
-              fillOpacity: 0.1,
+              strokeColor: "#2563eb",
+              strokeOpacity: 0.9,
+              strokeWeight: 3,
+              fillColor: "#2563eb",
+              fillOpacity: 0.06,
             });
             geofenceMarkerRef.current = new google.maps.Marker({
               map: mapRef.current,
               position: gCenter,
-              title: "Безопасная зона",
+              title: geofence.label || "Активная зона",
               icon: {
                 path: google.maps.SymbolPath.CIRCLE,
-                scale: 6,
-                fillColor: "#22c55e",
+                scale: 7,
+                fillColor: "#2563eb",
                 fillOpacity: 1,
                 strokeColor: "#fff",
                 strokeWeight: 2,
@@ -210,8 +273,9 @@ export const LocationMap = ({
         bounds.extend(center);
         pathCoords.forEach((p) => bounds.extend(p));
         if (parentLocation) bounds.extend(parentLocation);
+        geofences.forEach((z) => bounds.extend({ lat: z.lat, lng: z.lng }));
         if (geofence) bounds.extend({ lat: geofence.lat, lng: geofence.lng });
-        if (pathCoords.length > 1 || parentLocation) {
+        if (pathCoords.length > 1 || parentLocation || geofences.length > 0) {
           mapRef.current.fitBounds(bounds, 48);
         }
 
@@ -276,6 +340,7 @@ export const LocationMap = ({
     geofence?.lat,
     geofence?.lng,
     geofence?.radius,
+    geofences,
     movementPath,
     parentLocation?.lat,
     parentLocation?.lng,

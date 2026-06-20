@@ -24,6 +24,15 @@ import {
   type GeofencePreset,
   type SavedPlace,
 } from "@/lib/saved-places";
+import {
+  deleteSavedPlaceDb,
+  fetchPlaceStatus,
+  fetchSavedPlaces,
+  upsertSavedPlaceDb,
+  updatePlaceRadiusDb,
+  type ChildPlaceStatusRow,
+} from "@/lib/child-places-service";
+import type { DbSavedPlace } from "@/lib/smart-places";
 import { PlaceAddressSearch, type SelectedPlacePayload } from "@/components/parental/PlaceAddressSearch";
 import {
   distanceMeters,
@@ -89,6 +98,8 @@ interface GeofenceEvent {
   longitude: number;
   distance_m: number | null;
   created_at: string;
+  place_name?: string | null;
+  status_hint?: string | null;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -112,6 +123,8 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [savingSettings, setSavingSettings] = useState(false);
   const [geoEvents, setGeoEvents] = useState<GeofenceEvent[]>([]);
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
+  const [dbPlaces, setDbPlaces] = useState<DbSavedPlace[]>([]);
+  const [placeStatus, setPlaceStatus] = useState<ChildPlaceStatusRow | null>(null);
   const [activeZoneLabel, setActiveZoneLabel] = useState<string | null>(null);
   const [customPlaceName, setCustomPlaceName] = useState("");
   const [movementPath, setMovementPath] = useState<LatLng[]>([]);
@@ -200,7 +213,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         .order("created_at", { ascending: false })
         .limit(10),
       supabase
-        .from("geofence_events" as any)
+        .from("geofence_events")
         .select("*")
         .eq("child_id", childId)
         .order("created_at", { ascending: false })
@@ -247,11 +260,23 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "geofence_events", filter: `child_id=eq.${childId}` },
         (payload) => {
-          const ev = payload.new as any as GeofenceEvent;
+          const ev = payload.new as GeofenceEvent;
           loadData();
+          const placeLabel = ev.place_name?.replace(/^[^\s]+\s/, "") || ev.place_name || "";
+          const isGoingHome = ev.status_hint === "going_home";
+          let title: string;
+          if (ev.event_type === "enter") {
+            title = placeLabel ? `✅ ${childName} в ${ev.place_name || placeLabel}` : `✅ ${childName} пришёл в зону`;
+          } else if (isGoingHome) {
+            title = `🏠 ${childName} идёт домой`;
+          } else {
+            title = placeLabel
+              ? `⚠️ ${childName} вышел из «${placeLabel}»`
+              : `⚠️ ${childName} вышел из зоны`;
+          }
           toast({
-            title: ev.event_type === "exit" ? "⚠️ Ребёнок вышел из зоны" : "✅ Ребёнок вернулся в зону",
-            description: `${childName} · ${ev.distance_m ? Math.round(ev.distance_m) + "м от центра" : ""}`,
+            title,
+            description: ev.distance_m ? `${Math.round(ev.distance_m)} м от центра` : undefined,
             variant: ev.event_type === "exit" ? "destructive" : "default",
             duration: 30000,
           });
@@ -271,8 +296,44 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
       (settings?.location_interval_seconds ?? 60) * 3 * 1000 + 30_000;
 
   useEffect(() => {
-    setSavedPlaces(loadSavedPlaces(childId));
-    setActiveZoneLabel(loadGeofenceLabel(childId));
+    const loadPlaces = async () => {
+      const rows = await fetchSavedPlaces(childId);
+      setDbPlaces(rows);
+      setSavedPlaces(
+        rows.map((p) => ({
+          id: p.place_key,
+          name: p.name,
+          emoji: p.emoji,
+          lat: p.latitude,
+          lng: p.longitude,
+          radius_m: p.radius_m,
+        })),
+      );
+      if (rows.length === 0) {
+        setSavedPlaces(loadSavedPlaces(childId));
+        setActiveZoneLabel(loadGeofenceLabel(childId));
+      }
+    };
+    loadPlaces();
+    fetchPlaceStatus(childId).then(setPlaceStatus);
+
+    const ch = supabase
+      .channel(`place-status-${childId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "child_place_status", filter: `child_id=eq.${childId}` },
+        (payload) => setPlaceStatus(payload.new as ChildPlaceStatusRow),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "child_saved_places", filter: `child_id=eq.${childId}` },
+        () => loadPlaces(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [childId]);
 
   const activateGeofence = async (
@@ -292,6 +353,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     setActiveZoneLabel(label);
     if (saveAsPlace) {
       setSavedPlaces(upsertSavedPlace(childId, saveAsPlace));
+      await upsertSavedPlaceDb(childId, saveAsPlace);
+      const rows = await fetchSavedPlaces(childId);
+      setDbPlaces(rows);
     }
   };
 
@@ -450,8 +514,22 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     toast({ title: `Место «${name}» сохранено`, description: "Можно переключать одним нажатием." });
   };
 
-  const deleteSavedPlace = (placeId: string) => {
+  const deleteSavedPlace = async (placeId: string) => {
     setSavedPlaces(removeSavedPlace(childId, placeId));
+    await deleteSavedPlaceDb(childId, placeId);
+    setDbPlaces((prev) => prev.filter((p) => p.place_key !== placeId));
+  };
+
+  const updatePlaceRadius = async (placeKey: string, radius_m: number) => {
+    const db = dbPlaces.find((p) => p.place_key === placeKey);
+    if (!db) return;
+    await updatePlaceRadiusDb(db.id, radius_m);
+    setSavedPlaces((prev) =>
+      prev.map((p) => (p.id === placeKey ? { ...p, radius_m } : p)),
+    );
+    setDbPlaces((prev) =>
+      prev.map((p) => (p.place_key === placeKey ? { ...p, radius_m } : p)),
+    );
   };
 
   const buildRoute = async (mode: TravelMode) => {
@@ -535,22 +613,32 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     toast({ title: "Ваше место сохранено", description: "Будет использоваться, пока GPS недоступен." });
   };
 
-  const applySearchedPlace = (payload: SelectedPlacePayload, save: boolean) => {
+  const applySearchedPlace = async (payload: SelectedPlacePayload, save: boolean) => {
     const label = formatPlaceLabel(payload.emoji, payload.name);
-    const saved: SavedPlace | undefined = save
-      ? {
-          id: `addr-${Date.now()}`,
-          name: payload.name,
-          emoji: payload.emoji,
-          lat: payload.lat,
-          lng: payload.lng,
-          radius_m: payload.radius_m,
-        }
-      : undefined;
-    activateGeofence(payload.lat, payload.lng, payload.radius_m, label, saved);
+    const placeKey = payload.name.toLowerCase().includes("школ")
+      ? "school"
+      : payload.name.toLowerCase().includes("сад")
+        ? "kindergarten"
+        : payload.name.toLowerCase().includes("дом")
+          ? "home"
+          : `addr-${Date.now()}`;
+    const saved: SavedPlace = {
+      id: placeKey,
+      name: payload.name,
+      emoji: payload.emoji,
+      lat: payload.lat,
+      lng: payload.lng,
+      radius_m: payload.radius_m,
+    };
+    await activateGeofence(payload.lat, payload.lng, payload.radius_m, label, save ? saved : undefined);
+    if (save) {
+      await upsertSavedPlaceDb(childId, { ...saved, address: payload.address });
+    }
     toast({
-      title: `Зона «${payload.name}» установлена`,
-      description: payload.address,
+      title: save ? `«${payload.name}» сохранено` : `Зона «${payload.name}» установлена`,
+      description: save
+        ? `Уведомим, когда ${childName} придёт или уйдёт · радиус ${payload.radius_m} м`
+        : payload.address,
     });
   };
 
@@ -936,9 +1024,21 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                 parentLocation={effectiveParentLocation}
                 showRoute={showRoute}
                 routeMode={routeMode}
+                geofences={savedPlaces.map((place) => ({
+                  id: place.id,
+                  lat: place.lat,
+                  lng: place.lng,
+                  radius: place.radius_m,
+                  label: `${place.emoji} ${place.name}`,
+                }))}
                 geofence={
                   settings?.geofence_enabled && settings.geofence_lat != null && settings.geofence_lng != null
-                    ? { lat: settings.geofence_lat, lng: settings.geofence_lng, radius: settings.geofence_radius_m }
+                    ? {
+                        lat: settings.geofence_lat,
+                        lng: settings.geofence_lng,
+                        radius: settings.geofence_radius_m,
+                        label: activeZoneLabel ?? undefined,
+                      }
                     : null
                 }
                 onMapClick={(lat, lng) => {
@@ -1055,10 +1155,20 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             <Shield className="w-5 h-5" /> Безопасная зона (геозона)
           </CardTitle>
           <CardDescription>
-            Найдите садик или школу по адресу — или «Моё место»: авто по GPS либо координаты вручную.
+            Сохраняйте садик, школу, дом — у каждого свой радиус. Уведомления: «в школе», «вышел»,
+            «идёт домой». Статус виден и у ребёнка на телефоне.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {placeStatus?.status_message && (
+            <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+              <span className="font-medium">Сейчас: </span>
+              {placeStatus.status_message}
+              <span className="text-xs text-muted-foreground ml-2">
+                {formatDistanceToNow(new Date(placeStatus.updated_at), { addSuffix: true, locale: ru })}
+              </span>
+            </div>
+          )}
           {activeZoneLabel && settings?.geofence_enabled && (
             <div className="rounded-lg bg-primary/10 px-3 py-2 text-sm">
               <span className="font-medium">Сейчас следим: </span>
@@ -1117,33 +1227,49 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
           {savedPlaces.length > 0 && (
             <div className="space-y-2 pt-2 border-t">
               <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                Мои сохранённые места
+                Умные места · уведомления при входе и выходе
               </Label>
-              <ScrollArea className="max-h-[180px]">
-                <div className="space-y-2 pr-2">
+              <ScrollArea className="max-h-[280px]">
+                <div className="space-y-3 pr-2">
                   {savedPlaces.map((place) => (
-                    <div
-                      key={place.id}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
-                    >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 justify-start text-xs h-auto py-2"
-                        disabled={savingSettings}
-                        onClick={() => applySavedPlace(place)}
-                      >
-                        {place.emoji} {place.name}
-                        <span className="text-muted-foreground ml-1">· {place.radius_m} м</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-destructive"
-                        onClick={() => deleteSavedPlace(place.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div key={place.id} className="p-2 rounded-lg bg-muted/50 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 justify-start text-xs h-auto py-2"
+                          disabled={savingSettings}
+                          onClick={() => applySavedPlace(place)}
+                        >
+                          {place.emoji} {place.name}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-destructive"
+                          onClick={() => deleteSavedPlace(place.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="text-[10px] text-muted-foreground w-12">Радиус</span>
+                        <Slider
+                          min={50}
+                          max={500}
+                          step={10}
+                          value={[place.radius_m]}
+                          disabled={savingSettings}
+                          onValueChange={(v) =>
+                            setSavedPlaces((prev) =>
+                              prev.map((p) => (p.id === place.id ? { ...p, radius_m: v[0] } : p)),
+                            )
+                          }
+                          onValueCommit={(v) => updatePlaceRadius(place.id, v[0])}
+                          className="flex-1"
+                        />
+                        <span className="text-[10px] font-mono w-10">{place.radius_m}м</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1225,7 +1351,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                     ) : (
                       <Shield className="w-3 h-3 text-primary" />
                     )}
-                    {ev.event_type === "exit" ? "Вышел из зоны" : "Вернулся в зону"}
+                    {ev.event_type === "exit" ? "Вышел" : "Пришёл"}
+                    {ev.place_name ? ` · ${ev.place_name}` : " из зоны"}
+                    {ev.status_hint === "going_home" && " → идёт домой"}
                     {ev.distance_m != null && (
                       <span className="text-muted-foreground">· {Math.round(ev.distance_m)}м</span>
                     )}

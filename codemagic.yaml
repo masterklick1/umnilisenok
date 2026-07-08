@@ -1,0 +1,82 @@
+workflows:
+  android-release:
+    name: Android Release (AAB для Google Play)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      android_signing:
+        - umnilisenok_keystore
+      node: 20
+      java: 17
+      vars:
+        PACKAGE_NAME: "app.lovable.86978e2af29e452288743ecba72c9930"
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci || npm install
+      - name: Build web (Vite)
+        script: |
+          npm run build
+      - name: Add Android platform if missing
+        script: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+      - name: Sync Capacitor
+        script: |
+          npx cap sync android
+      - name: Set version from build number
+        script: |
+          cd android
+          # versionCode = Codemagic build number, versionName оставляем из build.gradle
+          sed -i.bak "s/versionCode [0-9]*/versionCode $(($BUILD_NUMBER + 1))/" app/build.gradle
+      - name: Build signed AAB
+        script: |
+          cd android
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/mapping.txt
+    publishing:
+      email:
+        recipients:
+          - $CM_BUILD_TRIGGERED_BY_EMAIL
+        notify:
+          success: true
+          failure: true
+      # Раскомментируйте после первой ручной загрузки AAB в Play Console
+      # и настройки Google Play service account в Codemagic:
+      # google_play:
+      #   credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      #   track: internal
+      #   submit_as_draft: true
+
+  android-debug:
+    name: Android Debug APK (для теста на телефоне)
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+    environment:
+      node: 20
+      java: 17
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci || npm install
+      - name: Build web
+        script: npm run build
+      - name: Add Android platform if missing
+        script: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+      - name: Sync Capacitor
+        script: npx cap sync android
+      - name: Build debug APK
+        script: |
+          cd android
+          ./gradlew assembleDebug
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - $CM_BUILD_TRIGGERED_BY_EMAIL

@@ -108,19 +108,19 @@ export const deleteSavedPlaceDb = async (childId: string, placeKey: string) => {
 };
 
 export const fetchPlaceStatus = async (childId: string): Promise<ChildPlaceStatusRow | null> => {
-  const { data } = await supabase
+  const { data } = await (supabase as any)
     .from("child_place_status")
     .select("*")
     .eq("child_id", childId)
     .maybeSingle();
-  return (data as ChildPlaceStatusRow) || null;
+  return (data as unknown as ChildPlaceStatusRow) || null;
 };
 
 export const upsertPlaceStatus = async (
   childId: string,
   patch: Partial<Omit<ChildPlaceStatusRow, "child_id">>,
 ) => {
-  await supabase.from("child_place_status").upsert(
+  await (supabase as any).from("child_place_status").upsert(
     {
       child_id: childId,
       updated_at: new Date().toISOString(),

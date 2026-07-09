@@ -31,17 +31,11 @@ workflows:
           sed -i.bak "s/versionCode [0-9]*/versionCode $(($BUILD_NUMBER + 1))/" app/build.gradle
       - name: Configure release signing in build.gradle
         script: |
-          # Codemagic пробрасывает keystore как $CM_KEYSTORE_PATH / $CM_KEYSTORE_PASSWORD /
-          # $CM_KEY_ALIAS / $CM_KEY_PASSWORD. Патчим android/app/build.gradle, чтобы
-          # release-сборка была подписана этим keystore (иначе Play Console её отклонит).
           GRADLE_FILE="android/app/build.gradle"
-
           if grep -q "signingConfigs.release" "$GRADLE_FILE"; then
             echo "signingConfigs.release уже настроен — пропускаем"
             exit 0
           fi
-
-          # Вставляем signingConfigs перед buildTypes { ... }
           awk '
             /buildTypes[[:space:]]*\{/ && !inserted {
               print "    signingConfigs {"
@@ -58,13 +52,10 @@ workflows:
             }
             { print }
           ' "$GRADLE_FILE" > "$GRADLE_FILE.tmp" && mv "$GRADLE_FILE.tmp" "$GRADLE_FILE"
-
-          # Подключаем signingConfig в release-buildType
           sed -i.bak '/release {/,/}/ {
             /minifyEnabled/ a\
             signingConfig signingConfigs.release
           }' "$GRADLE_FILE"
-
           echo "--- build.gradle after patch ---"
           cat "$GRADLE_FILE"
       - name: Build signed AAB
@@ -81,12 +72,6 @@ workflows:
         notify:
           success: true
           failure: true
-      # Раскомментируйте после первой ручной загрузки AAB в Play Console
-      # и настройки Google Play service account в Codemagic:
-      # google_play:
-      #    credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-      #    track: internal
-      #    submit_as_draft: true
 
   android-debug:
     name: Android Debug APK (для теста на телефоне)

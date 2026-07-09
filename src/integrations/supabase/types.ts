@@ -189,6 +189,59 @@ export type Database = {
         }
         Relationships: []
       }
+      child_saved_places: {
+        Row: {
+          address: string | null
+          child_id: string
+          created_at: string
+          emoji: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          notify_enabled: boolean
+          place_key: string
+          radius_m: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          child_id: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          notify_enabled?: boolean
+          place_key?: string
+          radius_m?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          child_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          notify_enabled?: boolean
+          place_key?: string
+          radius_m?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_saved_places_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       child_settings: {
         Row: {
           child_id: string
@@ -222,6 +275,90 @@ export type Database = {
           location_interval_seconds?: number
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      child_place_status: {
+        Row: {
+          child_id: string
+          current_place_id: string | null
+          current_place_name: string | null
+          latitude: number | null
+          longitude: number | null
+          status: string
+          status_message: string
+          target_place_id: string | null
+          target_place_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          child_id: string
+          current_place_id?: string | null
+          current_place_name?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          status?: string
+          status_message?: string
+          target_place_id?: string | null
+          target_place_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          child_id?: string
+          current_place_id?: string | null
+          current_place_name?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          status?: string
+          status_message?: string
+          target_place_id?: string | null
+          target_place_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      child_saved_places: {
+        Row: {
+          address: string | null
+          child_id: string
+          created_at: string
+          emoji: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          notify_enabled: boolean
+          place_key: string
+          radius_m: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          child_id: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          notify_enabled?: boolean
+          place_key?: string
+          radius_m?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          child_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          notify_enabled?: boolean
+          place_key?: string
+          radius_m?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -330,6 +467,9 @@ export type Database = {
           id: string
           latitude: number
           longitude: number
+          place_id: string | null
+          place_name: string | null
+          status_hint: string | null
         }
         Insert: {
           child_id: string
@@ -339,6 +479,9 @@ export type Database = {
           id?: string
           latitude: number
           longitude: number
+          place_id?: string | null
+          place_name?: string | null
+          status_hint?: string | null
         }
         Update: {
           child_id?: string
@@ -348,6 +491,9 @@ export type Database = {
           id?: string
           latitude?: number
           longitude?: number
+          place_id?: string | null
+          place_name?: string | null
+          status_hint?: string | null
         }
         Relationships: []
       }

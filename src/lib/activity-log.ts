@@ -29,7 +29,7 @@ export const logChildActivity = async (
     p_details: (details ?? null) as Json,
   };
 
-  const { error: rpcError } = await supabase.rpc("log_child_activity", payload);
+  const { error: rpcError } = await (supabase.rpc as any)("log_child_activity", payload);
 
   if (!rpcError) return;
 

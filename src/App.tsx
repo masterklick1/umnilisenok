@@ -19,6 +19,7 @@ import AuthPage from "./pages/AuthPage";
 import JoinPage from "./pages/JoinPage";
 import SettingsPage from "./pages/SettingsPage";
 import { ChildDeviceServices } from "./components/child/ChildDeviceServices";
+import { ChildPlaceStatusBadge } from "./components/child/ChildPlaceStatusBadge";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ChildDeviceServices />
+          <ChildPlaceStatusBadge />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/join" element={<JoinPage />} />

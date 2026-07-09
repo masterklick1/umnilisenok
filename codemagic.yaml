@@ -25,11 +25,48 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync android
-      - name: Set version from build number
+      - name: Set versionCode from Codemagic build number
         script: |
           cd android
-          # versionCode = Codemagic build number, versionName оставляем из build.gradle
           sed -i.bak "s/versionCode [0-9]*/versionCode $(($BUILD_NUMBER + 1))/" app/build.gradle
+      - name: Configure release signing in build.gradle
+        script: |
+          # Codemagic пробрасывает keystore как $CM_KEYSTORE_PATH / $CM_KEYSTORE_PASSWORD /
+          # $CM_KEY_ALIAS / $CM_KEY_PASSWORD. Патчим android/app/build.gradle, чтобы
+          # release-сборка была подписана этим keystore (иначе Play Console её отклонит).
+          GRADLE_FILE="android/app/build.gradle"
+
+          if grep -q "signingConfigs.release" "$GRADLE_FILE"; then
+            echo "signingConfigs.release уже настроен — пропускаем"
+            exit 0
+          fi
+
+          # Вставляем signingConfigs перед buildTypes { ... }
+          awk '
+            /buildTypes[[:space:]]*\{/ && !inserted {
+              print "    signingConfigs {"
+              print "        release {"
+              print "            if (System.getenv()[\"CM_KEYSTORE_PATH\"]) {"
+              print "                storeFile file(System.getenv()[\"CM_KEYSTORE_PATH\"])"
+              print "                storePassword System.getenv()[\"CM_KEYSTORE_PASSWORD\"]"
+              print "                keyAlias System.getenv()[\"CM_KEY_ALIAS\"]"
+              print "                keyPassword System.getenv()[\"CM_KEY_PASSWORD\"]"
+              print "            }"
+              print "        }"
+              print "    }"
+              inserted = 1
+            }
+            { print }
+          ' "$GRADLE_FILE" > "$GRADLE_FILE.tmp" && mv "$GRADLE_FILE.tmp" "$GRADLE_FILE"
+
+          # Подключаем signingConfig в release-buildType
+          sed -i.bak '/release {/,/}/ {
+            /minifyEnabled/ a\
+            signingConfig signingConfigs.release
+          }' "$GRADLE_FILE"
+
+          echo "--- build.gradle after patch ---"
+          cat "$GRADLE_FILE"
       - name: Build signed AAB
         script: |
           cd android

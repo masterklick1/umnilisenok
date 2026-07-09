@@ -113,7 +113,8 @@ export const fetchPlaceStatus = async (childId: string): Promise<ChildPlaceStatu
     .select("*")
     .eq("child_id", childId)
     .maybeSingle();
-  return (data as unknown as ChildPlaceStatusRow) || null;
+    
+  return (data as ChildPlaceStatusRow) || null;
 };
 
 export const upsertPlaceStatus = async (

@@ -52,3 +52,4 @@ let cancelled = false;
         latitude: lat,
         longitude: lng,
       });
+    }; // <-- Скобка восстановлена, теперь синтаксис идеален

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { demoProgress, isDemoUser } from "@/lib/demo-session";
 
 interface UserProgress {
   id: string;
@@ -23,13 +24,24 @@ const yesterdayStr = () => {
 };
 
 export const useUserProgress = () => {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const { toast } = useToast();
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProgress = useCallback(async () => {
-    if (!user) return;
+    if (isDemoUser(user)) {
+      setProgress(demoProgress);
+      setLoading(false);
+      return;
+    }
+
+    if (!user) {
+      setProgress(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("user_progress")
@@ -48,7 +60,7 @@ export const useUserProgress = () => {
   // Проверка достижений по категории
   const checkAchievements = useCallback(
     async (category: AchievementCategory | null, currentStreak: number) => {
-      if (!user) return 0;
+      if (!user || isDemo) return 0;
       try {
         // Уже разблокированные
         const { data: unlocked } = await supabase
@@ -110,12 +122,27 @@ export const useUserProgress = () => {
         return 0;
       }
     },
-    [user, toast]
+    [user, isDemo, toast]
   );
 
   const addStars = useCallback(
     async (amount: number, category: AchievementCategory | null = null) => {
       if (!user || !progress) return;
+      if (isDemo) {
+        setProgress((current) => {
+          if (!current) return current;
+          const experience = current.experience + amount;
+          return {
+            ...current,
+            stars: current.stars + amount,
+            experience,
+            level: Math.floor(experience / 100) + 1,
+            last_activity_date: todayStr(),
+          };
+        });
+        return;
+      }
+
       try {
         // Расчёт streak
         const today = todayStr();
@@ -177,7 +204,7 @@ export const useUserProgress = () => {
         toast({ title: "Ошибка", description: "Не удалось обновить прогресс", variant: "destructive" });
       }
     },
-    [user, progress, toast, checkAchievements]
+    [user, progress, isDemo, toast, checkAchievements]
   );
 
   useEffect(() => {

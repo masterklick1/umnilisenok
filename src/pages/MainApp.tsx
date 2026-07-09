@@ -20,7 +20,7 @@ import { useActivityTracker } from "@/hooks/useActivityTracker";
 export const MainApp = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isDemo, signOut } = useAuth();
   const { progress, loading } = useUserProgress();
   const { isChild, isParent, loading: roleLoading } = useUserRole();
   const [childName, setChildName] = useState<string>("");
@@ -119,6 +119,11 @@ export const MainApp = () => {
     navigate("/parent");
   };
 
+  const handleCreateAccount = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
   if (loading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -163,6 +168,19 @@ export const MainApp = () => {
 
         {/* Welcome Message */}
         <UserWelcome name={childName} />
+
+        {isDemo && (
+          <div className="mb-6 rounded-2xl border border-primary/20 bg-card/90 p-4 text-center shadow-md">
+            <p className="font-bold text-primary">Демо-режим</p>
+            <p className="text-sm text-muted-foreground">
+              Уроки доступны без регистрации. Родительский контроль, безопасность и будущая подписка
+              подключаются после создания аккаунта.
+            </p>
+            <Button size="sm" variant="secondary" className="mt-3" onClick={handleCreateAccount}>
+              Создать аккаунт
+            </Button>
+          </div>
+        )}
 
         {/* Fox Avatar */}
         <div className="flex justify-center my-10">
@@ -229,7 +247,7 @@ export const MainApp = () => {
         </div>
       </div>
 
-      {isChild && <ChildAccountBanner />}
+      {isChild && !isDemo && <ChildAccountBanner />}
 
       {/* SOS for emergencies */}
       <SOSButton />

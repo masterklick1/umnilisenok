@@ -1,15 +1,24 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { User, Session } from "@supabase/supabase-js";
+import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { unsubscribeFromPush, subscribeToPush, isPushSupported } from "@/lib/push";
+import {
+  clearDemoSession,
+  createDemoUser,
+  isDemoSessionActive,
+  isDemoUser,
+  startDemoSession,
+} from "@/lib/demo-session";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  signUp: (email: string, password: string, firstName?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, firstName?: string) => Promise<{ error: AuthError | Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
   signOut: () => Promise<void>;
+  startDemo: () => void;
+  isDemo: boolean;
   loading: boolean;
 }
 
@@ -19,12 +28,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [demoActive, setDemoActive] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    if (isDemoSessionActive()) {
+      if (!demoActive) setDemoActive(true);
+      setUser(createDemoUser());
+      setSession(null);
+      setLoading(false);
+      return;
+    }
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        setDemoActive(false);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -45,7 +64,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [demoActive]);
+
+  const startDemo = () => {
+    startDemoSession();
+    setDemoActive(true);
+    setSession(null);
+    setUser(createDemoUser());
+    setLoading(false);
+    toast({
+      title: "Демо-режим включён 🦊",
+      description: "Можно попробовать уроки без регистрации. Родительский контроль подключается после аккаунта.",
+    });
+  };
 
   const signUp = async (email: string, password: string, firstName?: string) => {
     try {
@@ -76,13 +107,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error };
-    } catch (error: any) {
+    } catch (error) {
+      const authError = error instanceof Error ? error : new Error("Неизвестная ошибка регистрации");
       toast({
         title: "Ошибка",
-        description: error.message,
+        description: authError.message,
         variant: "destructive",
       });
-      return { error };
+      return { error: authError };
     }
   };
 
@@ -106,18 +138,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error };
-    } catch (error: any) {
+    } catch (error) {
+      const authError = error instanceof Error ? error : new Error("Неизвестная ошибка входа");
       toast({
         title: "Ошибка",
-        description: error.message,
+        description: authError.message,
         variant: "destructive",
       });
-      return { error };
+      return { error: authError };
     }
   };
 
   const signOut = async () => {
     try {
+      if (demoActive || isDemoUser(user)) {
+        clearDemoSession();
+        setDemoActive(false);
+        setSession(null);
+        setUser(null);
+        toast({
+          title: "Демо завершено",
+          description: "Можно войти или создать родительский аккаунт.",
+        });
+        return;
+      }
+
       // IMPORTANT: unsubscribe BEFORE auth.signOut() so RLS (auth.uid() = user_id)
       // still allows deleting the push_subscriptions row for this device.
       try {
@@ -130,17 +175,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       toast({
         title: "До скорой встречи! 👋",
       });
-    } catch (error: any) {
+    } catch (error) {
+      const authError = error instanceof Error ? error : new Error("Неизвестная ошибка выхода");
       toast({
         title: "Ошибка",
-        description: error.message,
+        description: authError.message,
         variant: "destructive",
       });
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, signUp, signIn, signOut, loading }}>
+    <AuthContext.Provider
+      value={{ user, session, signUp, signIn, signOut, startDemo, isDemo: demoActive || isDemoUser(user), loading }}
+    >
       {children}
     </AuthContext.Provider>
   );

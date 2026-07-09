@@ -167,12 +167,13 @@ function ChildLocationPanel() {
 
 /** Фоновые сервисы ребёнка: геолокация и ответы родителю — только на аккаунте ребёнка. */
 export function ChildDeviceServices() {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const route = useLocation();
   const { isChild, loading: roleLoading } = useUserRole();
 
   const active =
     !!user?.id &&
+    !isDemo &&
     isChild &&
     !roleLoading &&
     route.pathname !== "/auth" &&

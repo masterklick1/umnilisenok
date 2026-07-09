@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { isDemoUserId } from "@/lib/demo-session";
 
 /** Child id for activity: invite/child session, or logged-in child account. */
 export const getActivityChildId = (authUserId: string | undefined): string | null => {
@@ -19,6 +20,7 @@ export const logChildActivity = async (
 ): Promise<void> => {
   const childId = getActivityChildId(authUserId);
   if (!childId) return;
+  if (isDemoUserId(childId)) return;
 
   const payload = {
     p_child_id: childId,

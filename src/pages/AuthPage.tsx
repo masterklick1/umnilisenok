@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
-import { Users, Baby } from "lucide-react";
+import { Users, Baby, Sparkles } from "lucide-react";
 
 const signUpSchema = z.object({
   email: z.string().email({ message: "Неверный формат email" }),
@@ -30,11 +30,16 @@ export default function AuthPage() {
   const [firstName, setFirstName] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const { signUp, signIn, user } = useAuth();
+  const { signUp, signIn, startDemo, isDemo, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) return;
+    if (isDemo) {
+      navigate("/", { replace: true });
+      return;
+    }
+
     supabase
       .from("profiles")
       .select("role")
@@ -48,7 +53,12 @@ export default function AuthPage() {
           navigate("/parent", { replace: true });
         }
       });
-  }, [user, navigate]);
+  }, [user, isDemo, navigate]);
+
+  const handleDemo = () => {
+    startDemo();
+    navigate("/", { replace: true });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +134,18 @@ export default function AuthPage() {
             >
               <Baby className="w-8 h-8" />
               Я ребёнок
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full h-20 text-lg flex-col gap-1 border-2 border-primary/20"
+              onClick={handleDemo}
+            >
+              <Sparkles className="w-8 h-8" />
+              Попробовать бесплатно
+              <span className="text-xs font-normal text-muted-foreground">
+                Уроки без регистрации, родительский контроль после аккаунта
+              </span>
             </Button>
           </CardContent>
         </Card>

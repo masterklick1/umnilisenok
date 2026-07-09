@@ -228,13 +228,13 @@ export const useParentalControl = () => {
   // Fetch child activities (for mirror)
   const fetchChildActivities = useCallback(async (childId: string) => {
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc("get_child_activities", {
+      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)("get_child_activities", {
         p_child_id: childId,
         p_limit: 50,
       });
 
       if (!rpcError) {
-        setChildActivities((rpcData as ChildActivity[]) || []);
+        setChildActivities((rpcData as unknown as ChildActivity[]) || []);
         return;
       }
 

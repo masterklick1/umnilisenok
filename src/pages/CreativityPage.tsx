@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Palette, Pencil } from "lucide-react";
+import { ArrowLeft, Palette, Pencil, Sticker } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FreeDrawing } from "@/components/creativity/FreeDrawing";
 import { ColoringBook } from "@/components/creativity/ColoringBook";
+import { StickerBoard } from "@/components/creativity/StickerBoard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 
@@ -25,14 +26,15 @@ const CreativityPage = () => {
             <ArrowLeft className="w-5 h-5" />
             Назад
           </Button>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            🎨 Творчество
+          <h1 className="text-3xl font-extrabold flex items-center gap-2">
+            <span>🎨</span>
+            <span className="text-gradient">Творчество</span>
           </h1>
           <div className="w-24" />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+          <TabsList className="grid w-full max-w-xl mx-auto grid-cols-3 mb-8">
             <TabsTrigger value="draw" className="gap-2">
               <Pencil className="w-4 h-4" />
               Рисовать
@@ -40,6 +42,10 @@ const CreativityPage = () => {
             <TabsTrigger value="coloring" className="gap-2">
               <Palette className="w-4 h-4" />
               Раскрашивать
+            </TabsTrigger>
+            <TabsTrigger value="stickers" className="gap-2">
+              <Sticker className="w-4 h-4" />
+              Наклейки
             </TabsTrigger>
           </TabsList>
 
@@ -49,6 +55,10 @@ const CreativityPage = () => {
 
           <TabsContent value="coloring">
             <ColoringBook />
+          </TabsContent>
+
+          <TabsContent value="stickers">
+            <StickerBoard />
           </TabsContent>
         </Tabs>
       </div>

@@ -186,6 +186,59 @@ export type Database = {
         }
         Relationships: []
       }
+      child_saved_places: {
+        Row: {
+          address: string | null
+          child_id: string
+          created_at: string
+          emoji: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          notify_enabled: boolean
+          place_key: string
+          radius_m: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          child_id: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          notify_enabled?: boolean
+          place_key?: string
+          radius_m?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          child_id?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          notify_enabled?: boolean
+          place_key?: string
+          radius_m?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_saved_places_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       child_settings: {
         Row: {
           child_id: string

@@ -7,7 +7,7 @@ import { useUserProgress } from "@/hooks/useUserProgress";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { speak } from "@/lib/sound";
 
-type ExerciseType = "count" | "shapes" | "sort" | "compare";
+type ExerciseType = "count" | "shapes" | "sort" | "compare" | "colors" | "bigsmall";
 
 interface Level1ExercisesProps {
   onBack: () => void;
@@ -36,6 +36,10 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   // Сравнение
   const [compareRound, setCompareRound] = useState(0);
 
+  // Цвета и размер
+  const [colorRound, setColorRound] = useState(0);
+  const [bigRound, setBigRound] = useState(0);
+
   const reward = (msg: string) => {
     addStars(1, "math");
     setScore((s) => s + 1);
@@ -53,6 +57,8 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     { type: "shapes" as ExerciseType, title: "Найди пару", description: "Найди одинаковые фигуры", emoji: "🔷" },
     { type: "sort" as ExerciseType, title: "Сортировка", description: "От маленького к большому", emoji: "📦" },
     { type: "compare" as ExerciseType, title: "Больше-меньше", description: "Где больше фруктов?", emoji: "🍊" },
+    { type: "colors" as ExerciseType, title: "Цвета", description: "Найди такой же цвет", emoji: "🎨" },
+    { type: "bigsmall" as ExerciseType, title: "Большой-маленький", description: "Найди по размеру", emoji: "🔍" },
   ];
 
   const sortSizes = useMemo(() => {
@@ -71,6 +77,28 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     const fruit = ["🍎", "🍐", "🍊", "🍇", "🍓"][Math.floor(Math.random() * 5)];
     return { a, b, fruit, bigger: a > b ? "a" as const : "b" as const };
   }, [compareRound]);
+
+  const colorData = useMemo(() => {
+    const palette = [
+      { name: "красный", emoji: "🔴" },
+      { name: "синий", emoji: "🔵" },
+      { name: "жёлтый", emoji: "🟡" },
+      { name: "зелёный", emoji: "🟢" },
+      { name: "оранжевый", emoji: "🟠" },
+      { name: "фиолетовый", emoji: "🟣" },
+    ];
+    const target = palette[Math.floor(Math.random() * palette.length)];
+    const opts = [...palette].sort(() => Math.random() - 0.5).slice(0, 4);
+    if (!opts.find((o) => o.name === target.name)) opts[0] = target;
+    return { target, opts: [...opts].sort(() => Math.random() - 0.5) };
+  }, [colorRound]);
+
+  const bigData = useMemo(() => {
+    const emoji = ["🐘", "🍎", "⭐", "🎈", "🐻", "🚗"][Math.floor(Math.random() * 6)];
+    const askBig = Math.random() > 0.5;
+    const bigLeft = Math.random() > 0.5;
+    return { emoji, askBig, bigLeft };
+  }, [bigRound]);
 
   // ===== Меню =====
   if (!currentExercise) {
@@ -261,6 +289,76 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                 {Array(round[side]).fill(round.fruit).map((f, i) => <span key={i}>{f}</span>)}
               </div>
               <div className="text-sm text-muted-foreground mt-3">Нажми, если здесь больше</div>
+            </button>
+          ))}
+        </div>
+      </Wrapper>
+    );
+  }
+
+  // ===== Цвета =====
+  if (currentExercise === "colors") {
+    const r = colorData;
+    return (
+      <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
+        <h2 className="text-2xl font-bold mb-4">Найди цвет: <span className="text-primary">{r.target.name}</span></h2>
+        <div className="text-8xl mb-8">{r.target.emoji}</div>
+        <div className="grid grid-cols-4 gap-4 max-w-md mx-auto">
+          {r.opts.map((o, i) => (
+            <Button
+              key={i}
+              size="lg"
+              variant="outline"
+              className="text-6xl h-20"
+              onClick={() => {
+                setTotal((t) => t + 1);
+                if (o.name === r.target.name) {
+                  reward("Верно");
+                  logCorrectAnswer({ section: "math", level: 1, exercise: "colors", color: o.name });
+                } else {
+                  wrong(r.target.name);
+                  logWrongAnswer({ section: "math", level: 1, exercise: "colors", color: o.name, correct: r.target.name });
+                }
+                setTimeout(() => setColorRound((x) => x + 1), 1200);
+              }}
+            >
+              {o.emoji}
+            </Button>
+          ))}
+        </div>
+      </Wrapper>
+    );
+  }
+
+  // ===== Большой-маленький =====
+  if (currentExercise === "bigsmall") {
+    const r = bigData;
+    const sizes = r.bigLeft ? ["text-8xl", "text-3xl"] : ["text-3xl", "text-8xl"];
+    const bigSide = r.bigLeft ? "left" : "right";
+    const pick = (side: "left" | "right") => {
+      setTotal((t) => t + 1);
+      const pickedBig = side === bigSide;
+      const ok = pickedBig === r.askBig;
+      if (ok) {
+        reward("Правильно");
+        logCorrectAnswer({ section: "math", level: 1, exercise: "bigsmall" });
+      } else {
+        wrong(r.askBig ? "большой" : "маленький");
+        logWrongAnswer({ section: "math", level: 1, exercise: "bigsmall" });
+      }
+      setTimeout(() => setBigRound((x) => x + 1), 1200);
+    };
+    return (
+      <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
+        <h2 className="text-2xl font-bold mb-8">Нажми {r.askBig ? "БОЛЬШОЙ" : "МАЛЕНЬКИЙ"}</h2>
+        <div className="grid grid-cols-2 gap-6 items-center max-w-md mx-auto">
+          {(["left", "right"] as const).map((side, i) => (
+            <button
+              key={side}
+              onClick={() => pick(side)}
+              className={`${sizes[i]} p-6 rounded-2xl bg-muted hover:bg-primary/10 transition-all flex items-center justify-center min-h-[160px]`}
+            >
+              {r.emoji}
             </button>
           ))}
         </div>

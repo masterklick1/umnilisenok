@@ -84,9 +84,9 @@ workflows:
       # Раскомментируйте после первой ручной загрузки AAB в Play Console
       # и настройки Google Play service account в Codemagic:
       # google_play:
-      #   credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-      #   track: internal
-      #   submit_as_draft: true
+      #    credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      #    track: internal
+      #    submit_as_draft: true
 
   android-debug:
     name: Android Debug APK (для теста на телефоне)

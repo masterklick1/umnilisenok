@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "app.lovable.86978e2af29e452288743ecba72c9930",
+  appId: "app.lovable.umnilisenok",
   appName: "umnilisenok",
   webDir: "dist",
   // ⚠️ Для продакшн-сборки (Google Play и др.) server.url должен быть выключен —
@@ -22,4 +22,3 @@ const config: CapacitorConfig = {
 };
 
 export default config;
-

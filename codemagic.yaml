@@ -9,7 +9,7 @@ workflows:
       node: 22
       java: 17
       vars:
-        PACKAGE_NAME: "app.lovable.86978e2af29e452288743ecba72c9930"
+        PACKAGE_NAME: "app.lovable.umnilisenok"
     scripts:
       - name: Install npm dependencies
         script: |

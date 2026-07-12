@@ -1,62 +1,115 @@
-## Что уже готово в репо
-- `capacitor.config.ts` — production-режим (без `server.url`) ✅
-- `codemagic.yaml` — workflow `android-release` (AAB) и `android-debug` (APK) ✅
+Ниже — пошаговая инструкция простыми словами. Ничего не пропускайте, делайте по порядку. Всё делается **на вашем компьютере** (не в Lovable).
 
-## Что нужно доделать, чтобы Codemagic реально собрал APK/AAB
+---
 
-### 1. Локально сгенерировать папку `android/` и закоммитить
-Codemagic может сам вызвать `npx cap add android`, но тогда у вас не будет контроля над `applicationId`, иконками, `google-services.json`, версией. Правильно — сгенерировать один раз локально:
+## Часть A. Что нужно установить один раз (если ещё нет)
+
+1. **Node.js 20** — с сайта https://nodejs.org (LTS-версия). После установки откройте терминал (на Windows — «PowerShell», на Mac — «Terminal») и проверьте:
+   ```
+   node -v
+   ```
+   Должна показаться версия, например `v20.x.x`.
+
+2. **Git** — https://git-scm.com. Проверка: `git -v`.
+
+3. **Java JDK 17** (нужен только для keystore, для сборки Codemagic не нужен):
+   - Mac: `brew install openjdk@17`
+   - Windows: скачать с https://adoptium.net (выбрать «Temurin 17»)
+   - Проверка: `keytool -help` — должно что-то вывести.
+
+---
+
+## Часть B. Скачать проект и подготовить папку `android/`
+
+Откройте терминал в папке, где лежит ваш проект (или клонируйте заново — ссылку на GitHub-репозиторий вы уже подключали в Lovable):
+
 ```
 git pull
 npm install
 npm run build
 npx cap add android
 npx cap sync android
-git add android/ capacitor.config.ts codemagic.yaml
-git commit -m "chore: add android platform"
+```
+
+После этого в проекте появится новая папка **`android/`**. Дальше её надо закоммитить и запушить:
+
+```
+git add android/ codemagic.yaml capacitor.config.ts
+git commit -m "chore: add android platform for codemagic"
 git push
 ```
 
-### 2. Keystore для подписи (обязательно для AAB в Google Play)
+Готово — теперь Codemagic видит папку `android/`.
+
+---
+
+## Часть C. Создать keystore (ключ для подписи приложения)
+
+Keystore — это файл-ключ. **Без него Google Play не примет ваше приложение.** Создаётся один раз на всю жизнь приложения — если потеряете, обновлять приложение в Play Store будет невозможно, поэтому сохраните и файл, и пароли в надёжном месте (например, в менеджере паролей).
+
+В терминале, в любой папке (например, в Documents), выполните:
+
 ```
-keytool -genkey -v -keystore upload.keystore -alias upload \
-  -keyalg RSA -keysize 2048 -validity 10000
+keytool -genkey -v -keystore upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
-Загрузить в Codemagic → **Teams → Integrations → Code signing identities → Android keystores**:
-- Reference name: `umnilisenok_keystore` (именно так — на него ссылается `codemagic.yaml`)
-- Alias: `upload`
-- Ввести оба пароля
 
-### 3. Настроить подпись release-сборки в `android/app/build.gradle`
-Codemagic пробрасывает keystore через env-переменные `CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS`, `CM_KEY_PASSWORD`. В `android/app/build.gradle` нужно добавить блок `signingConfigs.release`, читающий их, и подключить его в `buildTypes.release`. Без этого `bundleRelease` соберёт **неподписанный** AAB, и Play Console его отклонит.
+Он спросит:
+1. **«Enter keystore password»** — придумайте пароль (минимум 6 символов). Запишите его.
+2. **«Re-enter new password»** — повторите тот же пароль.
+3. Дальше несколько вопросов (имя, город, страна) — можно вводить что угодно, например: `Umnilisenok`, `Moscow`, `RU`.
+4. **«Is CN=... correct?»** — введите `yes`.
+5. **«Enter key password for <upload>»** — нажмите **Enter** (тогда пароль ключа будет такой же, как у keystore) — это проще всего.
 
-Я сделаю это автоматически post-generation (шаг в codemagic.yaml, который патчит `build.gradle` перед сборкой) — так вам не придётся править Gradle руками.
+В текущей папке появится файл **`upload.keystore`**. Никуда его не публикуйте, не коммитьте в git.
 
-### 4. Иконка и splash приложения
-Пока Capacitor поставит дефолтную иконку Android. Для нормального вида — сгенерировать иконки через `@capacitor/assets`:
-```
-npm i -D @capacitor/assets
-npx capacitor-assets generate --android
-```
-Нужна одна PNG 1024×1024 в `resources/icon.png` и splash 2732×2732 в `resources/splash.png`. **Скажите — сгенерирую иконку под «Умнилисёнок» через imagegen.**
+---
 
-### 5. Push-уведомления (FCM) — опционально сейчас
-Плагин `@capacitor/push-notifications` уже в проекте. Для работы на Android нужен `google-services.json` из Firebase Console → положить в `android/app/`. Без него сборка пройдёт, но пуши работать не будут. Можно отложить до момента, когда захотите пуши на телефоне.
+## Часть D. Загрузить keystore в Codemagic
 
-### 6. Мелочи в `codemagic.yaml`, которые улучшу
-- Добавить шаг патчинга `build.gradle` с `signingConfig` (см. пункт 3).
-- Поднять `versionName` (сейчас `1.0` от Capacitor — Google Play примет, но лучше явно задать).
-- В `android-debug` — тоже собрать web (`npm run build`) перед `cap sync` — уже есть ✅.
+1. Откройте https://codemagic.io и войдите (тем же аккаунтом, что подключали).
+2. Сверху нажмите на название вашей команды → **Team settings** (Настройки команды).
+   *Если команды нет, слева будет пункт **Personal Account** → откройте его.*
+3. В левом меню найдите раздел **Code signing identities** (Идентификаторы для подписи).
+4. Сверху выберите вкладку **Android keystores**.
+5. Нажмите кнопку **Add keystore** (Добавить keystore).
+6. Заполните форму:
+   - **Keystore file** — нажмите «Choose a file» и выберите тот самый `upload.keystore`, который создали в Части C.
+   - **Keystore password** — пароль, который придумали в Части C, п.1.
+   - **Key alias** — введите ровно `upload` (это то, что вы указали флагом `-alias upload`).
+   - **Key password** — тот же пароль (вы нажали Enter, значит он совпадает с keystore-паролем).
+   - **Reference name** — введите ровно `umnilisenok_keystore` (именно это имя прописано в `codemagic.yaml`, оно должно совпадать буква-в-букву).
+7. Нажмите **Save**.
 
-## Технические изменения в файлах
-- `codemagic.yaml`: добавить шаг «Configure release signing» — вписывает `signingConfigs.release { ... }` в `android/app/build.gradle` через `sed`/`printf`, используя `$CM_KEYSTORE_PATH` и т.д.
-- Опционально: `resources/icon.png` + `resources/splash.png` (если разрешите сгенерировать).
+---
 
-## Порядок действий для вас
-1. Разрешаете — я обновлю `codemagic.yaml` (пункт 3) и, если хотите, сгенерирую иконку (пункт 4).
-2. Вы локально выполняете шаги из блока 1 (создание `android/`) и 2 (keystore в Codemagic).
-3. Запускаете workflow `android-release` — получаете подписанный AAB, готовый для Play Console.
+## Часть E. Подключить репозиторий в Codemagic и запустить сборку
 
-## Вопросы к вам
-1. Сгенерировать иконку/splash сейчас (пункт 4)?
-2. Настраиваем пуши через Firebase сейчас или позже (пункт 5)?
+1. В Codemagic сверху слева нажмите **Applications** → **Add application**.
+2. Выберите **GitHub** (или где у вас лежит код) → авторизуйтесь → выберите нужный репозиторий.
+3. Когда Codemagic спросит тип проекта — выберите **«I have a codemagic.yaml»** (У меня уже есть codemagic.yaml). Он сам увидит файл в корне.
+4. Откройте вкладку приложения → сверху появится кнопка **Start new build**.
+5. В выпадающем списке **Workflow** выберите:
+   - **Android Release (AAB для Google Play)** — если нужен файл для загрузки в Play Console;
+   - **Android Debug APK** — если нужен просто APK, чтобы поставить на телефон для теста.
+6. Нажмите **Start new build**. Ждать ~10–20 минут.
+7. Когда сборка закончится успешно, внизу страницы сборки будет секция **Artifacts** — там ссылка на файл `.aab` или `.apk`, качайте его.
+
+---
+
+## Часть F. Что дальше с файлом
+
+- **`.apk`** — просто пришлите себе на телефон и установите (нужно разрешить «Установка из неизвестных источников»).
+- **`.aab`** — залейте в Google Play Console → «Создать приложение» → «Внутреннее тестирование» → «Создать релиз» → загрузить AAB.
+
+---
+
+## Если что-то пошло не так — самые частые ошибки
+
+- **Codemagic пишет «keystore umnilisenok_keystore not found»** → в Части D, п.6 вы ввели другое имя в **Reference name**. Отредактируйте и переименуйте в `umnilisenok_keystore`.
+- **Ошибка `SDK location not found`** → пересоберите локально ещё раз: `npx cap sync android` и запушьте изменения.
+- **Сборка падает на `npm ci`** → у вас в git не закоммичен `package-lock.json`. Сделайте `git add package-lock.json && git commit -m "add lockfile" && git push`.
+
+---
+
+## Вопрос к вам
+Готовы делать шаги, или нужна помощь с каким-то конкретным пунктом (например, «не могу установить Node на Windows», «не понимаю где Team settings в Codemagic»)? Напишите — распишу подробнее.

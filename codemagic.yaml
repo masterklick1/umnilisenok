@@ -6,7 +6,7 @@ workflows:
     environment:
       android_signing:
         - umnilisenok_keystore
-      node: 20
+      node: 22
       java: 17
       vars:
         PACKAGE_NAME: "app.lovable.86978e2af29e452288743ecba72c9930"
@@ -71,7 +71,7 @@ workflows:
     max_build_duration: 45
     instance_type: mac_mini_m2
     environment:
-      node: 20
+      node: 22
       java: 17
     scripts:
       - name: Install npm dependencies

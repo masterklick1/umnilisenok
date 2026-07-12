@@ -7,7 +7,7 @@ workflows:
       android_signing:
         - umnilisenok_keystore
       node: 22
-      java: 17
+      java: 21
       vars:
         PACKAGE_NAME: "app.lovable.umnilisenok"
     scripts:
@@ -72,7 +72,7 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       node: 22
-      java: 17
+      java: 21
     scripts:
       - name: Install npm dependencies
         script: npm ci || npm install

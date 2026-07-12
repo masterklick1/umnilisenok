@@ -65,13 +65,6 @@ workflows:
     artifacts:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/mapping.txt
-    publishing:
-      email:
-        recipients:
-          - $CM_BUILD_TRIGGERED_BY_EMAIL
-        notify:
-          success: true
-          failure: true
 
   android-debug:
     name: Android Debug APK (для теста на телефоне)
@@ -98,7 +91,3 @@ workflows:
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/**/*.apk
-    publishing:
-      email:
-        recipients:
-          - $CM_BUILD_TRIGGERED_BY_EMAIL

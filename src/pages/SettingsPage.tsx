@@ -12,18 +12,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { SOUND_KEY } from "@/lib/sound";
 import { PIN_KEY } from "@/lib/parent-pin";
 import { useUserRole } from "@/hooks/useUserRole";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
-import { queryBackgroundGeoPermission, requestBackgroundGeoPermission } from "@/lib/geo-permission";
+import { queryBackgroundGeoPermission, requestBackgroundGeoPermission, type BackgroundGeoPermissionState } from "@/lib/geo-permission";
 
-let App: any = null;
-if (Capacitor.isNativePlatform()) {
-  try {
-    App = require("@capacitor/app").App;
-  } catch {
-    App = null;
-  }
-}
+// @capacitor/app native plugin bridge (available only on native runtimes)
+const App: any = Capacitor.isNativePlatform() ? registerPlugin<any>("App") : null;
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -35,7 +29,7 @@ export default function SettingsPage() {
   const [pin, setPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [savingName, setSavingName] = useState(false);
-  const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<"always" | "prompt" | "denied" | "unsupported">("prompt");
+  const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<BackgroundGeoPermissionState>("prompt");
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [requestingBgGeo, setRequestingBgGeo] = useState(false);
 

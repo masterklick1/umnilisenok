@@ -1,6 +1,9 @@
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
-import { BackgroundGeolocation } from "@capacitor-community/background-geolocation";
+import { registerPlugin } from "@capacitor/core";
+
+// Native-only plugin — register bridge directly (package has no web JS entry).
+const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
 
 export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported" | "not-determined";
 export type BackgroundGeoPermissionState = "always" | "denied" | "prompt" | "unsupported" | "not-determined";

@@ -1,14 +1,6 @@
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
-
-let BackgroundGeolocation: any = null;
-if (Capacitor.isNativePlatform()) {
-  try {
-    BackgroundGeolocation = require("@capacitor-community/background-geolocation").BackgroundGeolocation;
-  } catch {
-    BackgroundGeolocation = null;
-  }
-}
+import { BackgroundGeolocation } from "@capacitor-community/background-geolocation";
 
 export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported" | "not-determined";
 export type BackgroundGeoPermissionState = "always" | "denied" | "prompt" | "unsupported" | "not-determined";

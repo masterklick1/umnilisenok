@@ -17,6 +17,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { registerPlugin, Capacitor } from "@capacitor/core";
+
+const AppPlugin = registerPlugin<any>("App");
+
+const openAppSettings = async () => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await AppPlugin.openSettings?.();
+    }
+  } catch {
+    /* noop */
+  }
+};
 
 const defaultStatus: LocationTrackerStatus = {
   permission: "prompt",
@@ -35,13 +49,10 @@ const formatInterval = (sec: number) => {
 };
 
 function ChildLocationPanel() {
-  const { user } = useAuth();
   const [status, setStatus] = useState<LocationTrackerStatus>(defaultStatus);
   const [retrying, setRetrying] = useState(false);
   const [stale, setStale] = useState(false);
   const [keepAwake, setKeepAwake] = useState(loadKeepScreenOnPref);
-  const [pushEnabling, setPushEnabling] = useState(false);
-  const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
     const handler = (e: Event) => setStatus((e as CustomEvent<LocationTrackerStatus>).detail);
@@ -87,82 +98,53 @@ function ChildLocationPanel() {
     setRetrying(false);
   };
 
-  const enablePush = async () => {
-    if (!user?.id) return;
-    setPushEnabling(true);
-    await subscribeToPush(user.id);
-    setPushEnabling(false);
-  };
-
-  const showOk =
-    status.trackingEnabled && status.lastSentAt && !status.lastError && !stale;
-
-  useEffect(() => {
-    if (showOk) setExpanded(false);
-  }, [showOk]);
-
   if (!status.trackingEnabled) return null;
 
-  if (showOk && !expanded) {
-    return (
-      <div className="fixed bottom-24 left-3 right-3 z-40 max-w-md mx-auto">
-        <button
-          type="button"
-          className="w-full rounded-xl border border-green-200 bg-green-50/95 shadow px-3 py-2 text-xs text-center text-muted-foreground"
-          onClick={() => setExpanded(true)}
-        >
-          📍 OK · каждые {formatInterval(status.intervalSec)} · нажми для настроек
-        </button>
-      </div>
-    );
-  }
+  const denied = status.permission === "denied";
+  const ok = !!status.lastSentAt && !status.lastError && !stale && !denied;
+
+  const icon = denied ? "⚠️" : ok ? "📍" : "⏳";
+  const ringClass = denied
+    ? "border-destructive/50 bg-destructive/10"
+    : ok
+      ? "border-green-300 bg-green-50/90"
+      : "border-amber-300 bg-amber-50/90";
 
   return (
-    <div className="fixed bottom-24 left-3 right-3 z-40 max-w-md mx-auto">
-      <div className="rounded-xl border border-amber-300/80 bg-card/95 backdrop-blur shadow-lg p-3 text-sm space-y-2">
-        <p className="font-medium text-sm">📍 Родители видят, где ты</p>
-        <p className="text-xs text-muted-foreground">
-          Телефон в «спячке» (экран погашен) — GPS не работает. Держи приложение открытым или
-          включи «Не гасить экран».
-        </p>
+    <div className="fixed bottom-24 right-3 z-40">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label="Геолокация"
+            className={`h-10 w-10 rounded-full border shadow-md backdrop-blur flex items-center justify-center text-base ${ringClass}`}
+          >
+            {icon}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="top" align="end" className="w-64 p-3 space-y-2">
+          {isWakeLockSupported() && (
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-2 py-1.5">
+              <Label htmlFor="keep-awake" className="text-xs cursor-pointer flex-1">
+                Не гасить экран
+              </Label>
+              <Switch id="keep-awake" checked={keepAwake} onCheckedChange={setKeepAwake} />
+            </div>
+          )}
 
-        {isWakeLockSupported() && (
-          <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-2 py-1.5">
-            <Label htmlFor="keep-awake" className="text-xs cursor-pointer flex-1">
-              Не гасить экран
-            </Label>
-            <Switch id="keep-awake" checked={keepAwake} onCheckedChange={setKeepAwake} />
+          <div className="flex flex-wrap gap-2">
+            {denied ? (
+              <Button size="sm" onClick={openAppSettings}>
+                Настройки
+              </Button>
+            ) : (
+              <Button size="sm" disabled={retrying} onClick={retry}>
+                {retrying ? "…" : "Отправить сейчас"}
+              </Button>
+            )}
           </div>
-        )}
-
-        {showOk ? (
-          <p className="text-xs text-green-700">✓ Отправлено · каждые {formatInterval(status.intervalSec)}</p>
-        ) : status.permission === "denied" ? (
-          <p className="text-xs text-destructive">Включи геопозицию в настройках браузера</p>
-        ) : status.lastError ? (
-          <p className="text-xs text-amber-900">{status.lastError}</p>
-        ) : stale ? (
-          <p className="text-xs text-amber-900">Долго нет отправки — открой приложение снова</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">Ждём первую отправку…</p>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" disabled={retrying} onClick={retry}>
-            {retrying ? "…" : "Отправить сейчас"}
-          </Button>
-          {isPushSupported() && Notification.permission !== "granted" && (
-            <Button size="sm" variant="outline" disabled={pushEnabling} onClick={enablePush}>
-              {pushEnabling ? "…" : "Уведомления"}
-            </Button>
-          )}
-          {showOk && (
-            <Button size="sm" variant="ghost" onClick={() => setExpanded(false)}>
-              Свернуть
-            </Button>
-          )}
-        </div>
-      </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

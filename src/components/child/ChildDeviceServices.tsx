@@ -17,6 +17,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { registerPlugin, Capacitor } from "@capacitor/core";
+
+const AppPlugin = registerPlugin<any>("App");
+
+const openAppSettings = async () => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await AppPlugin.openSettings?.();
+    }
+  } catch {
+    /* noop */
+  }
+};
 
 const defaultStatus: LocationTrackerStatus = {
   permission: "prompt",

@@ -25,17 +25,23 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync android
-      - name: Force location permissions in manifest
+      - name: Force required permissions in manifest
         script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           echo "--- Manifest BEFORE ---"
           cat "$MANIFEST"
-          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+          if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
             awk '
               /<manifest[ >]/ && !done {
                 print
                 print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
                 print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />"
+                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
+                print "    <uses-permission android:name=\"android.permission.CAMERA\" />"
+                print "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"
                 done=1
                 next
               }
@@ -44,6 +50,7 @@ workflows:
           fi
           echo "--- Manifest AFTER ---"
           cat "$MANIFEST"
+
       - name: Set versionCode from Codemagic build number
         script: |
           cd android
@@ -104,17 +111,23 @@ workflows:
           fi
       - name: Sync Capacitor
         script: npx cap sync android
-      - name: Force location permissions in manifest
+      - name: Force required permissions in manifest
         script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           echo "--- Manifest BEFORE ---"
           cat "$MANIFEST"
-          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+          if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
             awk '
               /<manifest[ >]/ && !done {
                 print
                 print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
                 print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />"
+                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
+                print "    <uses-permission android:name=\"android.permission.CAMERA\" />"
+                print "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"
                 done=1
                 next
               }
@@ -123,6 +136,7 @@ workflows:
           fi
           echo "--- Manifest AFTER ---"
           cat "$MANIFEST"
+
       - name: Build debug APK
         script: |
           cd android

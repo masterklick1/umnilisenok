@@ -1,115 +1,47 @@
-Ниже — пошаговая инструкция простыми словами. Ничего не пропускайте, делайте по порядку. Всё делается **на вашем компьютере** (не в Lovable).
 
----
+## Что меняется
 
-## Часть A. Что нужно установить один раз (если ещё нет)
+Только один файл — `codemagic.yaml`. Никакого кода приложения, никакой БД.
 
-1. **Node.js 20** — с сайта https://nodejs.org (LTS-версия). После установки откройте терминал (на Windows — «PowerShell», на Mac — «Terminal») и проверьте:
+Сейчас шаг **«Force location permissions in manifest»** (есть и в `android-release`, и в `android-debug`) добавляет в `AndroidManifest.xml` только:
+
+- `ACCESS_FINE_LOCATION`
+- `ACCESS_COARSE_LOCATION`
+
+Но приложение реально использует ещё:
+
+- фоновую геолокацию (`@capacitor-community/background-geolocation`, foreground-сервис в `capacitor.config.ts`)
+- push-уведомления родителю
+- камеру и микрофон для функции monitoring
+
+Без соответствующих `<uses-permission>` в AAB эти функции на устройстве либо не запросят разрешение, либо будут молча падать, а Google Play может отклонить релиз.
+
+## Что делаю
+
+1. Переименовываю шаг в **«Force required permissions in manifest»**.
+2. Расширяю блок `awk` — при первом же встречном тэге `<manifest ...>` вставляю сразу все разрешения одним блоком:
    ```
-   node -v
+   ACCESS_FINE_LOCATION
+   ACCESS_COARSE_LOCATION
+   ACCESS_BACKGROUND_LOCATION
+   FOREGROUND_SERVICE
+   FOREGROUND_SERVICE_LOCATION
+   POST_NOTIFICATIONS
+   CAMERA
+   RECORD_AUDIO
    ```
-   Должна показаться версия, например `v20.x.x`.
+3. Меняю проверку `grep -q "ACCESS_FINE_LOCATION"` → `grep -q "ACCESS_BACKGROUND_LOCATION"`, чтобы старые сборки, где уже был только FINE/COARSE, всё равно получили новые разрешения при следующем прогоне.
+4. Дублирую тот же обновлённый шаг в оба workflow (`android-release` и `android-debug`) — чтобы дебажный APK на телефоне вёл себя так же, как релизный AAB.
 
-2. **Git** — https://git-scm.com. Проверка: `git -v`.
+## Что НЕ меняю
 
-3. **Java JDK 17** (нужен только для keystore, для сборки Codemagic не нужен):
-   - Mac: `brew install openjdk@17`
-   - Windows: скачать с https://adoptium.net (выбрать «Temurin 17»)
-   - Проверка: `keytool -help` — должно что-то вывести.
+- `capacitor.config.ts`, код React/TS, edge-функции, БД — не трогаю.
+- Логику подписи, keystore, versionCode, gradle-патч — не трогаю.
+- Кэш `node_modules`/Gradle сейчас не добавляю (можно отдельным шагом позже, если захочется ускорить сборку).
 
----
+## Что сделать вам после мержа
 
-## Часть B. Скачать проект и подготовить папку `android/`
-
-Откройте терминал в папке, где лежит ваш проект (или клонируйте заново — ссылку на GitHub-репозиторий вы уже подключали в Lovable):
-
-```
-git pull
-npm install
-npm run build
-npx cap add android
-npx cap sync android
-```
-
-После этого в проекте появится новая папка **`android/`**. Дальше её надо закоммитить и запушить:
-
-```
-git add android/ codemagic.yaml capacitor.config.ts
-git commit -m "chore: add android platform for codemagic"
-git push
-```
-
-Готово — теперь Codemagic видит папку `android/`.
-
----
-
-## Часть C. Создать keystore (ключ для подписи приложения)
-
-Keystore — это файл-ключ. **Без него Google Play не примет ваше приложение.** Создаётся один раз на всю жизнь приложения — если потеряете, обновлять приложение в Play Store будет невозможно, поэтому сохраните и файл, и пароли в надёжном месте (например, в менеджере паролей).
-
-В терминале, в любой папке (например, в Documents), выполните:
-
-```
-keytool -genkey -v -keystore upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000
-```
-
-Он спросит:
-1. **«Enter keystore password»** — придумайте пароль (минимум 6 символов). Запишите его.
-2. **«Re-enter new password»** — повторите тот же пароль.
-3. Дальше несколько вопросов (имя, город, страна) — можно вводить что угодно, например: `Umnilisenok`, `Moscow`, `RU`.
-4. **«Is CN=... correct?»** — введите `yes`.
-5. **«Enter key password for <upload>»** — нажмите **Enter** (тогда пароль ключа будет такой же, как у keystore) — это проще всего.
-
-В текущей папке появится файл **`upload.keystore`**. Никуда его не публикуйте, не коммитьте в git.
-
----
-
-## Часть D. Загрузить keystore в Codemagic
-
-1. Откройте https://codemagic.io и войдите (тем же аккаунтом, что подключали).
-2. Сверху нажмите на название вашей команды → **Team settings** (Настройки команды).
-   *Если команды нет, слева будет пункт **Personal Account** → откройте его.*
-3. В левом меню найдите раздел **Code signing identities** (Идентификаторы для подписи).
-4. Сверху выберите вкладку **Android keystores**.
-5. Нажмите кнопку **Add keystore** (Добавить keystore).
-6. Заполните форму:
-   - **Keystore file** — нажмите «Choose a file» и выберите тот самый `upload.keystore`, который создали в Части C.
-   - **Keystore password** — пароль, который придумали в Части C, п.1.
-   - **Key alias** — введите ровно `upload` (это то, что вы указали флагом `-alias upload`).
-   - **Key password** — тот же пароль (вы нажали Enter, значит он совпадает с keystore-паролем).
-   - **Reference name** — введите ровно `umnilisenok_keystore` (именно это имя прописано в `codemagic.yaml`, оно должно совпадать буква-в-букву).
-7. Нажмите **Save**.
-
----
-
-## Часть E. Подключить репозиторий в Codemagic и запустить сборку
-
-1. В Codemagic сверху слева нажмите **Applications** → **Add application**.
-2. Выберите **GitHub** (или где у вас лежит код) → авторизуйтесь → выберите нужный репозиторий.
-3. Когда Codemagic спросит тип проекта — выберите **«I have a codemagic.yaml»** (У меня уже есть codemagic.yaml). Он сам увидит файл в корне.
-4. Откройте вкладку приложения → сверху появится кнопка **Start new build**.
-5. В выпадающем списке **Workflow** выберите:
-   - **Android Release (AAB для Google Play)** — если нужен файл для загрузки в Play Console;
-   - **Android Debug APK** — если нужен просто APK, чтобы поставить на телефон для теста.
-6. Нажмите **Start new build**. Ждать ~10–20 минут.
-7. Когда сборка закончится успешно, внизу страницы сборки будет секция **Artifacts** — там ссылка на файл `.aab` или `.apk`, качайте его.
-
----
-
-## Часть F. Что дальше с файлом
-
-- **`.apk`** — просто пришлите себе на телефон и установите (нужно разрешить «Установка из неизвестных источников»).
-- **`.aab`** — залейте в Google Play Console → «Создать приложение» → «Внутреннее тестирование» → «Создать релиз» → загрузить AAB.
-
----
-
-## Если что-то пошло не так — самые частые ошибки
-
-- **Codemagic пишет «keystore umnilisenok_keystore not found»** → в Части D, п.6 вы ввели другое имя в **Reference name**. Отредактируйте и переименуйте в `umnilisenok_keystore`.
-- **Ошибка `SDK location not found`** → пересоберите локально ещё раз: `npx cap sync android` и запушьте изменения.
-- **Сборка падает на `npm ci`** → у вас в git не закоммичен `package-lock.json`. Сделайте `git add package-lock.json && git commit -m "add lockfile" && git push`.
-
----
-
-## Вопрос к вам
-Готовы делать шаги, или нужна помощь с каким-то конкретным пунктом (например, «не могу установить Node на Windows», «не понимаю где Team settings в Codemagic»)? Напишите — распишу подробнее.
+1. `git pull` в вашем репозитории.
+2. В Codemagic нажать **«Check for configuration files»** (чтобы подтянулся новый `codemagic.yaml`).
+3. Запустить workflow — сначала `android-debug` для проверки APK на телефоне, потом `android-release` для AAB в Google Play.
+4. В Google Play Console при подаче AAB будет запрошено **обоснование `ACCESS_BACKGROUND_LOCATION`** — указать: «Родительский контроль детского приложения, отправка геопозиции ребёнка родителю с настраиваемым интервалом, работа при выключенном экране». Без этого Play может отклонить релиз.

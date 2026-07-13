@@ -25,6 +25,25 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync android
+      - name: Force location permissions in manifest
+        script: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          echo "--- Manifest BEFORE ---"
+          cat "$MANIFEST"
+          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+            awk '
+              /<manifest[ >]/ && !done {
+                print
+                print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
+                done=1
+                next
+              }
+              { print }
+            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          fi
+          echo "--- Manifest AFTER ---"
+          cat "$MANIFEST"
       - name: Set versionCode from Codemagic build number
         script: |
           cd android
@@ -85,6 +104,25 @@ workflows:
           fi
       - name: Sync Capacitor
         script: npx cap sync android
+      - name: Force location permissions in manifest
+        script: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          echo "--- Manifest BEFORE ---"
+          cat "$MANIFEST"
+          if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
+            awk '
+              /<manifest[ >]/ && !done {
+                print
+                print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
+                done=1
+                next
+              }
+              { print }
+            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          fi
+          echo "--- Manifest AFTER ---"
+          cat "$MANIFEST"
       - name: Build debug APK
         script: |
           cd android

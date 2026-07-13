@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Volume2, VolumeX, LogOut, User, Lock, Trash2 } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, LogOut, User, Lock, Trash2, Battery, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { SOUND_KEY } from "@/lib/sound";
 import { PIN_KEY } from "@/lib/parent-pin";
 import { useUserRole } from "@/hooks/useUserRole";
+import { Capacitor } from "@capacitor/core";
+import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
+import { queryBackgroundGeoPermission, requestBackgroundGeoPermission } from "@/lib/geo-permission";
+
+let App: any = null;
+if (Capacitor.isNativePlatform()) {
+  try {
+    App = require("@capacitor/app").App;
+  } catch {
+    App = null;
+  }
+}
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -23,6 +35,9 @@ export default function SettingsPage() {
   const [pin, setPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<"always" | "prompt" | "denied" | "unsupported">("prompt");
+  const [showDisclosure, setShowDisclosure] = useState(false);
+  const [requestingBgGeo, setRequestingBgGeo] = useState(false);
 
   useEffect(() => {
     setSoundEnabled(localStorage.getItem(SOUND_KEY) !== "false");
@@ -34,6 +49,11 @@ export default function SettingsPage() {
         .eq("id", user.id)
         .single()
         .then(({ data }) => setFirstName(data?.first_name || ""));
+    }
+
+    // Проверить статус фоновой геолокации
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+      queryBackgroundGeoPermission().then(setBackgroundGeoPermission);
     }
   }, [user]);
 
@@ -80,6 +100,80 @@ export default function SettingsPage() {
     if (!confirm("Выйти из аккаунта?")) return;
     await signOut();
     navigate("/auth");
+  };
+
+  const requestBackgroundGeolocation = async () => {
+    setShowDisclosure(true);
+  };
+
+  const handleBackgroundGeoConfirm = async () => {
+    setShowDisclosure(false);
+    setRequestingBgGeo(true);
+    try {
+      const result = await requestBackgroundGeoPermission();
+      setBackgroundGeoPermission(result);
+      if (result === "always") {
+        toast({
+          title: "✅ Фоновый трекинг включен",
+          description: "Приложение будет отслеживать геопозицию в фоне",
+        });
+      } else if (result === "denied") {
+        toast({
+          title: "❌ Доступ запрещен",
+          description: "Пожалуйста, измените разрешение в настройках",
+          variant: "destructive",
+        });
+      }
+    } catch (e) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось запросить разрешение",
+        variant: "destructive",
+      });
+    } finally {
+      setRequestingBgGeo(false);
+    }
+  };
+
+  const openBatteryOptimizationSettings = async () => {
+    if (!App) {
+      toast({
+        title: "Откройте вручную",
+        description: "Настройки → Батарея → Оптимизация батареи → Приложение → Не оптимизировать",
+        variant: "default",
+      });
+      return;
+    }
+
+    try {
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+        const appId = "app.lovable.umnilisenok";
+        try {
+          // Попытка 1: Прямой intent для отключения оптимизации батареи
+          await App.openUrl({
+            url: `intent://settings/request_ignore_battery_optimizations?package=${appId}`,
+          });
+        } catch {
+          // Попытка 2: Открыть страницу приложения в настройках батареи
+          try {
+            await App.openUrl({
+              url: "intent://settings/battery/app_battery_usage",
+            });
+          } catch {
+            // Попытка 3: Открыть общие настройки приложения
+            await App.openUrl({
+              url: `intent://settings/apps/${appId}`,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      toast({
+        title: "Откройте вручную",
+        description: "Настройки → Батарея → Оптимизация батареи → Приложение → Не оптимизировать",
+        variant: "default",
+      });
+    }
   };
 
   return (
@@ -167,6 +261,45 @@ export default function SettingsPage() {
           </Card>
         )}
 
+        {/* Фоновая геолокация — для родителей */}
+        {!isChild && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
+          <>
+            <Card className="p-5 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 font-semibold">
+                  <MapPin className="w-5 h-5 text-primary" /> Фоновое отслеживание
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Отслеживать местоположение ребёнка даже когда приложение закрыто.
+                {backgroundGeoPermission === "always" && (
+                  <span className="block mt-2 text-green-600 dark:text-green-400">✅ Фоновый трекинг активен</span>
+                )}
+              </p>
+              {backgroundGeoPermission !== "always" && (
+                <Button onClick={requestBackgroundGeolocation} disabled={requestingBgGeo} className="w-full">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  {requestingBgGeo ? "Загрузка..." : "Включить фоновый трекинг"}
+                </Button>
+              )}
+            </Card>
+
+            {/* Оптимизация батареи */}
+            <Card className="p-5 mb-4">
+              <div className="flex items-center gap-2 mb-3 font-semibold">
+                <Battery className="w-5 h-5 text-primary" /> Оптимизация батареи
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Отключите оптимизацию батареи для приложения, чтобы фоновый трекинг работал надежно.
+              </p>
+              <Button variant="outline" onClick={openBatteryOptimizationSettings} className="w-full">
+                <Battery className="w-4 h-4 mr-2" />
+                Отключить оптимизацию
+              </Button>
+            </Card>
+          </>
+        )}
+
         {/* О приложении */}
         <Card className="p-5 mb-4">
           <div className="font-semibold mb-2">О приложении</div>
@@ -180,6 +313,13 @@ export default function SettingsPage() {
         <Button variant="destructive" className="w-full" onClick={handleSignOut}>
           <LogOut className="w-4 h-4 mr-2" /> Выйти из аккаунта
         </Button>
+
+        {/* Prominent Disclosure Modal */}
+        <ProminentDisclosureModal
+          open={showDisclosure}
+          onConfirm={handleBackgroundGeoConfirm}
+          onCancel={() => setShowDisclosure(false)}
+        />
       </div>
     </div>
   );

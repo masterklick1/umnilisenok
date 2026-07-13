@@ -6,20 +6,36 @@ import {
   getCachedGeoPosition,
   getGeoPosition,
   queryGeoPermission,
+  queryBackgroundGeoPermission,
+  requestBackgroundGeoPermission,
   startGeoWatch,
   stopGeoWatch,
   type GeoPermissionState,
+  type BackgroundGeoPermissionState,
+  isBackgroundGeoSupported,
 } from "@/lib/geo-permission";
+import { Capacitor } from "@capacitor/core";
+
+let BackgroundGeolocation: any = null;
+if (Capacitor.isNativePlatform()) {
+  try {
+    BackgroundGeolocation = require("@capacitor-community/background-geolocation").BackgroundGeolocation;
+  } catch {
+    BackgroundGeolocation = null;
+  }
+}
 
 const DEFAULT_INTERVAL_SEC = 60;
 const SETTINGS_POLL_MS = 30_000;
 
 export interface LocationTrackerStatus {
   permission: GeoPermissionState;
+  backgroundPermission: BackgroundGeoPermissionState;
   lastSentAt: string | null;
   lastError: string | null;
   intervalSec: number;
   trackingEnabled: boolean;
+  backgroundTrackingEnabled: boolean;
 }
 
 interface Settings {
@@ -54,6 +70,8 @@ export const useLocationTracker = (enabled = true) => {
   const [childId, setChildId] = useState<string | null>(null);
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [trackingEnabled, setTrackingEnabled] = useState(true);
+  const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] = useState(false);
+  const [backgroundPermission, setBackgroundPermission] = useState<BackgroundGeoPermissionState>("prompt");
   const settingsRef = useRef<Settings | null>(null);
   const lastInsideRef = useRef<boolean | null>(null);
   const lastSentAtRef = useRef<string | null>(null);
@@ -62,6 +80,7 @@ export const useLocationTracker = (enabled = true) => {
   const trackingEnabledRef = useRef(true);
   const enabledRef = useRef(enabled);
   const childIdRef = useRef<string | null>(null);
+  const backgroundWatcherRef = useRef<string | null>(null);
 
   useEffect(() => {
     intervalSecRef.current = intervalSec;
@@ -81,12 +100,16 @@ export const useLocationTracker = (enabled = true) => {
 
   const publishStatus = async () => {
     const permission = await queryGeoPermission();
+    const bgPerm = isBackgroundGeoSupported() ? await queryBackgroundGeoPermission() : "unsupported";
+    setBackgroundPermission(bgPerm);
     emitStatus({
       permission,
+      backgroundPermission: bgPerm,
       lastSentAt: lastSentAtRef.current,
       lastError: lastErrorRef.current,
       intervalSec: intervalSecRef.current,
       trackingEnabled: trackingEnabledRef.current && !!childIdRef.current && enabledRef.current,
+      backgroundTrackingEnabled,
     });
   };
 
@@ -199,6 +222,122 @@ export const useLocationTracker = (enabled = true) => {
     };
   }, [childId]);
 
+  // Фоновая геолокация (работает при закрытом приложении)
+  const startBackgroundTracking = async (id: string, intervalSeconds: number) => {
+    if (!BackgroundGeolocation) return;
+
+    try {
+      if (backgroundWatcherRef.current) {
+        await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
+      }
+
+      // Запустить фоновое отслеживание
+      const watcherId = await BackgroundGeolocation.watchPosition(
+        {
+          enableHighAccuracy: true,
+          timeout: 15_000,
+          maximumAge: Math.min(intervalSeconds * 1000 * 2, 60_000),
+          distanceFilter: 0, // Записывать каждый такт, не зависит от расстояния
+        },
+        async (location: any) => {
+          if (!location) return;
+          try {
+            const { error } = await supabase.from("child_locations").insert([
+              {
+                child_id: id,
+                device_source: "phone_background",
+                latitude: location.latitude,
+                longitude: location.longitude,
+                accuracy: location.accuracy ?? null,
+              },
+            ]);
+
+            if (!error) {
+              lastSentAtRef.current = new Date().toISOString();
+              lastErrorRef.current = null;
+
+              // Проверка геофенса
+              const s = settingsRef.current;
+              if (s?.geofence_enabled && s.geofence_lat != null && s.geofence_lng != null) {
+                const radius = s.geofence_radius_m || 300;
+                const d = distanceM(location.latitude, location.longitude, s.geofence_lat, s.geofence_lng);
+                const inside = d <= radius;
+                const prev = lastInsideRef.current;
+                lastInsideRef.current = inside;
+                if (prev !== null && prev !== inside) {
+                  await supabase.from("geofence_events").insert({
+                    child_id: id,
+                    event_type: inside ? "enter" : "exit",
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    distance_m: d,
+                  });
+                }
+              }
+            } else {
+              lastErrorRef.current = error.message;
+            }
+          } catch (e) {
+            lastErrorRef.current = e instanceof Error ? e.message : "Ошибка фоновой геолокации";
+          }
+          publishStatus();
+        },
+        (error: any) => {
+          lastErrorRef.current = error?.message || "Ошибка фонового трекера";
+          publishStatus();
+        },
+      );
+
+      backgroundWatcherRef.current = watcherId;
+      lastErrorRef.current = null;
+      setBackgroundTrackingEnabled(true);
+      publishStatus();
+    } catch (e) {
+      lastErrorRef.current = e instanceof Error ? e.message : "Не удалось запустить фоновый трекинг";
+      setBackgroundTrackingEnabled(false);
+      publishStatus();
+    }
+  };
+
+  const stopBackgroundTracking = async () => {
+    if (!BackgroundGeolocation) return;
+
+    try {
+      if (backgroundWatcherRef.current) {
+        await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
+        backgroundWatcherRef.current = null;
+      }
+      setBackgroundTrackingEnabled(false);
+      publishStatus();
+    } catch (e) {
+      console.warn("Error stopping background tracking:", e);
+    }
+  };
+
+  // Фоновое отслеживание (включается параллельно с переднеплановым)
+  useEffect(() => {
+    if (!enabled || !childId || !trackingEnabled || !isBackgroundGeoSupported()) {
+      stopBackgroundTracking();
+      return;
+    }
+
+    const startIfPermitted = async () => {
+      const bgPerm = await queryBackgroundGeoPermission();
+      if (bgPerm === "always") {
+        await startBackgroundTracking(childId, intervalSecRef.current);
+      } else {
+        setBackgroundTrackingEnabled(false);
+      }
+    };
+
+    startIfPermitted();
+
+    return () => {
+      stopBackgroundTracking();
+    };
+  }, [enabled, childId, trackingEnabled]);
+
+  // Переднеплановое отслеживание (работает, пока приложение открыто)
   useEffect(() => {
     if (!enabled || !childId || !trackingEnabled) {
       if (timerRef.current) {
@@ -300,5 +439,13 @@ export const useLocationTracker = (enabled = true) => {
     };
   }, [enabled, childId, intervalSec, trackingEnabled]);
 
-  return { childId, intervalSec, trackingEnabled };
+  return {
+    childId,
+    intervalSec,
+    trackingEnabled,
+    backgroundTrackingEnabled,
+    backgroundPermission,
+    requestBackgroundPermission: requestBackgroundGeoPermission,
+    isBackgroundSupported: isBackgroundGeoSupported(),
+  };
 };

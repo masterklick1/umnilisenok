@@ -18,6 +18,12 @@ const config: CapacitorConfig = {
     Camera: {
       androidScaleType: "CENTER_CROP",
     },
+    BackgroundGeolocation: {
+      androidNotificationTitle: "Умный Лисёнок отслеживает геопозицию",
+      androidNotificationText: "Нажмите, чтобы закрыть отслеживание",
+      androidNotificationIconName: "ic_stat_name",
+      androidForegroundServiceType: "location",
+    },
   },
 };
 

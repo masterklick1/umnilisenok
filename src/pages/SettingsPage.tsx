@@ -16,15 +16,6 @@ import { Capacitor } from "@capacitor/core";
 import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
 import { queryBackgroundGeoPermission, requestBackgroundGeoPermission } from "@/lib/geo-permission";
 
-let App: any = null;
-if (Capacitor.isNativePlatform()) {
-  try {
-    App = require("@capacitor/app").App;
-  } catch {
-    App = null;
-  }
-}
-
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -136,17 +127,9 @@ export default function SettingsPage() {
   };
 
   const openBatteryOptimizationSettings = async () => {
-    if (!App) {
-      toast({
-        title: "Откройте вручную",
-        description: "Настройки → Батарея → Оптимизация батареи → Приложение → Не оптимизировать",
-        variant: "default",
-      });
-      return;
-    }
-
     try {
       if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+        const { App } = await import("@capacitor/app");
         const appId = "app.lovable.umnilisenok";
         try {
           // Попытка 1: Прямой intent для отключения оптимизации батареи

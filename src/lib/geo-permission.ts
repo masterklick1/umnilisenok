@@ -1,15 +1,6 @@
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
 
-let BackgroundGeolocation: any = null;
-if (Capacitor.isNativePlatform()) {
-  try {
-    BackgroundGeolocation = require("@capacitor-community/background-geolocation").BackgroundGeolocation;
-  } catch {
-    BackgroundGeolocation = null;
-  }
-}
-
 export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported" | "not-determined";
 export type BackgroundGeoPermissionState = "always" | "denied" | "prompt" | "unsupported" | "not-determined";
 
@@ -17,6 +8,23 @@ let cachedPosition: (GeoPositionResult & { cachedAt: number }) | null = null;
 let webWatchId: number | null = null;
 let nativeWatchId: string | null = null;
 let watchRefCount = 0;
+
+// Динамический импорт BackgroundGeolocation (только на нативной платформе)
+let BackgroundGeoLocationModule: any = null;
+
+const getBackgroundGeolocation = async () => {
+  if (!Capacitor.isNativePlatform()) return null;
+  if (BackgroundGeoLocationModule !== undefined) return BackgroundGeoLocationModule;
+  
+  try {
+    const module = await import("@capacitor-community/background-geolocation");
+    BackgroundGeoLocationModule = module.BackgroundGeolocation;
+    return BackgroundGeoLocationModule;
+  } catch {
+    BackgroundGeoLocationModule = null;
+    return null;
+  }
+};
 
 export const queryGeoPermission = async (): Promise<GeoPermissionState> => {
   if (Capacitor.isNativePlatform()) {
@@ -205,7 +213,10 @@ export const queryBackgroundGeoPermission = async (): Promise<BackgroundGeoPermi
   }
 
   try {
-    const perm = await BackgroundGeolocation.checkPermissions();
+    const BgGeo = await getBackgroundGeolocation();
+    if (!BgGeo) return "unsupported";
+    
+    const perm = await BgGeo.checkPermissions();
     if (perm.location === "always") return "always";
     if (perm.location === "denied") return "denied";
     return "prompt";
@@ -220,7 +231,10 @@ export const requestBackgroundGeoPermission = async (): Promise<BackgroundGeoPer
   }
 
   try {
-    const perm = await BackgroundGeolocation.requestPermissions({
+    const BgGeo = await getBackgroundGeolocation();
+    if (!BgGeo) return "unsupported";
+    
+    const perm = await BgGeo.requestPermissions({
       permissions: ["location"],
       rationale: {
         title: "📍 Доступ к геопозиции в фоне",

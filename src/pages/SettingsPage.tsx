@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const [pin, setPin] = useState("");
   const [newPin, setNewPin] = useState("");
   const [savingName, setSavingName] = useState(false);
-  const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<"always" | "prompt" | "denied" | "unsupported">("prompt");
+  const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<BackgroundGeoPermissionState>("prompt");
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [requestingBgGeo, setRequestingBgGeo] = useState(false);
 

@@ -14,16 +14,7 @@ import {
   type BackgroundGeoPermissionState,
   isBackgroundGeoSupported,
 } from "@/lib/geo-permission";
-import { Capacitor } from "@capacitor/core";
-
-let BackgroundGeolocation: any = null;
-if (Capacitor.isNativePlatform()) {
-  try {
-    BackgroundGeolocation = require("@capacitor-community/background-geolocation").BackgroundGeolocation;
-  } catch {
-    BackgroundGeolocation = null;
-  }
-}
+import { BackgroundGeolocation } from "@capacitor-community/background-geolocation";
 
 const DEFAULT_INTERVAL_SEC = 60;
 const SETTINGS_POLL_MS = 30_000;

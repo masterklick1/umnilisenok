@@ -1,7 +1,17 @@
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
 
-export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported";
+let BackgroundGeolocation: any = null;
+if (Capacitor.isNativePlatform()) {
+  try {
+    BackgroundGeolocation = require("@capacitor-community/background-geolocation").BackgroundGeolocation;
+  } catch {
+    BackgroundGeolocation = null;
+  }
+}
+
+export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported" | "not-determined";
+export type BackgroundGeoPermissionState = "always" | "denied" | "prompt" | "unsupported" | "not-determined";
 
 let cachedPosition: (GeoPositionResult & { cachedAt: number }) | null = null;
 let webWatchId: number | null = null;
@@ -187,4 +197,47 @@ export const requestGeoPermissionInteractive = async (): Promise<boolean> => {
   } catch {
     return getCachedGeoPosition() !== null;
   }
+};
+
+export const queryBackgroundGeoPermission = async (): Promise<BackgroundGeoPermissionState> => {
+  if (!Capacitor.isNativePlatform()) {
+    return "unsupported";
+  }
+
+  try {
+    const perm = await BackgroundGeolocation.checkPermissions();
+    if (perm.location === "always") return "always";
+    if (perm.location === "denied") return "denied";
+    return "prompt";
+  } catch {
+    return "prompt";
+  }
+};
+
+export const requestBackgroundGeoPermission = async (): Promise<BackgroundGeoPermissionState> => {
+  if (!Capacitor.isNativePlatform()) {
+    return "unsupported";
+  }
+
+  try {
+    const perm = await BackgroundGeolocation.requestPermissions({
+      permissions: ["location"],
+      rationale: {
+        title: "📍 Доступ к геопозиции в фоне",
+        message: "Приложению нужен доступ к вашей геопозиции, даже когда оно закрыто, чтобы отслеживать местоположение ребёнка.",
+        buttonNegative: "Отменить",
+        buttonPositive: "Разрешить",
+      },
+    });
+    
+    if (perm.location === "always") return "always";
+    if (perm.location === "denied") return "denied";
+    return "prompt";
+  } catch {
+    return "denied";
+  }
+};
+
+export const isBackgroundGeoSupported = (): boolean => {
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 };

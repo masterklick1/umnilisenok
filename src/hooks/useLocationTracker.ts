@@ -14,6 +14,7 @@ import {
   type BackgroundGeoPermissionState,
   isBackgroundGeoSupported,
 } from "@/lib/geo-permission";
+import { BackgroundGeolocation } from "@capacitor-community/background-geolocation";
 
 const DEFAULT_INTERVAL_SEC = 60;
 const SETTINGS_POLL_MS = 30_000;
@@ -215,17 +216,12 @@ export const useLocationTracker = (enabled = true) => {
   // Фоновая геолокация (работает при закрытом приложении)
   const startBackgroundTracking = async (id: string, intervalSeconds: number) => {
     try {
-      const module = await import("@capacitor-community/background-geolocation");
-      const BackgroundGeo = module.BackgroundGeolocation;
-      
-      if (!BackgroundGeo) return;
-
       if (backgroundWatcherRef.current) {
-        await BackgroundGeo.removeWatcher({ id: backgroundWatcherRef.current });
+        await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
       }
 
       // Запустить фоновое отслеживание
-      const watcherId = await BackgroundGeo.watchPosition(
+      const watcherId = await BackgroundGeolocation.watchPosition(
         {
           enableHighAccuracy: true,
           timeout: 15_000,
@@ -295,12 +291,7 @@ export const useLocationTracker = (enabled = true) => {
   const stopBackgroundTracking = async () => {
     try {
       if (backgroundWatcherRef.current) {
-        const module = await import("@capacitor-community/background-geolocation");
-        const BackgroundGeo = module.BackgroundGeolocation;
-        
-        if (BackgroundGeo) {
-          await BackgroundGeo.removeWatcher({ id: backgroundWatcherRef.current });
-        }
+        await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
         backgroundWatcherRef.current = null;
       }
       setBackgroundTrackingEnabled(false);

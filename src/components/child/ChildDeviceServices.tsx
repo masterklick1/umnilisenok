@@ -20,10 +20,12 @@ import { Label } from "@/components/ui/label";
 
 const defaultStatus: LocationTrackerStatus = {
   permission: "prompt",
+  backgroundPermission: "unsupported",
   lastSentAt: null,
   lastError: null,
   intervalSec: 60,
   trackingEnabled: false,
+  backgroundTrackingEnabled: false,
 };
 
 const formatInterval = (sec: number) => {

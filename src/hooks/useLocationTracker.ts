@@ -14,7 +14,11 @@ import {
   type BackgroundGeoPermissionState,
   isBackgroundGeoSupported,
 } from "@/lib/geo-permission";
-import { BackgroundGeolocation } from "@capacitor-community/background-geolocation";
+import { registerPlugin } from "@capacitor/core";
+
+// Package has no JS entry (native-only). Register plugin bridge directly so
+// web builds don't try to resolve the missing module.
+const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
 
 const DEFAULT_INTERVAL_SEC = 60;
 const SETTINGS_POLL_MS = 30_000;

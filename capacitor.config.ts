@@ -24,6 +24,11 @@ const config: CapacitorConfig = {
       androidNotificationIconName: "ic_stat_name",
       androidForegroundServiceType: "location",
     },
+    // Ключ для нативной Google Maps SDK для Android/iOS.
+    // Android: значение читается из meta-data com.google.android.geo.API_KEY
+    // в AndroidManifest.xml (см. codemagic.yaml — awk-инъекция).
+    // Здесь поле оставлено для документации — реальный ключ подставляется в манифест.
+    GoogleMaps: {},
   },
 };
 

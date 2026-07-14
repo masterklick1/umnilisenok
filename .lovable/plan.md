@@ -1,47 +1,56 @@
 
-## Что меняется
+# Миграция карт: Web JS API → нативный @capacitor/google-maps
 
-Только один файл — `codemagic.yaml`. Никакого кода приложения, никакой БД.
+Проблема: Google Maps JS API использует HTTP-referrer ключи, которые не работают в Capacitor WebView (нет http-referer в native запросах). В собранном APK карта либо не грузится, либо падает с `RefererNotAllowedMapError`.
 
-Сейчас шаг **«Force location permissions in manifest»** (есть и в `android-release`, и в `android-debug`) добавляет в `AndroidManifest.xml` только:
+## Этапы (буду выполнять последовательно, показывая полное содержимое каждого изменённого файла)
 
-- `ACCESS_FINE_LOCATION`
-- `ACCESS_COARSE_LOCATION`
+### Этап 1. Инфраструктура
+- Установить `@capacitor/google-maps`
+- Добавить в `capacitor.config.ts` секцию `GoogleMaps` с плейсхолдером под API-ключ для Android (`androidGoogleMapsApiKey`) — пользователь потом добавит свой ключ в `codemagic.yaml` как переменную окружения. Для iOS аналогично, но проект собирается только под Android.
+- Создать `src/lib/platform.ts` хелпер `isNative()` через `Capacitor.isNativePlatform()` (если ещё нет — в `useLocationTracker.ts` уже используется, вынесу в общее место)
 
-Но приложение реально использует ещё:
+### Этап 2. Edge Functions (прокси)
+Создать две функции:
+- `supabase/functions/places-proxy/index.ts` — принимает `{ action: "autocomplete" | "details" | "textsearch", input, sessionToken?, location?, placeId? }`, вызывает Places API (New) через `X-Goog-Api-Key: GOOGLE_MAPS_SERVER_KEY`, возвращает нормализованный ответ.
+- `supabase/functions/directions-proxy/index.ts` — принимает `{ origin: {lat,lng}, destination: {lat,lng}, mode? }`, вызывает Routes API v2 (`routes.googleapis.com/directions/v2:computeRoutes`) с сервером ключом, возвращает polyline + duration + distance.
+- Обе функции: CORS, валидация Zod, JWT verify (`verify_jwt = true` — вызовы только от авторизованных родителей).
+- Секрет: `GOOGLE_MAPS_SERVER_KEY` — пользователь добавит сам, в коде читаю через `Deno.env.get`.
 
-- фоновую геолокацию (`@capacitor-community/background-geolocation`, foreground-сервис в `capacitor.config.ts`)
-- push-уведомления родителю
-- камеру и микрофон для функции monitoring
+### Этап 3. Клиентская обёртка `src/lib/maps-client.ts`
+Единый API поверх Edge-функций:
+- `autocompletePlaces(query, near?)` → `SearchPlaceResult[]`
+- `getPlaceDetails(placeId)`
+- `getDirections(from, to)`
+Заменяет `searchPlaces` из `src/lib/google-maps.ts`.
 
-Без соответствующих `<uses-permission>` в AAB эти функции на устройстве либо не запросят разрешение, либо будут молча падать, а Google Play может отклонить релиз.
+### Этап 4. `LocationMap.tsx` — dual-mode
+- Если `Capacitor.isNativePlatform()` → рендер через `GoogleMap.create({ element, config: { center, zoom, apiKey } })`, добавление маркеров через `addMarkers()`, круг геозоны через `addCircles()`, маршрут — polyline через `addPolylines()` (координаты берутся из Edge `directions-proxy`).
+- Иначе (web) → оставляем текущую реализацию через `window.google.maps.Map` (fallback для preview в браузере).
+- Общий контракт props не меняется — потребители (`ParentDashboard`, `SafetyPanel`) не трогаются.
 
-## Что делаю
+### Этап 5. `PlaceAddressSearch.tsx`
+- Удалить прямой `new google.maps.places.Autocomplete(input)` .
+- Заменить на debounced-запрос к `autocompletePlaces()` из `maps-client.ts` с рендером выпадающего списка (стандартный shadcn Command/Popover). Работает одинаково в web и в native.
+- Кнопка «Найти» тоже уходит на Edge — единая точка.
 
-1. Переименовываю шаг в **«Force required permissions in manifest»**.
-2. Расширяю блок `awk` — при первом же встречном тэге `<manifest ...>` вставляю сразу все разрешения одним блоком:
-   ```
-   ACCESS_FINE_LOCATION
-   ACCESS_COARSE_LOCATION
-   ACCESS_BACKGROUND_LOCATION
-   FOREGROUND_SERVICE
-   FOREGROUND_SERVICE_LOCATION
-   POST_NOTIFICATIONS
-   CAMERA
-   RECORD_AUDIO
-   ```
-3. Меняю проверку `grep -q "ACCESS_FINE_LOCATION"` → `grep -q "ACCESS_BACKGROUND_LOCATION"`, чтобы старые сборки, где уже был только FINE/COARSE, всё равно получили новые разрешения при следующем прогоне.
-4. Дублирую тот же обновлённый шаг в оба workflow (`android-release` и `android-debug`) — чтобы дебажный APK на телефоне вёл себя так же, как релизный AAB.
+### Этап 6. `src/lib/google-maps.ts`
+- Оставить только `loadGoogleMaps()` + `isGoogleMapsConfigured()` для web-fallback карты.
+- `searchPlacesGoogle` / `searchPlacesOsm` удалить (перенесено в Edge). `searchPlaces` — reexport из `maps-client.ts` для обратной совместимости.
 
-## Что НЕ меняю
+## Что НЕ трогаю
+- Схему БД (`child_saved_places`, `child_place_status`, `child_settings`)
+- Логику `useLocationTracker.ts`, `geo-permission.ts`
+- Компоненты `MyPlacePicker`, `ChildRoomViewer` и остальные — они получают данные через уже существующие props/hooks.
+- `codemagic.yaml` в этом этапе не трогаю — Android API-ключ для нативной карты нужно будет добавить в отдельный шаг (напомню в конце с точной инструкцией куда вписать `GOOGLE_MAPS_ANDROID_API_KEY` и как прокинуть его в `AndroidManifest.xml` через `meta-data com.google.android.geo.API_KEY`).
 
-- `capacitor.config.ts`, код React/TS, edge-функции, БД — не трогаю.
-- Логику подписи, keystore, versionCode, gradle-патч — не трогаю.
-- Кэш `node_modules`/Gradle сейчас не добавляю (можно отдельным шагом позже, если захочется ускорить сборку).
+## Открытые вопросы (сделаю разумное допущение, если не поправишь)
+1. **Ключи**: буду считать, что серверный ключ `GOOGLE_MAPS_SERVER_KEY` (для Edge) и Android-ключ `GOOGLE_MAPS_ANDROID_API_KEY` (для манифеста) — два разных ключа Google Cloud с разными ограничениями (server: IP-restrictions или без; android: SHA-1 + package name). Это правильный путь по документации Google.
+2. **Directions**: перехожу на **Routes API v2** (`computeRoutes`) вместо legacy Directions API — legacy депрекейтед и удалён из Lovable-коннектора. Функционально эквивалентно.
+3. **Places**: использую **Places API (New)** (`places:autocomplete`, `places:searchText`, `places/{id}`), а не legacy Places.
 
-## Что сделать вам после мержа
+## Как проверю
+- `npm run build` после каждого этапа.
+- Ручную проверку в native через `npx cap sync` пользователь делает сам после `git pull`.
 
-1. `git pull` в вашем репозитории.
-2. В Codemagic нажать **«Check for configuration files»** (чтобы подтянулся новый `codemagic.yaml`).
-3. Запустить workflow — сначала `android-debug` для проверки APK на телефоне, потом `android-release` для AAB в Google Play.
-4. В Google Play Console при подаче AAB будет запрошено **обоснование `ACCESS_BACKGROUND_LOCATION`** — указать: «Родительский контроль детского приложения, отправка геопозиции ребёнка родителю с настраиваемым интервалом, работа при выключенном экране». Без этого Play может отклонить релиз.
+Подтверди план — начну с Этапа 1.

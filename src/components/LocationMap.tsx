@@ -85,7 +85,6 @@ const NativeLocationMap = ({
     zones: [],
   });
   const polylineIdsRef = useRef<{ path?: string; route?: string; fallback?: string }>({});
-  const clickListenerRef = useRef<{ remove: () => Promise<void> } | null>(null);
   const onClickRef = useRef(onMapClick);
   onClickRef.current = onMapClick;
   const mapId = useId();
@@ -110,7 +109,7 @@ const NativeLocationMap = ({
           return;
         }
         mapRef.current = map;
-        clickListenerRef.current = await map.setOnMapClickListener((p: any) => {
+        await map.setOnMapClickListener((p: { latitude: number; longitude: number }) => {
           onClickRef.current?.(p.latitude, p.longitude);
         });
       } catch (e) {
@@ -121,7 +120,7 @@ const NativeLocationMap = ({
       cancelled = true;
       (async () => {
         try {
-          await clickListenerRef.current?.remove();
+          await mapRef.current?.removeAllMapListeners();
         } catch {
           /* noop */
         }

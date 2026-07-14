@@ -180,7 +180,7 @@ const NativeLocationMap = ({
 
         for (const zone of geofences) {
           const color = zone.color ?? "#22c55e";
-          const cid = await map.addCircles([
+          const cid = await map.addCircles([ 
             {
               center: { lat: zone.lat, lng: zone.lng },
               radius: zone.radius,
@@ -203,7 +203,7 @@ const NativeLocationMap = ({
           circleIdsRef.current.legacy = undefined;
         }
         if (geofence) {
-          const cid = await map.addCircles([
+          const cid = await map.addCircles([ 
             {
               center: { lat: geofence.lat, lng: geofence.lng },
               radius: geofence.radius,
@@ -221,7 +221,7 @@ const NativeLocationMap = ({
           circleIdsRef.current.accuracy = undefined;
         }
         if (accuracy && accuracy > 0) {
-          const cid = await map.addCircles([
+          const cid = await map.addCircles([ 
             {
               center,
               radius: accuracy,

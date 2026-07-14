@@ -50,6 +50,36 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_child_locations: {
+        Row: {
+          accuracy: number | null
+          battery_level: number | null
+          child_id: string | null
+          created_at: string | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          battery_level?: number | null
+          child_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          battery_level?: number | null
+          child_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Relationships: []
+      }
       child_activity: {
         Row: {
           activity_type: string
@@ -162,6 +192,7 @@ export type Database = {
           battery_level: number | null
           child_id: string
           created_at: string
+          device_source: string
           id: string
           latitude: number
           longitude: number
@@ -171,6 +202,7 @@ export type Database = {
           battery_level?: number | null
           child_id: string
           created_at?: string
+          device_source?: string
           id?: string
           latitude: number
           longitude: number
@@ -180,6 +212,7 @@ export type Database = {
           battery_level?: number | null
           child_id?: string
           created_at?: string
+          device_source?: string
           id?: string
           latitude?: number
           longitude?: number

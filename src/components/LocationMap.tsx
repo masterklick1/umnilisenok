@@ -180,7 +180,7 @@ const NativeLocationMap = ({
 
         for (const zone of geofences) {
           const color = zone.color ?? "#22c55e";
-          const cid = await map.addCircles([ 
+          const cid = await (map as any).addCircles([
             {
               center: { lat: zone.lat, lng: zone.lng },
               radius: zone.radius,
@@ -203,7 +203,7 @@ const NativeLocationMap = ({
           circleIdsRef.current.legacy = undefined;
         }
         if (geofence) {
-          const cid = await map.addCircles([ 
+          const cid = await (map as any).addCircles([
             {
               center: { lat: geofence.lat, lng: geofence.lng },
               radius: geofence.radius,
@@ -221,7 +221,7 @@ const NativeLocationMap = ({
           circleIdsRef.current.accuracy = undefined;
         }
         if (accuracy && accuracy > 0) {
-          const cid = await map.addCircles([ 
+          const cid = await (map as any).addCircles([
             {
               center,
               radius: accuracy,
@@ -243,7 +243,7 @@ const NativeLocationMap = ({
           center,
         ];
         if (pathCoords.length >= 2) {
-          const ids = await map.addPolylines([
+          const ids = await (map as any).addPolylines([
             {
               path: pathCoords,
               strokeColor: "#f97316",
@@ -267,7 +267,7 @@ const NativeLocationMap = ({
           const dir = await getDirections(parentLocation, center, routeMode);
           if (cancelled) return;
           if (dir?.path?.length) {
-            const ids = await map.addPolylines([
+            const ids = await (map as any).addPolylines([
               {
                 path: dir.path,
                 strokeColor: "#2563eb",
@@ -276,7 +276,7 @@ const NativeLocationMap = ({
             ]);
             polylineIdsRef.current.route = ids[0];
           } else {
-            const ids = await map.addPolylines([
+            const ids = await (map as any).addPolylines([
               {
                 path: [parentLocation, center],
                 strokeColor: "#2563eb",

@@ -27,10 +27,10 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync android
-      - name: Generate Capacitor Assets (Icon Only 1024x1024)
+      - name: Generate Capacitor Assets
         script: |
           npm install -D @capacitor/assets
-          npx capacitor-assets generate --android --icon
+          npx capacitor-assets generate --android
       - name: Print keystore SHA-1
         script: |
           keytool -list -v -keystore "$CM_KEYSTORE_PATH" -storepass "$CM_KEYSTORE_PASSWORD" -alias "$CM_KEY_ALIAS" | grep "SHA1:"
@@ -138,10 +138,10 @@ workflows:
           fi
       - name: Sync Capacitor
         script: npx cap sync android
-      - name: Generate Capacitor Assets (Icon Only 1024x1024)
+      - name: Generate Capacitor Assets
         script: |
           npm install -D @capacitor/assets
-          npx capacitor-assets generate --android --icon
+          npx capacitor-assets generate --android
       - name: Force required permissions and Maps API key in manifest
         script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"

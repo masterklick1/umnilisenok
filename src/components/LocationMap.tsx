@@ -39,22 +39,80 @@ interface Props {
 
 // Ключ для нативной карты. На Android читается из meta-data манифеста, но
 // плагин ТРЕБУЕТ передать apiKey в JS — можно передать пустую строку, тогда
-// используется значение из манифеста. iOS-ключ здесь опустим (Android-only сборка).
+// используется значение из манифеста.
 const NATIVE_MAP_API_KEY =
   (import.meta.env.VITE_GOOGLE_MAPS_NATIVE_KEY as string | undefined) ?? "";
 
 /**
  * Dual-mode карта:
- *   • native (Capacitor) → рендер через @capacitor/google-maps (нативный SDK,
- *     не требует HTTP-referrer, работает в WebView-сборке).
- *   • web/preview → рендер через window.google.maps.Map (JS API), как раньше.
- * Публичный контракт props НЕ менялся — потребители не трогаем.
+ *   • native (Capacitor) → рендер через @capacitor/google-maps.
+ *   • web/preview → рендер через window.google.maps.Map.
  */
 export const LocationMap = (props: Props) => {
   if (isNative()) {
     return <NativeLocationMap {...props} />;
   }
   return <WebLocationMap {...props} />;
+};
+
+/* ============================================================
+ * Утилиты для управления прозрачностью WebView под нативной картой
+ * ============================================================ */
+const TRANSPARENCY_STYLE_ID = "capacitor-map-transparency-style";
+let activeNativeMaps = 0;
+
+const ensureTransparencyStylesheet = () => {
+  if (document.getElementById(TRANSPARENCY_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = TRANSPARENCY_STYLE_ID;
+  style.textContent = `
+    html.capacitor-map-visible,
+    body.capacitor-map-visible {
+      background: transparent !important;
+    }
+    .capacitor-map-transparent-ancestor {
+      background: transparent !important;
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+interface AncestorSnapshot {
+  el: HTMLElement;
+  prevInlineBg: string;
+  hadClass: boolean;
+}
+
+const applyTransparencyChain = (from: HTMLElement | null): AncestorSnapshot[] => {
+  ensureTransparencyStylesheet();
+  const snapshots: AncestorSnapshot[] = [];
+  let el: HTMLElement | null = from;
+  while (el && el !== document.body) {
+    snapshots.push({
+      el,
+      prevInlineBg: el.style.background,
+      hadClass: el.classList.contains("capacitor-map-transparent-ancestor"),
+    });
+    el.style.background = "transparent";
+    el.classList.add("capacitor-map-transparent-ancestor");
+    el = el.parentElement;
+  }
+  document.documentElement.classList.add("capacitor-map-visible");
+  document.body.classList.add("capacitor-map-visible");
+  activeNativeMaps += 1;
+  return snapshots;
+};
+
+const revertTransparencyChain = (snapshots: AncestorSnapshot[]) => {
+  for (const s of snapshots) {
+    s.el.style.background = s.prevInlineBg;
+    if (!s.hadClass) s.el.classList.remove("capacitor-map-transparent-ancestor");
+  }
+  activeNativeMaps = Math.max(0, activeNativeMaps - 1);
+  if (activeNativeMaps === 0) {
+    document.documentElement.classList.remove("capacitor-map-visible");
+    document.body.classList.remove("capacitor-map-visible");
+  }
 };
 
 /* ============================================================
@@ -76,6 +134,7 @@ const NativeLocationMap = ({
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<GoogleMap | null>(null);
+  const readyRef = useRef<Promise<GoogleMap | null> | null>(null);
   const markerIdsRef = useRef<{
     child?: string;
     parent?: string;
@@ -87,61 +146,97 @@ const NativeLocationMap = ({
   const polylineIdsRef = useRef<{ path?: string; route?: string; fallback?: string }>({});
   const onClickRef = useRef(onMapClick);
   onClickRef.current = onMapClick;
-  const mapId = useId();
+  const mapId = useId().replace(/[^a-zA-Z0-9]/g, "");
 
-  // create map once
+  // create map once — но только когда DOM элемент реально примонтирован
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      if (!containerRef.current) return;
+    let snapshots: AncestorSnapshot[] = [];
+
+    const init = async () => {
+      // Ждём пока контейнер точно есть в DOM и получил размеры.
+      const el = containerRef.current;
+      if (!el) return null;
+
+      // Пробрасываем прозрачность вверх по дереву, чтобы нативный слой карты
+      // (лежит ПОД WebView) не перекрывался белым фоном UI.
+      snapshots = applyTransparencyChain(el);
+
       try {
         const map = await GoogleMap.create({
           id: `native-map-${mapId}`,
-          element: containerRef.current,
-          apiKey: NATIVE_MAP_API_KEY, // "" → берёт ключ из AndroidManifest meta-data
+          element: el,
+          apiKey: NATIVE_MAP_API_KEY, // "" → возьмётся из AndroidManifest meta-data
           config: {
             center: { lat: latitude, lng: longitude },
             zoom: 15,
           },
+          forceCreate: true,
         });
         if (cancelled) {
-          await map.destroy();
-          return;
+          await map.destroy().catch(() => {});
+          return null;
         }
         mapRef.current = map;
-        await map.setOnMapClickListener((p: { latitude: number; longitude: number }) => {
-          onClickRef.current?.(p.latitude, p.longitude);
-        });
+        await map
+          .setOnMapClickListener((p: { latitude: number; longitude: number }) => {
+            onClickRef.current?.(p.latitude, p.longitude);
+          })
+          .catch(() => {});
+        return map;
       } catch (e) {
         console.error("Native GoogleMap.create failed:", e);
+        return null;
       }
-    })();
+    };
+
+    // rAF гарантирует, что элемент прошёл layout и имеет ненулевые размеры
+    readyRef.current = new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        init().then(resolve);
+      });
+    });
+
     return () => {
       cancelled = true;
+      const p = readyRef.current;
+      readyRef.current = null;
       (async () => {
         try {
-          await mapRef.current?.removeAllMapListeners();
-        } catch {
-          /* noop */
+          await p;
+          const m = mapRef.current;
+          if (m) {
+            try {
+              await m.removeAllMapListeners();
+            } catch {
+              /* noop */
+            }
+            try {
+              await m.destroy();
+            } catch {
+              /* noop */
+            }
+          }
+        } finally {
+          mapRef.current = null;
+          markerIdsRef.current = { zones: [] };
+          circleIdsRef.current = { zones: [] };
+          polylineIdsRef.current = {};
+          revertTransparencyChain(snapshots);
         }
-        try {
-          await mapRef.current?.destroy();
-        } catch {
-          /* noop */
-        }
-        mapRef.current = null;
       })();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // apply markers / circles / polylines
+  // apply markers / circles / polylines — ждём готовности карты
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
     let cancelled = false;
 
     (async () => {
+      const map = await readyRef.current;
+      if (!map || cancelled) return;
+
       try {
         const center = { lat: latitude, lng: longitude };
         await map.setCamera({ coordinate: center, animate: true });
@@ -153,7 +248,6 @@ const NativeLocationMap = ({
         markerIdsRef.current.child = await map.addMarker({
           coordinate: center,
           title: label || "Ребёнок",
-          snippet: label ? undefined : "child",
         });
 
         // parent marker
@@ -168,7 +262,7 @@ const NativeLocationMap = ({
           });
         }
 
-        // clear all zone markers & circles, then re-add
+        // zones
         for (const id of markerIdsRef.current.zones) {
           await map.removeMarker(id).catch(() => {});
         }
@@ -314,12 +408,14 @@ const NativeLocationMap = ({
   return (
     <div
       ref={containerRef}
+      className="capacitor-map-transparent-ancestor"
       style={{
         width: "100%",
         height,
         borderRadius: 12,
-        // native плагин рисует карту ПОД WebView — фон должен быть прозрачным
         background: "transparent",
+        overflow: "hidden",
+        position: "relative",
       }}
     />
   );
@@ -396,7 +492,6 @@ const WebLocationMap = ({
           mapRef.current.panTo(center);
         }
 
-        // Accuracy circle
         if (accuracy && accuracy > 0) {
           if (!accuracyCircleRef.current) {
             accuracyCircleRef.current = new google.maps.Circle({
@@ -418,7 +513,6 @@ const WebLocationMap = ({
           accuracyCircleRef.current = null;
         }
 
-        // Movement trail
         const pathCoords = [
           ...movementPath.map((p) => ({ lat: p.lat, lng: p.lng })),
           center,
@@ -445,7 +539,6 @@ const WebLocationMap = ({
           pathLineRef.current.setMap(null);
         }
 
-        // Saved smart places (multiple circles)
         const activeIds = new Set<string>();
         for (const zone of geofences) {
           const key = zone.id ?? `${zone.lat},${zone.lng}`;
@@ -500,7 +593,6 @@ const WebLocationMap = ({
           }
         }
 
-        // Legacy active geofence highlight
         if (geofence) {
           const gCenter = { lat: geofence.lat, lng: geofence.lng };
           if (!geofenceCircleRef.current) {
@@ -539,7 +631,6 @@ const WebLocationMap = ({
           geofenceMarkerRef.current = null;
         }
 
-        // Parent marker
         if (parentLocation) {
           const pPos = { lat: parentLocation.lat, lng: parentLocation.lng };
           if (!parentMarkerRef.current) {
@@ -557,7 +648,6 @@ const WebLocationMap = ({
           parentMarkerRef.current.setMap(null);
         }
 
-        // Fit bounds
         const bounds = new google.maps.LatLngBounds();
         bounds.extend(center);
         pathCoords.forEach((p) => bounds.extend(p));
@@ -568,7 +658,6 @@ const WebLocationMap = ({
           mapRef.current.fitBounds(bounds, 48);
         }
 
-        // Route via Edge (Routes API v2) — единый для web и native
         routeLineRef.current?.setMap(null);
         fallbackLineRef.current?.setMap(null);
         if (showRoute && parentLocation) {
@@ -618,7 +707,3 @@ const WebLocationMap = ({
 
   return <div ref={ref} style={{ width: "100%", height, borderRadius: 12 }} />;
 };
-
-// Lazy import so we don't need a separate import statement above.
-// (getDirections declared via dynamic import above would work too, but
-// static import keeps types.)

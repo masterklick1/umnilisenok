@@ -8,6 +8,8 @@ workflows:
         - umnilisenok_keystore
       node: 22
       java: 21
+      groups:
+        - google_maps
       vars:
         PACKAGE_NAME: "app.lovable.umnilisenok"
     scripts:
@@ -28,22 +30,27 @@ workflows:
       - name: Print keystore SHA-1
         script: |
           keytool -list -v -keystore "$CM_KEYSTORE_PATH" -storepass "$CM_KEYSTORE_PASSWORD" -alias "$CM_KEY_ALIAS" | grep "SHA1:"
-      - name: Force required permissions in manifest
+      - name: Force required permissions and Maps API key in manifest
         script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           echo "--- Manifest BEFORE ---"
           cat "$MANIFEST"
-          
-          # 1. Сначала инжектим API-ключ карт вместо "ВАШ_ANDROID_KEY", если переменная задана в Codemagic
-          if [ -n "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
+
+          if [ -n "$GOOGLE_MAPS_ANDROID_API_KEY" ] && ! grep -q "com.google.android.geo.API_KEY" "$MANIFEST"; then
             echo "Injecting Google Maps API Key..."
-            sed -i "s/ВАШ_ANDROID_KEY/$GOOGLE_MAPS_ANDROID_API_KEY/g" "$MANIFEST" || \
-            sed -i "" "s/ВАШ_ANDROID_KEY/$GOOGLE_MAPS_ANDROID_API_KEY/g" "$MANIFEST"
-          else
+            awk -v key="$GOOGLE_MAPS_ANDROID_API_KEY" '
+              /<application[ >]/ && !done {
+                print
+                print "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"" key "\" />"
+                done=1
+                next
+              }
+              { print }
+            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          elif [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
             echo "Warning: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set!"
           fi
 
-          # 2. Твой оригинальный патч разрешений через awk
           if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
             awk '
               /<manifest[ >]/ && !done {
@@ -82,7 +89,7 @@ workflows:
               print "        release {"
               print "            if (System.getenv()[\"CM_KEYSTORE_PATH\"]) {"
               print "                storeFile file(System.getenv()[\"CM_KEYSTORE_PATH\"])"
-              print "                storePassword System.getenv()[\"CM_KEY_PASSWORD\"]"
+              print "                storePassword System.getenv()[\"CM_KEYSTORE_PASSWORD\"]"
               print "                keyAlias System.getenv()[\"CM_KEY_ALIAS\"]"
               print "                keyPassword System.getenv()[\"CM_KEY_PASSWORD\"]"
               print "            }"
@@ -113,6 +120,8 @@ workflows:
     environment:
       node: 22
       java: 21
+      groups:
+        - google_maps
     scripts:
       - name: Install npm dependencies
         script: npm ci || npm install
@@ -125,22 +134,27 @@ workflows:
           fi
       - name: Sync Capacitor
         script: npx cap sync android
-      - name: Force required permissions in manifest
+      - name: Force required permissions and Maps API key in manifest
         script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           echo "--- Manifest BEFORE ---"
           cat "$MANIFEST"
 
-          # 1. Сначала инжектим API-ключ карт вместо "ВАШ_ANDROID_KEY", если переменная задана в Codemagic
-          if [ -n "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
+          if [ -n "$GOOGLE_MAPS_ANDROID_API_KEY" ] && ! grep -q "com.google.android.geo.API_KEY" "$MANIFEST"; then
             echo "Injecting Google Maps API Key..."
-            sed -i "s/ВАШ_ANDROID_KEY/$GOOGLE_MAPS_ANDROID_API_KEY/g" "$MANIFEST" || \
-            sed -i "" "s/ВАШ_ANDROID_KEY/$GOOGLE_MAPS_ANDROID_API_KEY/g" "$MANIFEST"
-          else
+            awk -v key="$GOOGLE_MAPS_ANDROID_API_KEY" '
+              /<application[ >]/ && !done {
+                print
+                print "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"" key "\" />"
+                done=1
+                next
+              }
+              { print }
+            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          elif [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
             echo "Warning: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set!"
           fi
 
-          # 2. Твой оригинальный патч разрешений через awk
           if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
             awk '
               /<manifest[ >]/ && !done {

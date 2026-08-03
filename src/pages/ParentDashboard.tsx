@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorker, getPushStatus, unsubscribeFromPush, type PushStatus } from "@/lib/push";
-import { getStoredPin, isParentPinUnlocked, unlockParentPin } from "@/lib/parent-pin";
+import { hasParentPin, isParentPinUnlocked, purgeLegacyPin, unlockParentPin, verifyParentPin } from "@/lib/parent-pin";
 import { Input } from "@/components/ui/input";
 
 export default function ParentDashboard() {
@@ -49,8 +49,21 @@ export default function ParentDashboard() {
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [notifPrefs, setNotifPrefs] = useState<MonitoringNotifPrefs>(loadMonitoringPrefs());
   const [pinUnlocked, setPinUnlocked] = useState(() => isParentPinUnlocked());
+  const [pinRequired, setPinRequired] = useState<boolean | null>(null);
+  const [pinChecking, setPinChecking] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
+
+  useEffect(() => {
+    purgeLegacyPin();
+    let active = true;
+    hasParentPin().then((has) => {
+      if (active) setPinRequired(has);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => setNotifPrefs((e as CustomEvent).detail);

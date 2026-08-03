@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { SOUND_KEY } from "@/lib/sound";
-import { PIN_KEY } from "@/lib/parent-pin";
+import { clearParentPin, hasParentPin, purgeLegacyPin, setParentPin } from "@/lib/parent-pin";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
@@ -26,7 +26,7 @@ export default function SettingsPage() {
   const { isChild } = useUserRole();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [firstName, setFirstName] = useState("");
-  const [pin, setPin] = useState("");
+  const [pinSet, setPinSet] = useState(false);
   const [newPin, setNewPin] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<BackgroundGeoPermissionState>("prompt");
@@ -35,7 +35,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setSoundEnabled(localStorage.getItem(SOUND_KEY) !== "false");
-    setPin(localStorage.getItem(PIN_KEY) || "");
+    purgeLegacyPin();
+    hasParentPin().then(setPinSet);
     if (user) {
       supabase
         .from("profiles")
@@ -73,20 +74,29 @@ export default function SettingsPage() {
     });
   };
 
-  const savePin = () => {
+  const savePin = async () => {
+    if (!user) return;
     if (!/^\d{4}$/.test(newPin)) {
       toast({ title: "PIN должен быть 4 цифры", variant: "destructive" });
       return;
     }
-    localStorage.setItem(PIN_KEY, newPin);
-    setPin(newPin);
+    const ok = await setParentPin(user.id, newPin);
+    if (!ok) {
+      toast({ title: "Не удалось сохранить PIN", variant: "destructive" });
+      return;
+    }
+    setPinSet(true);
     setNewPin("");
     toast({ title: "Родительский PIN сохранён 🔒" });
   };
 
-  const clearPin = () => {
-    localStorage.removeItem(PIN_KEY);
-    setPin("");
+  const clearPin = async () => {
+    const ok = await clearParentPin();
+    if (!ok) {
+      toast({ title: "Не удалось удалить PIN", variant: "destructive" });
+      return;
+    }
+    setPinSet(false);
     toast({ title: "PIN удалён" });
   };
 
@@ -223,7 +233,7 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground mb-3">
               4 цифры — чтобы открыть родительский раздел
             </p>
-            {pin ? (
+            {pinSet ? (
               <div className="flex items-center justify-between">
                 <span className="text-sm">PIN установлен: <span className="font-mono">••••</span></span>
                 <Button variant="outline" size="sm" onClick={clearPin}>

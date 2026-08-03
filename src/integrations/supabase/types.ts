@@ -506,6 +506,27 @@ export type Database = {
           },
         ]
       }
+      parent_pins: {
+        Row: {
+          created_at: string
+          pin_hash: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          pin_hash: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          pin_hash?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pets: {
         Row: {
           created_at: string | null
@@ -863,6 +884,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_parent_pin: { Args: never; Returns: undefined }
       get_children_with_progress: {
         Args: { p_parent_id: string }
         Returns: {
@@ -883,6 +905,7 @@ export type Database = {
           parent_id: string
         }[]
       }
+      has_parent_pin: { Args: never; Returns: boolean }
       link_parent_child: {
         Args: { p_child_id: string; p_parent_id: string }
         Returns: undefined
@@ -891,6 +914,8 @@ export type Database = {
         Args: { p_child_id: string; p_code: string }
         Returns: undefined
       }
+      set_parent_pin: { Args: { p_hash: string }; Returns: undefined }
+      verify_parent_pin: { Args: { p_hash: string }; Returns: boolean }
     }
     Enums: {
       user_role: "parent" | "child"

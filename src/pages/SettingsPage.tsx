@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { SOUND_KEY } from "@/lib/sound";
-import { PIN_KEY } from "@/lib/parent-pin";
+import { clearParentPin, hasParentPin, purgeLegacyPin, setParentPin } from "@/lib/parent-pin";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";

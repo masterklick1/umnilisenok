@@ -355,12 +355,16 @@ export default function ParentDashboard() {
                 setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4));
                 setPinError(false);
               }}
-              onKeyDown={(e) => e.key === "Enter" && pinInput.length === 4 && verifyParentPin()}
+              onKeyDown={(e) => e.key === "Enter" && pinInput.length === 4 && submitParentPin()}
               className="text-center text-2xl tracking-widest"
             />
             {pinError && <p className="text-sm text-destructive text-center">Неверный PIN</p>}
-            <Button className="w-full" disabled={pinInput.length !== 4} onClick={verifyParentPin}>
-              Войти
+            <Button
+              className="w-full"
+              disabled={pinInput.length !== 4 || pinChecking}
+              onClick={submitParentPin}
+            >
+              {pinChecking ? "Проверяем…" : "Войти"}
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => navigate("/")}>
               Назад

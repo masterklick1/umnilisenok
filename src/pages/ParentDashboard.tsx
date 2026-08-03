@@ -299,9 +299,12 @@ export default function ParentDashboard() {
     }
   }, [children, selectedChild, setSelectedChild]);
 
-  const verifyParentPin = () => {
-    const stored = getStoredPin();
-    if (stored && pinInput === stored) {
+  const submitParentPin = async () => {
+    if (!user) return;
+    setPinChecking(true);
+    const ok = await verifyParentPin(user.id, pinInput);
+    setPinChecking(false);
+    if (ok) {
       unlockParentPin();
       setPinUnlocked(true);
       setPinError(false);
@@ -311,7 +314,7 @@ export default function ParentDashboard() {
     setPinError(true);
   };
 
-  if (loading) {
+  if (loading || pinRequired === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-accent/5">
         <div className="text-4xl animate-bounce">👨‍👩‍👧‍👦</div>
@@ -319,7 +322,7 @@ export default function ParentDashboard() {
     );
   }
 
-  if (getStoredPin() && !pinUnlocked) {
+  if (pinRequired && !pinUnlocked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-accent/5 p-4">
         <Card className="w-full max-w-sm">

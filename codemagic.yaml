@@ -25,6 +25,15 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync android
+      - name: Generate app icons & splash screens
+        script: |
+          npx --yes @capacitor/assets generate --android \
+            --assetPath resources \
+            --iconBackgroundColor '#FFCD3C' \
+            --iconBackgroundColorDark '#231E19' \
+            --splashBackgroundColor '#FFCD3C' \
+            --splashBackgroundColorDark '#231E19'
+
       - name: Force required permissions in manifest
         script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"

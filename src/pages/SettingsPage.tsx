@@ -35,7 +35,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setSoundEnabled(localStorage.getItem(SOUND_KEY) !== "false");
-    setPin(localStorage.getItem(PIN_KEY) || "");
+    purgeLegacyPin();
+    hasParentPin().then(setPinSet);
     if (user) {
       supabase
         .from("profiles")

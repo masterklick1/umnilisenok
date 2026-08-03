@@ -26,7 +26,7 @@ export default function SettingsPage() {
   const { isChild } = useUserRole();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [firstName, setFirstName] = useState("");
-  const [pin, setPin] = useState("");
+  const [pinSet, setPinSet] = useState(false);
   const [newPin, setNewPin] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<BackgroundGeoPermissionState>("prompt");
@@ -223,7 +223,7 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground mb-3">
               4 цифры — чтобы открыть родительский раздел
             </p>
-            {pin ? (
+            {pinSet ? (
               <div className="flex items-center justify-between">
                 <span className="text-sm">PIN установлен: <span className="font-mono">••••</span></span>
                 <Button variant="outline" size="sm" onClick={clearPin}>

@@ -74,20 +74,29 @@ export default function SettingsPage() {
     });
   };
 
-  const savePin = () => {
+  const savePin = async () => {
+    if (!user) return;
     if (!/^\d{4}$/.test(newPin)) {
       toast({ title: "PIN должен быть 4 цифры", variant: "destructive" });
       return;
     }
-    localStorage.setItem(PIN_KEY, newPin);
-    setPin(newPin);
+    const ok = await setParentPin(user.id, newPin);
+    if (!ok) {
+      toast({ title: "Не удалось сохранить PIN", variant: "destructive" });
+      return;
+    }
+    setPinSet(true);
     setNewPin("");
     toast({ title: "Родительский PIN сохранён 🔒" });
   };
 
-  const clearPin = () => {
-    localStorage.removeItem(PIN_KEY);
-    setPin("");
+  const clearPin = async () => {
+    const ok = await clearParentPin();
+    if (!ok) {
+      toast({ title: "Не удалось удалить PIN", variant: "destructive" });
+      return;
+    }
+    setPinSet(false);
     toast({ title: "PIN удалён" });
   };
 

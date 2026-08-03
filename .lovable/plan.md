@@ -1,56 +1,38 @@
+# План: проверка codemagic.yaml и генерации иконки для Android
 
-# Миграция карт: Web JS API → нативный @capacitor/google-maps
+## Цель
+Убедиться, что при сборке в Codemagic из исходников в `resources/` генерируется нормальная иконка приложения на Android (обычная + адаптивная), и дать пользователю чёткие шаги для пересборки.
 
-Проблема: Google Maps JS API использует HTTP-referrer ключи, которые не работают в Capacitor WebView (нет http-referer в native запросах). В собранном APK карта либо не грузится, либо падает с `RefererNotAllowedMapError`.
+## Текущее состояние (подтверждёно по файлам)
+- В `resources/` есть:
+  - `icon.png` 1024×1024
+  - `splash.png` / `splash-dark.png` 2732×2732
+  - `icon-foreground.png` — лиса на прозрачном фоне
+  - `icon-background.png` — сплошной цвет `#FFCD3C`
+- `capacitor.config.ts` корректен: `appId`, `webDir: dist`, продакшн-режим (server.url закомментирован).
+- `codemagic.yaml` содержит два workflow: `android-release` и `android-debug`. Оба включают шаг генерации иконок через `@capacitor/assets`.
 
-## Этапы (буду выполнять последовательно, показывая полное содержимое каждого изменённого файла)
+## Что нужно проверить / исправить
+1. **Порядок шагов генерации иконок**
+   - Генерация `@capacitor/assets` должна идти **после** `npx cap sync android`, но **до** сборки Gradle. Сейчас так и есть, но убедимся, что `cap sync` не перезапишет сгенерированные ресурсы.
 
-### Этап 1. Инфраструктура
-- Установить `@capacitor/google-maps`
-- Добавить в `capacitor.config.ts` секцию `GoogleMaps` с плейсхолдером под API-ключ для Android (`androidGoogleMapsApiKey`) — пользователь потом добавит свой ключ в `codemagic.yaml` как переменную окружения. Для iOS аналогично, но проект собирается только под Android.
-- Создать `src/lib/platform.ts` хелпер `isNative()` через `Capacitor.isNativePlatform()` (если ещё нет — в `useLocationTracker.ts` уже используется, вынесу в общее место)
+2. **Команда генерации иконок**
+   - Текущая: `npx --yes @capacitor/assets generate --android --assetPath resources ...`
+   - Проверим, достаточно ли флагов для адаптивной иконки. При необходимости добавим `--androidIconPath` или уточним пути.
 
-### Этап 2. Edge Functions (прокси)
-Создать две функции:
-- `supabase/functions/places-proxy/index.ts` — принимает `{ action: "autocomplete" | "details" | "textsearch", input, sessionToken?, location?, placeId? }`, вызывает Places API (New) через `X-Goog-Api-Key: GOOGLE_MAPS_SERVER_KEY`, возвращает нормализованный ответ.
-- `supabase/functions/directions-proxy/index.ts` — принимает `{ origin: {lat,lng}, destination: {lat,lng}, mode? }`, вызывает Routes API v2 (`routes.googleapis.com/directions/v2:computeRoutes`) с сервером ключом, возвращает polyline + duration + distance.
-- Обе функции: CORS, валидация Zod, JWT verify (`verify_jwt = true` — вызовы только от авторизованных родителей).
-- Секрет: `GOOGLE_MAPS_SERVER_KEY` — пользователь добавит сам, в коде читаю через `Deno.env.get`.
+3. **Патч `build.gradle` для релизной подписи**
+   - Проверим, что `awk`-скрипт корректно вставляет `signingConfigs.release` и прикрепляет его к `buildTypes.release`. Сейчас скрипт ищет `buildTypes {` и добавляет `signingConfig signingConfigs.release` после `minifyEnabled`, что может быть ненадёжно. При необходимости заменим на более точный `sed`/`awk`.
 
-### Этап 3. Клиентская обёртка `src/lib/maps-client.ts`
-Единый API поверх Edge-функций:
-- `autocompletePlaces(query, near?)` → `SearchPlaceResult[]`
-- `getPlaceDetails(placeId)`
-- `getDirections(from, to)`
-Заменяет `searchPlaces` из `src/lib/google-maps.ts`.
+4. **Инъекция разрешений в `AndroidManifest.xml`**
+   - Убедимся, что `ACCESS_BACKGROUND_LOCATION`, `FOREGROUND_SERVICE`, `POST_NOTIFICATIONS`, `CAMERA`, `RECORD_AUDIO` добавляются после открывающего тега `<manifest>` и не дублируются при повторных запусках.
 
-### Этап 4. `LocationMap.tsx` — dual-mode
-- Если `Capacitor.isNativePlatform()` → рендер через `GoogleMap.create({ element, config: { center, zoom, apiKey } })`, добавление маркеров через `addMarkers()`, круг геозоны через `addCircles()`, маршрут — polyline через `addPolylines()` (координаты берутся из Edge `directions-proxy`).
-- Иначе (web) → оставляем текущую реализацию через `window.google.maps.Map` (fallback для preview в браузере).
-- Общий контракт props не меняется — потребители (`ParentDashboard`, `SafetyPanel`) не трогаются.
+5. **Настройка Google Maps API key в AndroidManifest.xml**
+   - Для нативных карт `@capacitor/google-maps` требуется `com.google.android.geo.API_KEY`. Проверим, есть ли шаг вставки ключа из переменных окружения Codemagic.
 
-### Этап 5. `PlaceAddressSearch.tsx`
-- Удалить прямой `new google.maps.places.Autocomplete(input)` .
-- Заменить на debounced-запрос к `autocompletePlaces()` из `maps-client.ts` с рендером выпадающего списка (стандартный shadcn Command/Popover). Работает одинаково в web и в native.
-- Кнопка «Найти» тоже уходит на Edge — единая точка.
+6. **Итоговая инструкция для пользователя**
+   - После правок: `git pull`, запуск workflow в Codemagic, скачивание APK/AAB.
 
-### Этап 6. `src/lib/google-maps.ts`
-- Оставить только `loadGoogleMaps()` + `isGoogleMapsConfigured()` для web-fallback карты.
-- `searchPlacesGoogle` / `searchPlacesOsm` удалить (перенесено в Edge). `searchPlaces` — reexport из `maps-client.ts` для обратной совместимости.
-
-## Что НЕ трогаю
-- Схему БД (`child_saved_places`, `child_place_status`, `child_settings`)
-- Логику `useLocationTracker.ts`, `geo-permission.ts`
-- Компоненты `MyPlacePicker`, `ChildRoomViewer` и остальные — они получают данные через уже существующие props/hooks.
-- `codemagic.yaml` в этом этапе не трогаю — Android API-ключ для нативной карты нужно будет добавить в отдельный шаг (напомню в конце с точной инструкцией куда вписать `GOOGLE_MAPS_ANDROID_API_KEY` и как прокинуть его в `AndroidManifest.xml` через `meta-data com.google.android.geo.API_KEY`).
-
-## Открытые вопросы (сделаю разумное допущение, если не поправишь)
-1. **Ключи**: буду считать, что серверный ключ `GOOGLE_MAPS_SERVER_KEY` (для Edge) и Android-ключ `GOOGLE_MAPS_ANDROID_API_KEY` (для манифеста) — два разных ключа Google Cloud с разными ограничениями (server: IP-restrictions или без; android: SHA-1 + package name). Это правильный путь по документации Google.
-2. **Directions**: перехожу на **Routes API v2** (`computeRoutes`) вместо legacy Directions API — legacy депрекейтед и удалён из Lovable-коннектора. Функционально эквивалентно.
-3. **Places**: использую **Places API (New)** (`places:autocomplete`, `places:searchText`, `places/{id}`), а не legacy Places.
-
-## Как проверю
-- `npm run build` после каждого этапа.
-- Ручную проверку в native через `npx cap sync` пользователь делает сам после `git pull`.
-
-Подтверди план — начну с Этапа 1.
+## Результат
+- Пользователь получит исправленный `codemagic.yaml`.
+- Иконка и сплеш-экран будут генерироваться автоматически при сборке.
+- Подпись релизного AAB и разрешения будут настроены корректно.

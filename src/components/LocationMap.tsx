@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { GoogleMap } from "@capacitor/google-maps";
 import { loadGoogleMaps } from "@/lib/google-maps";
 import { isNative } from "@/lib/platform";
@@ -134,6 +134,7 @@ const NativeLocationMap = ({
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<GoogleMap | null>(null);
+  const [mapError, setMapError] = useState(false);
   const readyRef = useRef<Promise<GoogleMap | null> | null>(null);
   const markerIdsRef = useRef<{
     child?: string;
@@ -161,6 +162,7 @@ const NativeLocationMap = ({
       // Пробрасываем прозрачность вверх по дереву, чтобы нативный слой карты
       // (лежит ПОД WebView) не перекрывался белым фоном UI.
       snapshots = applyTransparencyChain(el);
+      setMapError(false);
 
       try {
         const map = await GoogleMap.create({
@@ -186,6 +188,11 @@ const NativeLocationMap = ({
         return map;
       } catch (e) {
         console.error("Native GoogleMap.create failed:", e);
+        if (!cancelled) {
+          setMapError(true);
+          revertTransparencyChain(snapshots);
+          snapshots = [];
+        }
         return null;
       }
     };
@@ -406,18 +413,18 @@ const NativeLocationMap = ({
   ]);
 
   return (
-    <div
-      ref={containerRef}
-      className="capacitor-map-transparent-ancestor"
-      style={{
-        width: "100%",
-        height,
-        borderRadius: 12,
-        background: "transparent",
-        overflow: "hidden",
-        position: "relative",
-      }}
-    />
+    <div className="relative w-full overflow-hidden rounded-lg" style={{ height }}>
+      <div
+        ref={containerRef}
+        className="capacitor-map-transparent-ancestor h-full w-full"
+        style={{ background: "transparent" }}
+      />
+      {mapError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted px-6 text-center text-sm text-muted-foreground">
+          Карта не загрузилась. Проверьте подключение и настройки Google Maps.
+        </div>
+      )}
+    </div>
   );
 };
 

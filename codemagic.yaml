@@ -34,31 +34,61 @@ workflows:
             --splashBackgroundColor '#FFCD3C' \
             --splashBackgroundColorDark '#231E19'
 
-      - name: Force required permissions in manifest
+      - name: Configure Android manifest
         script: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          echo "--- Manifest BEFORE ---"
-          cat "$MANIFEST"
-          if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
-            awk '
-              /<manifest[ >]/ && !done {
-                print
-                print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />"
-                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
-                print "    <uses-permission android:name=\"android.permission.CAMERA\" />"
-                print "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"
-                done=1
-                next
-              }
-              { print }
-            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          if [ -z "${GOOGLE_MAPS_ANDROID_KEY:-}" ]; then
+            echo "ERROR: Add GOOGLE_MAPS_ANDROID_KEY as a protected Codemagic environment variable."
+            exit 1
           fi
-          echo "--- Manifest AFTER ---"
-          cat "$MANIFEST"
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          python3 - "$MANIFEST" <<'PY'
+          import os
+          import sys
+          from xml.sax.saxutils import escape
+
+          manifest_path = sys.argv[1]
+          with open(manifest_path, encoding="utf-8") as source:
+              manifest = source.read()
+
+          permissions = (
+              "ACCESS_FINE_LOCATION",
+              "ACCESS_COARSE_LOCATION",
+              "ACCESS_BACKGROUND_LOCATION",
+              "FOREGROUND_SERVICE",
+              "FOREGROUND_SERVICE_LOCATION",
+              "POST_NOTIFICATIONS",
+              "CAMERA",
+              "RECORD_AUDIO",
+          )
+          missing = [
+              f'    <uses-permission android:name="android.permission.{name}" />'
+              for name in permissions
+              if f'android.permission.{name}' not in manifest
+          ]
+          if missing:
+              application_index = manifest.find("<application")
+              if application_index < 0:
+                  raise SystemExit("AndroidManifest.xml has no <application> element")
+              manifest = manifest[:application_index] + "\n".join(missing) + "\n\n    " + manifest[application_index:]
+
+          metadata_name = "com.google.android.geo.API_KEY"
+          if metadata_name not in manifest:
+              closing_tag = manifest.find("</application>")
+              if closing_tag < 0:
+                  raise SystemExit("AndroidManifest.xml has no </application> element")
+              api_key = escape(os.environ["GOOGLE_MAPS_ANDROID_KEY"], {'"': '&quot;'})
+              metadata = (
+                  '        <meta-data\n'
+                  '            android:name="com.google.android.geo.API_KEY"\n'
+                  f'            android:value="{api_key}" />\n'
+              )
+              manifest = manifest[:closing_tag] + metadata + manifest[closing_tag:]
+
+          with open(manifest_path, "w", encoding="utf-8") as destination:
+              destination.write(manifest)
+          PY
+          grep -q 'com.google.android.geo.API_KEY' "$MANIFEST"
+          echo "Android permissions and Google Maps metadata configured."
 
       - name: Set versionCode from Codemagic build number
         script: |
@@ -129,31 +159,61 @@ workflows:
             --splashBackgroundColor '#FFCD3C' \
             --splashBackgroundColorDark '#231E19'
 
-      - name: Force required permissions in manifest
+      - name: Configure Android manifest
         script: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          echo "--- Manifest BEFORE ---"
-          cat "$MANIFEST"
-          if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
-            awk '
-              /<manifest[ >]/ && !done {
-                print
-                print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />"
-                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
-                print "    <uses-permission android:name=\"android.permission.CAMERA\" />"
-                print "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"
-                done=1
-                next
-              }
-              { print }
-            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          if [ -z "${GOOGLE_MAPS_ANDROID_KEY:-}" ]; then
+            echo "ERROR: Add GOOGLE_MAPS_ANDROID_KEY as a protected Codemagic environment variable."
+            exit 1
           fi
-          echo "--- Manifest AFTER ---"
-          cat "$MANIFEST"
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          python3 - "$MANIFEST" <<'PY'
+          import os
+          import sys
+          from xml.sax.saxutils import escape
+
+          manifest_path = sys.argv[1]
+          with open(manifest_path, encoding="utf-8") as source:
+              manifest = source.read()
+
+          permissions = (
+              "ACCESS_FINE_LOCATION",
+              "ACCESS_COARSE_LOCATION",
+              "ACCESS_BACKGROUND_LOCATION",
+              "FOREGROUND_SERVICE",
+              "FOREGROUND_SERVICE_LOCATION",
+              "POST_NOTIFICATIONS",
+              "CAMERA",
+              "RECORD_AUDIO",
+          )
+          missing = [
+              f'    <uses-permission android:name="android.permission.{name}" />'
+              for name in permissions
+              if f'android.permission.{name}' not in manifest
+          ]
+          if missing:
+              application_index = manifest.find("<application")
+              if application_index < 0:
+                  raise SystemExit("AndroidManifest.xml has no <application> element")
+              manifest = manifest[:application_index] + "\n".join(missing) + "\n\n    " + manifest[application_index:]
+
+          metadata_name = "com.google.android.geo.API_KEY"
+          if metadata_name not in manifest:
+              closing_tag = manifest.find("</application>")
+              if closing_tag < 0:
+                  raise SystemExit("AndroidManifest.xml has no </application> element")
+              api_key = escape(os.environ["GOOGLE_MAPS_ANDROID_KEY"], {'"': '&quot;'})
+              metadata = (
+                  '        <meta-data\n'
+                  '            android:name="com.google.android.geo.API_KEY"\n'
+                  f'            android:value="{api_key}" />\n'
+              )
+              manifest = manifest[:closing_tag] + metadata + manifest[closing_tag:]
+
+          with open(manifest_path, "w", encoding="utf-8") as destination:
+              destination.write(manifest)
+          PY
+          grep -q 'com.google.android.geo.API_KEY' "$MANIFEST"
+          echo "Android permissions and Google Maps metadata configured."
 
       - name: Build debug APK
         script: |

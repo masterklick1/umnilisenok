@@ -617,6 +617,47 @@ export type Database = {
         }
         Relationships: []
       }
+      reading_progress: {
+        Row: {
+          attempts: number
+          child_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          lesson_index: number
+          level: number
+          stars_earned: number
+        }
+        Insert: {
+          attempts?: number
+          child_id: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          lesson_index: number
+          level: number
+          stars_earned?: number
+        }
+        Update: {
+          attempts?: number
+          child_id?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          lesson_index?: number
+          level?: number
+          stars_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_items: {
         Row: {
           category: string

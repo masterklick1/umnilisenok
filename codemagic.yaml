@@ -40,7 +40,7 @@ workflows:
             --splashBackgroundColorDark '#231E19'
           python3 - <<'PY'
           from pathlib import Path
-          from PIL import Image, ImageStat
+          import struct
 
           required = [
               Path("android/app/src/main/res/mipmap-mdpi/ic_launcher.png"),
@@ -53,11 +53,14 @@ workflows:
           if missing:
               raise SystemExit("ERROR: Android launcher icons were not generated: " + ", ".join(missing))
 
-          icon = Image.open(required[1]).convert("RGB")
-          variation = sum(ImageStat.Stat(icon).var)
-          if variation < 1000:
-              raise SystemExit("ERROR: Generated launcher icon looks blank or invalid")
-          print(f"Verified fox launcher icon: {icon.size[0]}x{icon.size[1]}, variance={variation:.0f}")
+          with required[1].open("rb") as image:
+              signature = image.read(24)
+          if signature[:8] != b"\x89PNG\r\n\x1a\n":
+              raise SystemExit("ERROR: Generated launcher icon is not a valid PNG")
+          width, height = struct.unpack(">II", signature[16:24])
+          if (width, height) != (192, 192) or required[1].stat().st_size < 10000:
+              raise SystemExit("ERROR: Generated launcher icon is blank, damaged, or has the wrong size")
+          print(f"Verified fox launcher icon: {width}x{height}, {required[1].stat().st_size} bytes")
           PY
 
       - name: Configure Android manifest
@@ -191,7 +194,7 @@ workflows:
             --splashBackgroundColorDark '#231E19'
           python3 - <<'PY'
           from pathlib import Path
-          from PIL import Image, ImageStat
+          import struct
 
           required = [
               Path("android/app/src/main/res/mipmap-mdpi/ic_launcher.png"),
@@ -204,11 +207,14 @@ workflows:
           if missing:
               raise SystemExit("ERROR: Android launcher icons were not generated: " + ", ".join(missing))
 
-          icon = Image.open(required[1]).convert("RGB")
-          variation = sum(ImageStat.Stat(icon).var)
-          if variation < 1000:
-              raise SystemExit("ERROR: Generated launcher icon looks blank or invalid")
-          print(f"Verified fox launcher icon: {icon.size[0]}x{icon.size[1]}, variance={variation:.0f}")
+          with required[1].open("rb") as image:
+              signature = image.read(24)
+          if signature[:8] != b"\x89PNG\r\n\x1a\n":
+              raise SystemExit("ERROR: Generated launcher icon is not a valid PNG")
+          width, height = struct.unpack(">II", signature[16:24])
+          if (width, height) != (192, 192) or required[1].stat().st_size < 10000:
+              raise SystemExit("ERROR: Generated launcher icon is blank, damaged, or has the wrong size")
+          print(f"Verified fox launcher icon: {width}x{height}, {required[1].stat().st_size} bytes")
           PY
 
       - name: Configure Android manifest

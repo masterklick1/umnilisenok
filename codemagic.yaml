@@ -27,12 +27,38 @@ workflows:
           npx cap sync android
       - name: Generate app icons & splash screens
         script: |
-          npx --yes @capacitor/assets generate --android \
+          # Удаляем стандартные иконки Capacitor, чтобы они не могли попасть в APK.
+          find android/app/src/main/res -type f \
+            \( -name 'ic_launcher.png' -o -name 'ic_launcher_round.png' \
+               -o -name 'ic_launcher_foreground.png' -o -name 'ic_launcher_background.png' \
+               -o -name 'ic_launcher.xml' -o -name 'ic_launcher_round.xml' \) -delete
+          npx --yes @capacitor/assets@3.0.5 generate --android \
             --assetPath resources \
             --iconBackgroundColor '#FFCD3C' \
             --iconBackgroundColorDark '#231E19' \
             --splashBackgroundColor '#FFCD3C' \
             --splashBackgroundColorDark '#231E19'
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageStat
+
+          required = [
+              Path("android/app/src/main/res/mipmap-mdpi/ic_launcher.png"),
+              Path("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"),
+              Path("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png"),
+              Path("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"),
+              Path("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"),
+          ]
+          missing = [str(path) for path in required if not path.is_file() or path.stat().st_size == 0]
+          if missing:
+              raise SystemExit("ERROR: Android launcher icons were not generated: " + ", ".join(missing))
+
+          icon = Image.open(required[1]).convert("RGB")
+          variation = sum(ImageStat.Stat(icon).var)
+          if variation < 1000:
+              raise SystemExit("ERROR: Generated launcher icon looks blank or invalid")
+          print(f"Verified fox launcher icon: {icon.size[0]}x{icon.size[1]}, variance={variation:.0f}")
+          PY
 
       - name: Configure Android manifest
         script: |
@@ -152,12 +178,38 @@ workflows:
         script: npx cap sync android
       - name: Generate app icons & splash screens
         script: |
-          npx --yes @capacitor/assets generate --android \
+          # Удаляем стандартные иконки Capacitor, чтобы они не могли попасть в APK.
+          find android/app/src/main/res -type f \
+            \( -name 'ic_launcher.png' -o -name 'ic_launcher_round.png' \
+               -o -name 'ic_launcher_foreground.png' -o -name 'ic_launcher_background.png' \
+               -o -name 'ic_launcher.xml' -o -name 'ic_launcher_round.xml' \) -delete
+          npx --yes @capacitor/assets@3.0.5 generate --android \
             --assetPath resources \
             --iconBackgroundColor '#FFCD3C' \
             --iconBackgroundColorDark '#231E19' \
             --splashBackgroundColor '#FFCD3C' \
             --splashBackgroundColorDark '#231E19'
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageStat
+
+          required = [
+              Path("android/app/src/main/res/mipmap-mdpi/ic_launcher.png"),
+              Path("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"),
+              Path("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png"),
+              Path("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"),
+              Path("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"),
+          ]
+          missing = [str(path) for path in required if not path.is_file() or path.stat().st_size == 0]
+          if missing:
+              raise SystemExit("ERROR: Android launcher icons were not generated: " + ", ".join(missing))
+
+          icon = Image.open(required[1]).convert("RGB")
+          variation = sum(ImageStat.Stat(icon).var)
+          if variation < 1000:
+              raise SystemExit("ERROR: Generated launcher icon looks blank or invalid")
+          print(f"Verified fox launcher icon: {icon.size[0]}x{icon.size[1]}, variance={variation:.0f}")
+          PY
 
       - name: Configure Android manifest
         script: |

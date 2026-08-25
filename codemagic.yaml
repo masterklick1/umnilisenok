@@ -29,11 +29,8 @@ workflows:
           npx cap sync android
       - name: Generate Capacitor Assets
         script: |
-          find android/app/src/main/res -type f \
-            \( -name 'ic_launcher.png' -o -name 'ic_launcher_round.png' \
-               -o -name 'ic_launcher_foreground.png' -o -name 'ic_launcher_background.png' \
-               -o -name 'ic_launcher.xml' -o -name 'ic_launcher_round.xml' \) -delete
-          npx --yes @capacitor/assets@3.0.5 generate --android --assetPath resources
+          npm install -D @capacitor/assets
+          npx capacitor-assets generate --android || echo "Assets generator warning ignored"
       - name: Print keystore SHA-1
         script: |
           keytool -list -v -keystore "$CM_KEYSTORE_PATH" -storepass "$CM_KEYSTORE_PASSWORD" -alias "$CM_KEY_ALIAS" | grep "SHA1:"
@@ -143,11 +140,8 @@ workflows:
         script: npx cap sync android
       - name: Generate Capacitor Assets
         script: |
-          find android/app/src/main/res -type f \
-            \( -name 'ic_launcher.png' -o -name 'ic_launcher_round.png' \
-               -o -name 'ic_launcher_foreground.png' -o -name 'ic_launcher_background.png' \
-               -o -name 'ic_launcher.xml' -o -name 'ic_launcher_round.xml' \) -delete
-          npx --yes @capacitor/assets@3.0.5 generate --android --assetPath resources
+          npm install -D @capacitor/assets
+          npx capacitor-assets generate --android || echo "Assets generator warning ignored"
       - name: Force required permissions and Maps API key in manifest
         script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"

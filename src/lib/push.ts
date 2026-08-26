@@ -34,46 +34,55 @@ export const ensureServiceWorker = async (): Promise<ServiceWorkerRegistration |
 };
 
 export const subscribeToPush = async (userId: string): Promise<boolean> => {
-  if (!isPushSupported()) return false;
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") return false;
+  try {
+    if (!isPushSupported()) return false;
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return false;
 
-  const reg = await ensureServiceWorker();
-  if (!reg) return false;
+    const reg = await ensureServiceWorker();
+    if (!reg) return false;
 
-  let sub = await reg.pushManager.getSubscription();
-  if (!sub) {
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+
+    const json = sub.toJSON();
+    if (!json.endpoint || !json.keys) return false;
+
+    await supabase.from("push_subscriptions").upsert(
+      {
+        user_id: userId,
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh!,
+        auth: json.keys.auth!,
+        user_agent: navigator.userAgent,
+        last_synced_at: new Date().toISOString(),
+      },
+      { onConflict: "endpoint" }
+    );
+
+    return true;
+  } catch (e) {
+    console.error(e);
+    return false;
   }
-
-  const json = sub.toJSON();
-  if (!json.endpoint || !json.keys) return false;
-
-  await supabase.from("push_subscriptions").upsert(
-    {
-      user_id: userId,
-      endpoint: json.endpoint,
-      p256dh: json.keys.p256dh!,
-      auth: json.keys.auth!,
-      user_agent: navigator.userAgent,
-      last_synced_at: new Date().toISOString(),
-    },
-    { onConflict: "endpoint" }
-  );
-
-  return true;
 };
 
 export const unsubscribeFromPush = async () => {
-  if (!isPushSupported()) return;
-  const reg = await navigator.serviceWorker.getRegistration();
-  const sub = await reg?.pushManager.getSubscription();
-  if (sub) {
-    await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-    await sub.unsubscribe();
+  try {
+    if (!isPushSupported()) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = await reg?.pushManager.getSubscription();
+    if (sub) {
+      await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+      await sub.unsubscribe();
+    }
+  } catch (e) {
+    console.error(e);
   }
 };
 
@@ -87,7 +96,55 @@ export interface PushStatus {
 }
 
 export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
-  if (!isPushSupported()) {
+  try {
+    if (!isPushSupported()) {
+      return {
+        supported: false,
+        permission: "unsupported",
+        subscribed: false,
+        endpoint: null,
+        lastSyncedAt: null,
+        matchesCurrentUser: false,
+      };
+    }
+
+    const permission = Notification.permission;
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = await reg?.pushManager.getSubscription();
+
+    if (!sub) {
+      return {
+        supported: true,
+        permission,
+        subscribed: false,
+        endpoint: null,
+        lastSyncedAt: null,
+        matchesCurrentUser: false,
+      };
+    }
+
+    let lastSyncedAt: string | null = null;
+    let matchesCurrentUser = false;
+    if (userId) {
+      const { data } = await supabase
+        .from("push_subscriptions")
+        .select("last_synced_at, user_id")
+        .eq("endpoint", sub.endpoint)
+        .maybeSingle();
+      lastSyncedAt = (data as any)?.last_synced_at ?? null;
+      matchesCurrentUser = data?.user_id === userId;
+    }
+
+    return {
+      supported: true,
+      permission,
+      subscribed: true,
+      endpoint: sub.endpoint,
+      lastSyncedAt,
+      matchesCurrentUser,
+    };
+  } catch (e) {
+    console.error(e);
     return {
       supported: false,
       permission: "unsupported",
@@ -97,41 +154,5 @@ export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
       matchesCurrentUser: false,
     };
   }
-
-  const permission = Notification.permission;
-  const reg = await navigator.serviceWorker.getRegistration();
-  const sub = await reg?.pushManager.getSubscription();
-
-  if (!sub) {
-    return {
-      supported: true,
-      permission,
-      subscribed: false,
-      endpoint: null,
-      lastSyncedAt: null,
-      matchesCurrentUser: false,
-    };
-  }
-
-  let lastSyncedAt: string | null = null;
-  let matchesCurrentUser = false;
-  if (userId) {
-    const { data } = await supabase
-      .from("push_subscriptions")
-      .select("last_synced_at, user_id")
-      .eq("endpoint", sub.endpoint)
-      .maybeSingle();
-    lastSyncedAt = (data as any)?.last_synced_at ?? null;
-    matchesCurrentUser = data?.user_id === userId;
-  }
-
-  return {
-    supported: true,
-    permission,
-    subscribed: true,
-    endpoint: sub.endpoint,
-    lastSyncedAt,
-    matchesCurrentUser,
-  };
 };
 

@@ -46,19 +46,28 @@ export const SOSButton = () => {
       let acc: number | null = null;
 
       try {
-        const pos = Capacitor.isNativePlatform()
-          ? await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 })
-          : await new Promise<GeolocationPosition>((res, rej) =>
-              navigator.geolocation.getCurrentPosition(res, rej, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-              })
-            );
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
-        acc = pos.coords.accuracy;
-      } catch {
-        /* location optional */
+        if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("Geolocation")) {
+          try {
+            const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+            acc = pos.coords.accuracy;
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          const pos = await new Promise<GeolocationPosition>((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+            }),
+          );
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
+          acc = pos.coords.accuracy;
+        }
+      } catch (e) {
+        console.error(e);
       }
 
       const { error } = await supabase.from("sos_alerts").insert([

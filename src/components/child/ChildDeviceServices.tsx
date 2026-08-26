@@ -100,7 +100,7 @@ function ChildLocationPanel() {
       window.dispatchEvent(new CustomEvent("force-location-send"));
       window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
     } catch (e) {
-      console.warn("location retry failed", e);
+      console.error(e);
     } finally {
       setRetrying(false);
     }
@@ -190,7 +190,7 @@ export function ChildDeviceServices() {
         }
         if (loadKeepScreenOnPref()) syncWakeLockWithPref();
       } catch (e) {
-        console.warn("Child device geo boot failed", e);
+        console.error(e);
       }
     };
 

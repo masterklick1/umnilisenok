@@ -56,7 +56,8 @@ export const whenCapacitorReady = (): Promise<void> => {
 export const isNativePluginAvailable = (name: string): boolean => {
   try {
     return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable(name);
-  } catch {
+  } catch (e) {
+    console.error(e);
     return false;
   }
 };

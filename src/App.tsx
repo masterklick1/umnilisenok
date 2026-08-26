@@ -21,6 +21,7 @@ import JoinPage from "./pages/JoinPage";
 import SettingsPage from "./pages/SettingsPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import { ChildPlaceStatusBadge } from "./components/child/ChildPlaceStatusBadge";
+import { Capacitor } from "@capacitor/core";
 
 const queryClient = new QueryClient();
 
@@ -121,7 +122,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <DeferredChildDeviceServices />
+          {/* Mount child device services only on native platforms to avoid any plugin calls on web */}
+          {Capacitor.isNativePlatform() && <DeferredChildDeviceServices />}
           <ChildPlaceStatusBadge />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />

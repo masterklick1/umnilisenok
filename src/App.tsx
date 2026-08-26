@@ -1,3 +1,4 @@
+import { Component, Suspense, lazy, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,10 +20,57 @@ import AuthPage from "./pages/AuthPage";
 import JoinPage from "./pages/JoinPage";
 import SettingsPage from "./pages/SettingsPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
-import { ChildDeviceServices } from "./components/child/ChildDeviceServices";
 import { ChildPlaceStatusBadge } from "./components/child/ChildPlaceStatusBadge";
 
 const queryClient = new QueryClient();
+
+const ChildDeviceServices = lazy(async () => {
+  try {
+    const mod = await import("./components/child/ChildDeviceServices");
+    return { default: mod.ChildDeviceServices };
+  } catch (e) {
+    console.error(e);
+    return { default: () => null };
+  }
+});
+
+class NativeServicesBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(error);
+    console.error(info);
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+/** Mount device geo/push after the first paint so a plugin throw cannot block the UI. */
+function DeferredChildDeviceServices() {
+  const [mount, setMount] = useState(false);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setMount(true), 0);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  if (!mount) return null;
+
+  return (
+    <NativeServicesBoundary>
+      <Suspense fallback={null}>
+        <ChildDeviceServices />
+      </Suspense>
+    </NativeServicesBoundary>
+  );
+}
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -73,7 +121,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <ChildDeviceServices />
+          <DeferredChildDeviceServices />
           <ChildPlaceStatusBadge />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />

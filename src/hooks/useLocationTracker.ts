@@ -17,13 +17,10 @@ import {
   BG_GEO_NOTIFICATION_TITLE,
   BG_GEO_NOTIFICATION_TEXT,
   BACKGROUND_GEO_RESTART_EVENT,
+  getBackgroundGeolocation,
 } from "@/lib/geo-permission";
-import { registerPlugin } from "@capacitor/core";
+import { Capacitor } from "@capacitor/core";
 import { whenCapacitorReady, isNativePluginAvailable } from "@/lib/native-ready";
-
-// Package has no JS entry (native-only). Register plugin bridge directly so
-// web builds don't try to resolve the missing module.
-const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
 
 const DEFAULT_INTERVAL_SEC = 60;
 const SETTINGS_POLL_MS = 30_000;
@@ -114,7 +111,7 @@ export const useLocationTracker = (enabled = true) => {
         backgroundTrackingEnabled,
       });
     } catch (e) {
-      console.warn("publishStatus failed", e);
+      console.error(e);
     }
   };
 
@@ -229,24 +226,24 @@ export const useLocationTracker = (enabled = true) => {
 
   // Фоновая геолокация через Foreground Service + постоянное уведомление в шторке
   const startBackgroundTracking = async (id: string, _intervalSeconds: number) => {
-    if (!BackgroundGeolocation) return;
-
     try {
+      if (!Capacitor.isNativePlatform()) return;
       await whenCapacitorReady();
+      if (!Capacitor.isPluginAvailable("BackgroundGeolocation")) return;
       if (!isNativePluginAvailable("BackgroundGeolocation")) return;
+
+      const BackgroundGeolocation = getBackgroundGeolocation();
+      if (!BackgroundGeolocation) return;
 
       if (backgroundWatcherRef.current) {
         try {
           await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
-        } catch {
-          /* watcher may already be gone */
+        } catch (e) {
+          console.error(e);
         }
         backgroundWatcherRef.current = null;
       }
 
-      // Android 14+ throws SecurityException (process crash on some OEMs) if a
-      // location FGS is started before ACCESS_FINE_LOCATION is granted.
-      // Auto-start must not prompt; settings button requests permissions.
       const geoPerm = await queryGeoPermission();
       const bgPerm = await queryBackgroundGeoPermission();
       if (geoPerm !== "granted" && bgPerm !== "always") {
@@ -318,6 +315,7 @@ export const useLocationTracker = (enabled = true) => {
       setBackgroundTrackingEnabled(true);
       publishStatus();
     } catch (e) {
+      console.error(e);
       lastErrorRef.current = e instanceof Error ? e.message : "Не удалось запустить фоновый трекинг";
       setBackgroundTrackingEnabled(false);
       publishStatus();
@@ -325,17 +323,27 @@ export const useLocationTracker = (enabled = true) => {
   };
 
   const stopBackgroundTracking = async () => {
-    if (!BackgroundGeolocation) return;
-
     try {
+      if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable("BackgroundGeolocation")) {
+        backgroundWatcherRef.current = null;
+        setBackgroundTrackingEnabled(false);
+        return;
+      }
+      const BackgroundGeolocation = getBackgroundGeolocation();
+      if (!BackgroundGeolocation) return;
+
       if (backgroundWatcherRef.current) {
-        await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
+        try {
+          await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
+        } catch (e) {
+          console.error(e);
+        }
         backgroundWatcherRef.current = null;
       }
       setBackgroundTrackingEnabled(false);
       publishStatus();
     } catch (e) {
-      console.warn("Error stopping background tracking:", e);
+      console.error(e);
     }
   };
 
@@ -348,10 +356,13 @@ export const useLocationTracker = (enabled = true) => {
 
     const startIfPermitted = async () => {
       try {
+        if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable("BackgroundGeolocation")) {
+          return;
+        }
         await whenCapacitorReady();
         await startBackgroundTracking(childId, intervalSecRef.current);
       } catch (e) {
-        console.warn("background tracking start failed", e);
+        console.error(e);
       }
     };
 
@@ -359,7 +370,7 @@ export const useLocationTracker = (enabled = true) => {
 
     const onRestart = () => {
       void startBackgroundTracking(childId, intervalSecRef.current).catch((e) => {
-        console.warn("background tracking restart failed", e);
+        console.error(e);
       });
     };
     window.addEventListener(BACKGROUND_GEO_RESTART_EVENT, onRestart);
@@ -442,7 +453,7 @@ export const useLocationTracker = (enabled = true) => {
         await checkGeofence(pos.latitude, pos.longitude);
       } catch (e) {
         lastErrorRef.current = e instanceof Error ? e.message : "Ошибка геолокации";
-        console.warn("Location tick failed:", lastErrorRef.current);
+        console.error(e);
       } finally {
         tickInFlightRef.current = false;
         publishStatus();

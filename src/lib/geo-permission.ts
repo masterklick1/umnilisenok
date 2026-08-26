@@ -1,11 +1,7 @@
 import { Geolocation } from "@capacitor/geolocation";
-import { Capacitor } from "@capacitor/core";
-import { registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { isNativePluginAvailable, whenCapacitorReady } from "@/lib/native-ready";
-
-// Native-only plugin — register bridge directly (package has no JS entry).
-const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
 
 /** Must match the channel id created by the community background-geolocation plugin. */
 export const BG_GEO_NOTIFICATION_CHANNEL_ID = "com.equimaps.capacitor_background_geolocation";
@@ -20,29 +16,53 @@ let cachedPosition: (GeoPositionResult & { cachedAt: number }) | null = null;
 let webWatchId: number | null = null;
 let nativeWatchId: string | null = null;
 let watchRefCount = 0;
+let backgroundGeoPlugin: any | null | undefined;
+
+const getBackgroundGeolocation = (): any | null => {
+  if (backgroundGeoPlugin !== undefined) return backgroundGeoPlugin;
+  try {
+    if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable("BackgroundGeolocation")) {
+      backgroundGeoPlugin = null;
+      return null;
+    }
+    backgroundGeoPlugin = registerPlugin<any>("BackgroundGeolocation");
+    return backgroundGeoPlugin;
+  } catch (e) {
+    console.error(e);
+    backgroundGeoPlugin = null;
+    return null;
+  }
+};
 
 export const queryGeoPermission = async (): Promise<GeoPermissionState> => {
-  if (Capacitor.isNativePlatform()) {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await whenCapacitorReady();
+        if (!Capacitor.isPluginAvailable("Geolocation")) return "prompt";
+        const perm = await Geolocation.checkPermissions();
+        if (perm.location === "granted") return "granted";
+        if (perm.location === "denied") return "denied";
+        return "prompt";
+      } catch (e) {
+        console.error(e);
+        return "prompt";
+      }
+    }
+
+    if (!("geolocation" in navigator)) return "unsupported";
+
     try {
-      await whenCapacitorReady();
-      if (!isNativePluginAvailable("Geolocation")) return "prompt";
-      const perm = await Geolocation.checkPermissions();
-      if (perm.location === "granted") return "granted";
-      if (perm.location === "denied") return "denied";
+      const status = await navigator.permissions.query({ name: "geolocation" });
+      if (status.state === "granted") return "granted";
+      if (status.state === "denied") return "denied";
       return "prompt";
-    } catch {
+    } catch (e) {
+      console.error(e);
       return "prompt";
     }
-  }
-
-  if (!("geolocation" in navigator)) return "unsupported";
-
-  try {
-    const status = await navigator.permissions.query({ name: "geolocation" });
-    if (status.state === "granted") return "granted";
-    if (status.state === "denied") return "denied";
-    return "prompt";
-  } catch {
+  } catch (e) {
+    console.error(e);
     return "prompt";
   }
 };
@@ -108,19 +128,23 @@ const startGeoWatchInternal = async () => {
 
     if (Capacitor.isNativePlatform()) {
       if (nativeWatchId) return;
-      if (!isNativePluginAvailable("Geolocation")) return;
-      const id = await Geolocation.watchPosition(
-        { enableHighAccuracy: true, timeout: 60_000, maximumAge: 60_000 },
-        (pos) => {
-          if (!pos) return;
-          cacheResult({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: pos.coords.accuracy ?? null,
-          });
-        },
-      );
-      nativeWatchId = id;
+      try {
+        if (!Capacitor.isPluginAvailable("Geolocation")) return;
+        const id = await Geolocation.watchPosition(
+          { enableHighAccuracy: true, timeout: 60_000, maximumAge: 60_000 },
+          (pos) => {
+            if (!pos) return;
+            cacheResult({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy ?? null,
+            });
+          },
+        );
+        nativeWatchId = id;
+      } catch (e) {
+        console.error(e);
+      }
       return;
     }
 
@@ -138,7 +162,7 @@ const startGeoWatchInternal = async () => {
       { enableHighAccuracy: false, maximumAge: 300_000, timeout: 60_000 },
     );
   } catch (e) {
-    console.warn("startGeoWatch failed", e);
+    console.error(e);
     watchRefCount = Math.max(0, watchRefCount - 1);
   }
 };
@@ -148,11 +172,21 @@ export const stopGeoWatch = () => {
   if (watchRefCount > 0) return;
 
   if (nativeWatchId) {
-    Geolocation.clearWatch({ id: nativeWatchId }).catch(() => {});
+    try {
+      Geolocation.clearWatch({ id: nativeWatchId }).catch((e) => {
+        console.error(e);
+      });
+    } catch (e) {
+      console.error(e);
+    }
     nativeWatchId = null;
   }
   if (webWatchId == null) return;
-  navigator.geolocation.clearWatch(webWatchId);
+  try {
+    navigator.geolocation.clearWatch(webWatchId);
+  } catch (e) {
+    console.error(e);
+  }
   webWatchId = null;
 };
 
@@ -166,29 +200,39 @@ export const getGeoPosition = async (
     if (cached) return cached;
   }
 
-  if (Capacitor.isNativePlatform()) {
-    await whenCapacitorReady();
-    if (!isNativePluginAvailable("Geolocation")) {
-      throw new Error("Плагин геолокации недоступен");
-    }
-    const perm = await Geolocation.checkPermissions();
-    if (perm.location !== "granted") {
-      const req = await Geolocation.requestPermissions();
-      if (req.location !== "granted") {
-        throw new Error("Нет разрешения на геопозицию");
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await whenCapacitorReady();
+      if (!Capacitor.isPluginAvailable("Geolocation")) {
+        throw new Error("Плагин геолокации недоступен");
+      }
+      try {
+        const perm = await Geolocation.checkPermissions();
+        if (perm.location !== "granted") {
+          const req = await Geolocation.requestPermissions();
+          if (req.location !== "granted") {
+            throw new Error("Нет разрешения на геопозицию");
+          }
+        }
+        const pos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: timeoutMs,
+        });
+        const result = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy ?? null,
+        };
+        cacheResult(result);
+        return result;
+      } catch (e) {
+        console.error(e);
+        throw e;
       }
     }
-    const pos = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: timeoutMs,
-    });
-    const result = {
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude,
-      accuracy: pos.coords.accuracy ?? null,
-    };
-    cacheResult(result);
-    return result;
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 
   if (!("geolocation" in navigator)) {
@@ -200,7 +244,8 @@ export const getGeoPosition = async (
   } catch (highAccErr) {
     try {
       return await webGetPosition(false, timeoutMs, Math.max(maximumAgeMs, 300_000));
-    } catch {
+    } catch (e) {
+      console.error(e);
       const stale = getCachedGeoPosition(900_000);
       if (stale) return stale;
       throw highAccErr;
@@ -209,71 +254,80 @@ export const getGeoPosition = async (
 };
 
 export const requestGeoPermissionInteractive = async (): Promise<boolean> => {
-  startGeoWatch();
   try {
+    startGeoWatch();
     await getGeoPosition(0, 45_000, false);
     return true;
-  } catch {
+  } catch (e) {
+    console.error(e);
     return getCachedGeoPosition() !== null;
   }
 };
 
 const mapBackgroundLocationState = (location?: string): BackgroundGeoPermissionState => {
-  // Capacitor permission aliases are granted/denied/prompt — not Android's "always".
-  // ACCESS_FINE_LOCATION is enough to start the location foreground service.
   if (location === "granted" || location === "always") return "always";
   if (location === "denied") return "denied";
   return "prompt";
 };
 
 export const queryBackgroundGeoPermission = async (): Promise<BackgroundGeoPermissionState> => {
-  if (!Capacitor.isNativePlatform()) {
-    return "unsupported";
-  }
-
   try {
+    if (!Capacitor.isNativePlatform()) {
+      return "unsupported";
+    }
     await whenCapacitorReady();
-    if (!isNativePluginAvailable("BackgroundGeolocation")) return "prompt";
-    const perm = await BackgroundGeolocation.checkPermissions();
-    return mapBackgroundLocationState(perm?.location);
-  } catch {
+    if (!Capacitor.isPluginAvailable("BackgroundGeolocation")) return "prompt";
+    const plugin = getBackgroundGeolocation();
+    if (!plugin) return "prompt";
+    try {
+      const perm = await plugin.checkPermissions();
+      return mapBackgroundLocationState(perm?.location);
+    } catch (e) {
+      console.error(e);
+      return "prompt";
+    }
+  } catch (e) {
+    console.error(e);
     return "prompt";
   }
 };
 
-/**
- * Android 13+ requires POST_NOTIFICATIONS for the ongoing FGS notification
- * in the status bar. Creates the plugin's notification channel as well.
- */
 export const ensureLocationNotificationPermission = async (): Promise<boolean> => {
-  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
-    return false;
-  }
-
   try {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
+      return false;
+    }
     await whenCapacitorReady();
     if (!isNativePluginAvailable("LocalNotifications")) return false;
 
-    let status = await LocalNotifications.checkPermissions();
-    if (status.display !== "granted") {
-      status = await LocalNotifications.requestPermissions();
+    let status;
+    try {
+      status = await LocalNotifications.checkPermissions();
+      if (status.display !== "granted") {
+        status = await LocalNotifications.requestPermissions();
+      }
+    } catch (e) {
+      console.error(e);
+      return false;
     }
 
-    await LocalNotifications.createChannel({
-      id: BG_GEO_NOTIFICATION_CHANNEL_ID,
-      name: BG_GEO_NOTIFICATION_CHANNEL_NAME,
-      description: BG_GEO_NOTIFICATION_TEXT,
-      importance: 3,
-      visibility: 1,
-      vibration: false,
-      lights: false,
-    }).catch(() => {
-      /* Channel is also created by the native plugin on load. */
-    });
+    try {
+      await LocalNotifications.createChannel({
+        id: BG_GEO_NOTIFICATION_CHANNEL_ID,
+        name: BG_GEO_NOTIFICATION_CHANNEL_NAME,
+        description: BG_GEO_NOTIFICATION_TEXT,
+        importance: 3,
+        visibility: 1,
+        vibration: false,
+        lights: false,
+      });
+    } catch (e) {
+      console.error(e);
+    }
 
     return status.display === "granted";
   } catch (e) {
-    console.warn("ensureLocationNotificationPermission failed", e);
+    console.error(e);
     return false;
   }
 };
@@ -281,32 +335,47 @@ export const ensureLocationNotificationPermission = async (): Promise<boolean> =
 export const BACKGROUND_GEO_RESTART_EVENT = "restart-background-geo";
 
 export const requestBackgroundGeoPermission = async (): Promise<BackgroundGeoPermissionState> => {
-  if (!Capacitor.isNativePlatform()) {
-    return "unsupported";
-  }
-
   try {
+    if (!Capacitor.isNativePlatform()) {
+      return "unsupported";
+    }
     await whenCapacitorReady();
     await ensureLocationNotificationPermission();
-
-    if (!isNativePluginAvailable("BackgroundGeolocation")) {
+    if (!Capacitor.isPluginAvailable("BackgroundGeolocation")) {
       return "prompt";
     }
-
-    const perm = await BackgroundGeolocation.requestPermissions({
-      permissions: ["location"],
-    });
-
-    const state = mapBackgroundLocationState(perm?.location);
-    if (state === "always" && typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+    const plugin = getBackgroundGeolocation();
+    if (!plugin) return "prompt";
+    try {
+      const perm = await plugin.requestPermissions({
+        permissions: ["location"],
+      });
+      const state = mapBackgroundLocationState(perm?.location);
+      if (state === "always" && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+      }
+      return state;
+    } catch (e) {
+      console.error(e);
+      return "denied";
     }
-    return state;
-  } catch {
+  } catch (e) {
+    console.error(e);
     return "denied";
   }
 };
 
 export const isBackgroundGeoSupported = (): boolean => {
-  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+  try {
+    return (
+      Capacitor.isNativePlatform() &&
+      Capacitor.getPlatform() === "android" &&
+      Capacitor.isPluginAvailable("BackgroundGeolocation")
+    );
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
 };
+
+export { getBackgroundGeolocation };

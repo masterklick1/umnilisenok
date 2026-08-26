@@ -32,6 +32,28 @@ export default function SettingsPage() {
   const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<BackgroundGeoPermissionState>("prompt");
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [requestingBgGeo, setRequestingBgGeo] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("Удалить аккаунт и все данные безвозвратно?")) return;
+    if (!confirm("Точно удалить? Это действие нельзя отменить.")) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke("delete-account");
+      if (error) throw error;
+      toast({ title: "Аккаунт удалён", description: "Все данные удалены безвозвратно." });
+      await supabase.auth.signOut();
+      navigate("/auth", { replace: true });
+    } catch (e) {
+      toast({
+        title: "Не удалось удалить аккаунт",
+        description: e instanceof Error ? e.message : "Попробуйте позже",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     setSoundEnabled(localStorage.getItem(SOUND_KEY) !== "false");
@@ -265,8 +287,8 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Фоновая геолокация — для родителей */}
-        {!isChild && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
+        {/* Фоновая геолокация — native Android (уведомление FGS на устройстве ребёнка) */}
+        {Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
           <>
             <Card className="p-5 mb-4">
               <div className="flex items-center justify-between mb-3">
@@ -276,6 +298,7 @@ export default function SettingsPage() {
               </div>
               <p className="text-sm text-muted-foreground mb-4">
                 Отслеживать местоположение ребёнка даже когда приложение закрыто.
+                В шторке Android появится постоянное уведомление «Геолокация активна».
                 {backgroundGeoPermission === "always" && (
                   <span className="block mt-2 text-green-600 dark:text-green-400">✅ Фоновый трекинг активен</span>
                 )}
@@ -317,6 +340,25 @@ export default function SettingsPage() {
         <Button variant="destructive" className="w-full" onClick={handleSignOut}>
           <LogOut className="w-4 h-4 mr-2" /> Выйти из аккаунта
         </Button>
+
+        {/* Удаление аккаунта */}
+        <Card className="p-5 mt-4 border-destructive/40">
+          <div className="font-semibold mb-1">Удаление аккаунта</div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Аккаунт и все связанные данные (прогресс, геолокация, фото, привязки) будут удалены
+            безвозвратно.
+          </p>
+          <Button
+            variant="destructive"
+            className="w-full"
+            disabled={deleting}
+            onClick={handleDeleteAccount}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            {deleting ? "Удаляем..." : "Удалить аккаунт"}
+          </Button>
+        </Card>
+
 
         {/* Prominent Disclosure Modal */}
         <ProminentDisclosureModal

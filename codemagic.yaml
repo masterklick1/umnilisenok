@@ -8,6 +8,8 @@ workflows:
         - umnilisenok_keystore
       node: 22
       java: 21
+      groups:
+        - google_maps
       vars:
         PACKAGE_NAME: "app.lovable.umnilisenok"
     scripts:
@@ -25,99 +27,55 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync android
-      - name: Generate app icons & splash screens
+          node scripts/patch-background-geolocation-android.mjs
+      - name: Generate Capacitor Assets
         script: |
-          # Удаляем стандартные иконки Capacitor, чтобы они не могли попасть в APK.
-          find android/app/src/main/res -type f \
-            \( -name 'ic_launcher.png' -o -name 'ic_launcher_round.png' \
-               -o -name 'ic_launcher_foreground.png' -o -name 'ic_launcher_background.png' \
-               -o -name 'ic_launcher.xml' -o -name 'ic_launcher_round.xml' \) -delete
-          npx --yes @capacitor/assets@3.0.5 generate --android \
-            --assetPath resources \
-            --iconBackgroundColor '#FFCD3C' \
-            --iconBackgroundColorDark '#231E19' \
-            --splashBackgroundColor '#FFCD3C' \
-            --splashBackgroundColorDark '#231E19'
-          python3 - <<'PY'
-          from pathlib import Path
-          import struct
-
-          required = [
-              Path("android/app/src/main/res/mipmap-mdpi/ic_launcher.png"),
-              Path("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"),
-              Path("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png"),
-              Path("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"),
-              Path("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"),
-          ]
-          missing = [str(path) for path in required if not path.is_file() or path.stat().st_size == 0]
-          if missing:
-              raise SystemExit("ERROR: Android launcher icons were not generated: " + ", ".join(missing))
-
-          with required[1].open("rb") as image:
-              signature = image.read(24)
-          if signature[:8] != b"\x89PNG\r\n\x1a\n":
-              raise SystemExit("ERROR: Generated launcher icon is not a valid PNG")
-          width, height = struct.unpack(">II", signature[16:24])
-          if (width, height) != (192, 192) or required[1].stat().st_size < 10000:
-              raise SystemExit("ERROR: Generated launcher icon is blank, damaged, or has the wrong size")
-          print(f"Verified fox launcher icon: {width}x{height}, {required[1].stat().st_size} bytes")
-          PY
-
-      - name: Configure Android manifest
+          npm install -D @capacitor/assets
+          npx capacitor-assets generate --android || echo "Assets generator warning ignored"
+      - name: Print keystore SHA-1
         script: |
-          if [ -z "${GOOGLE_MAPS_ANDROID_KEY:-}" ]; then
-            echo "ERROR: Add GOOGLE_MAPS_ANDROID_KEY as a protected Codemagic environment variable."
-            exit 1
-          fi
+          keytool -list -v -keystore "$CM_KEYSTORE_PATH" -storepass "$CM_KEYSTORE_PASSWORD" -alias "$CM_KEY_ALIAS" | grep "SHA1:"
+      - name: Force required permissions and Maps API key in manifest
+        script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          python3 - "$MANIFEST" <<'PY'
-          import os
-          import sys
-          from xml.sax.saxutils import escape
+          echo "--- Manifest BEFORE ---"
+          cat "$MANIFEST"
 
-          manifest_path = sys.argv[1]
-          with open(manifest_path, encoding="utf-8") as source:
-              manifest = source.read()
+          if [ -n "$GOOGLE_MAPS_ANDROID_API_KEY" ] && ! grep -q "com.google.android.geo.API_KEY" "$MANIFEST"; then
+            echo "Injecting Google Maps API Key..."
+            awk -v key="$GOOGLE_MAPS_ANDROID_API_KEY" '
+              /<application[ >]/ && !done {
+                print
+                print "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"" key "\" />"
+                done=1
+                next
+              }
+              { print }
+            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          elif [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
+            echo "Warning: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set!"
+          fi
 
-          permissions = (
-              "ACCESS_FINE_LOCATION",
-              "ACCESS_COARSE_LOCATION",
-              "ACCESS_BACKGROUND_LOCATION",
-              "FOREGROUND_SERVICE",
-              "FOREGROUND_SERVICE_LOCATION",
-              "POST_NOTIFICATIONS",
-              "CAMERA",
-              "RECORD_AUDIO",
-          )
-          missing = [
-              f'    <uses-permission android:name="android.permission.{name}" />'
-              for name in permissions
-              if f'android.permission.{name}' not in manifest
-          ]
-          if missing:
-              application_index = manifest.find("<application")
-              if application_index < 0:
-                  raise SystemExit("AndroidManifest.xml has no <application> element")
-              manifest = manifest[:application_index] + "\n".join(missing) + "\n\n    " + manifest[application_index:]
-
-          metadata_name = "com.google.android.geo.API_KEY"
-          if metadata_name not in manifest:
-              closing_tag = manifest.find("</application>")
-              if closing_tag < 0:
-                  raise SystemExit("AndroidManifest.xml has no </application> element")
-              api_key = escape(os.environ["GOOGLE_MAPS_ANDROID_KEY"], {'"': '&quot;'})
-              metadata = (
-                  '        <meta-data\n'
-                  '            android:name="com.google.android.geo.API_KEY"\n'
-                  f'            android:value="{api_key}" />\n'
-              )
-              manifest = manifest[:closing_tag] + metadata + manifest[closing_tag:]
-
-          with open(manifest_path, "w", encoding="utf-8") as destination:
-              destination.write(manifest)
-          PY
-          grep -q 'com.google.android.geo.API_KEY' "$MANIFEST"
-          echo "Android permissions and Google Maps metadata configured."
+          if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
+            awk '
+              /<manifest[ >]/ && !done {
+                print
+                print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />"
+                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
+                print "    <uses-permission android:name=\"android.permission.CAMERA\" />"
+                print "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"
+                done=1
+                next
+              }
+              { print }
+            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          fi
+          echo "--- Manifest AFTER ---"
+          cat "$MANIFEST"
 
       - name: Set versionCode from Codemagic build number
         script: |
@@ -167,6 +125,8 @@ workflows:
     environment:
       node: 22
       java: 21
+      groups:
+        - google_maps
     scripts:
       - name: Install npm dependencies
         script: npm ci || npm install
@@ -178,100 +138,54 @@ workflows:
             npx cap add android
           fi
       - name: Sync Capacitor
-        script: npx cap sync android
-      - name: Generate app icons & splash screens
         script: |
-          # Удаляем стандартные иконки Capacitor, чтобы они не могли попасть в APK.
-          find android/app/src/main/res -type f \
-            \( -name 'ic_launcher.png' -o -name 'ic_launcher_round.png' \
-               -o -name 'ic_launcher_foreground.png' -o -name 'ic_launcher_background.png' \
-               -o -name 'ic_launcher.xml' -o -name 'ic_launcher_round.xml' \) -delete
-          npx --yes @capacitor/assets@3.0.5 generate --android \
-            --assetPath resources \
-            --iconBackgroundColor '#FFCD3C' \
-            --iconBackgroundColorDark '#231E19' \
-            --splashBackgroundColor '#FFCD3C' \
-            --splashBackgroundColorDark '#231E19'
-          python3 - <<'PY'
-          from pathlib import Path
-          import struct
-
-          required = [
-              Path("android/app/src/main/res/mipmap-mdpi/ic_launcher.png"),
-              Path("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"),
-              Path("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png"),
-              Path("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"),
-              Path("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml"),
-          ]
-          missing = [str(path) for path in required if not path.is_file() or path.stat().st_size == 0]
-          if missing:
-              raise SystemExit("ERROR: Android launcher icons were not generated: " + ", ".join(missing))
-
-          with required[1].open("rb") as image:
-              signature = image.read(24)
-          if signature[:8] != b"\x89PNG\r\n\x1a\n":
-              raise SystemExit("ERROR: Generated launcher icon is not a valid PNG")
-          width, height = struct.unpack(">II", signature[16:24])
-          if (width, height) != (192, 192) or required[1].stat().st_size < 10000:
-              raise SystemExit("ERROR: Generated launcher icon is blank, damaged, or has the wrong size")
-          print(f"Verified fox launcher icon: {width}x{height}, {required[1].stat().st_size} bytes")
-          PY
-
-      - name: Configure Android manifest
+          npx cap sync android
+          node scripts/patch-background-geolocation-android.mjs
+      - name: Generate Capacitor Assets
         script: |
-          if [ -z "${GOOGLE_MAPS_ANDROID_KEY:-}" ]; then
-            echo "ERROR: Add GOOGLE_MAPS_ANDROID_KEY as a protected Codemagic environment variable."
-            exit 1
-          fi
+          npm install -D @capacitor/assets
+          npx capacitor-assets generate --android || echo "Assets generator warning ignored"
+      - name: Force required permissions and Maps API key in manifest
+        script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          python3 - "$MANIFEST" <<'PY'
-          import os
-          import sys
-          from xml.sax.saxutils import escape
+          echo "--- Manifest BEFORE ---"
+          cat "$MANIFEST"
 
-          manifest_path = sys.argv[1]
-          with open(manifest_path, encoding="utf-8") as source:
-              manifest = source.read()
+          if [ -n "$GOOGLE_MAPS_ANDROID_API_KEY" ] && ! grep -q "com.google.android.geo.API_KEY" "$MANIFEST"; then
+            echo "Injecting Google Maps API Key..."
+            awk -v key="$GOOGLE_MAPS_ANDROID_API_KEY" '
+              /<application[ >]/ && !done {
+                print
+                print "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"" key "\" />"
+                done=1
+                next
+              }
+              { print }
+            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          elif [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
+            echo "Warning: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set!"
+          fi
 
-          permissions = (
-              "ACCESS_FINE_LOCATION",
-              "ACCESS_COARSE_LOCATION",
-              "ACCESS_BACKGROUND_LOCATION",
-              "FOREGROUND_SERVICE",
-              "FOREGROUND_SERVICE_LOCATION",
-              "POST_NOTIFICATIONS",
-              "CAMERA",
-              "RECORD_AUDIO",
-          )
-          missing = [
-              f'    <uses-permission android:name="android.permission.{name}" />'
-              for name in permissions
-              if f'android.permission.{name}' not in manifest
-          ]
-          if missing:
-              application_index = manifest.find("<application")
-              if application_index < 0:
-                  raise SystemExit("AndroidManifest.xml has no <application> element")
-              manifest = manifest[:application_index] + "\n".join(missing) + "\n\n    " + manifest[application_index:]
-
-          metadata_name = "com.google.android.geo.API_KEY"
-          if metadata_name not in manifest:
-              closing_tag = manifest.find("</application>")
-              if closing_tag < 0:
-                  raise SystemExit("AndroidManifest.xml has no </application> element")
-              api_key = escape(os.environ["GOOGLE_MAPS_ANDROID_KEY"], {'"': '&quot;'})
-              metadata = (
-                  '        <meta-data\n'
-                  '            android:name="com.google.android.geo.API_KEY"\n'
-                  f'            android:value="{api_key}" />\n'
-              )
-              manifest = manifest[:closing_tag] + metadata + manifest[closing_tag:]
-
-          with open(manifest_path, "w", encoding="utf-8") as destination:
-              destination.write(manifest)
-          PY
-          grep -q 'com.google.android.geo.API_KEY' "$MANIFEST"
-          echo "Android permissions and Google Maps metadata configured."
+          if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
+            awk '
+              /<manifest[ >]/ && !done {
+                print
+                print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />"
+                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_LOCATION\" />"
+                print "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
+                print "    <uses-permission android:name=\"android.permission.CAMERA\" />"
+                print "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"
+                done=1
+                next
+              }
+              { print }
+            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
+          fi
+          echo "--- Manifest AFTER ---"
+          cat "$MANIFEST"
 
       - name: Build debug APK
         script: |

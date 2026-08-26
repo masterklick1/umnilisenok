@@ -50,6 +50,36 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_child_locations: {
+        Row: {
+          accuracy: number | null
+          battery_level: number | null
+          child_id: string | null
+          created_at: string | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          battery_level?: number | null
+          child_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          battery_level?: number | null
+          child_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Relationships: []
+      }
       child_activity: {
         Row: {
           activity_type: string
@@ -162,6 +192,7 @@ export type Database = {
           battery_level: number | null
           child_id: string
           created_at: string
+          device_source: string
           id: string
           latitude: number
           longitude: number
@@ -171,6 +202,7 @@ export type Database = {
           battery_level?: number | null
           child_id: string
           created_at?: string
+          device_source?: string
           id?: string
           latitude: number
           longitude: number
@@ -180,6 +212,7 @@ export type Database = {
           battery_level?: number | null
           child_id?: string
           created_at?: string
+          device_source?: string
           id?: string
           latitude?: number
           longitude?: number
@@ -473,6 +506,27 @@ export type Database = {
           },
         ]
       }
+      parent_pins: {
+        Row: {
+          created_at: string
+          pin_hash: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          pin_hash: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          pin_hash?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pets: {
         Row: {
           created_at: string | null
@@ -562,6 +616,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reading_progress: {
+        Row: {
+          attempts: number
+          child_id: string
+          completed_at: string
+          created_at: string
+          id: string
+          lesson_index: number
+          level: number
+          stars_earned: number
+        }
+        Insert: {
+          attempts?: number
+          child_id: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          lesson_index: number
+          level: number
+          stars_earned?: number
+        }
+        Update: {
+          attempts?: number
+          child_id?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          lesson_index?: number
+          level?: number
+          stars_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       room_items: {
         Row: {
@@ -830,6 +925,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_parent_pin: { Args: never; Returns: undefined }
       get_children_with_progress: {
         Args: { p_parent_id: string }
         Returns: {
@@ -850,6 +946,7 @@ export type Database = {
           parent_id: string
         }[]
       }
+      has_parent_pin: { Args: never; Returns: boolean }
       link_parent_child: {
         Args: { p_child_id: string; p_parent_id: string }
         Returns: undefined
@@ -858,6 +955,8 @@ export type Database = {
         Args: { p_child_id: string; p_code: string }
         Returns: undefined
       }
+      set_parent_pin: { Args: { p_hash: string }; Returns: undefined }
+      verify_parent_pin: { Args: { p_hash: string }; Returns: boolean }
     }
     Enums: {
       user_role: "parent" | "child"

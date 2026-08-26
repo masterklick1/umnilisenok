@@ -77,6 +77,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/join" element={<JoinPage />} />
+            <Route path="/delete-account" element={<DeleteAccountPage />} />
             <Route
               path="/"
               element={

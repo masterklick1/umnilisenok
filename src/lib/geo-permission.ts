@@ -28,7 +28,7 @@ const getBackgroundGeolocation = (): any | null => {
     backgroundGeoPlugin = registerPlugin<any>("BackgroundGeolocation");
     return backgroundGeoPlugin;
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     backgroundGeoPlugin = null;
     return null;
   }
@@ -45,7 +45,7 @@ export const queryGeoPermission = async (): Promise<GeoPermissionState> => {
         if (perm.location === "denied") return "denied";
         return "prompt";
       } catch (e) {
-        console.error(e);
+        console.warn('Plugin error skipped:', e);
         return "prompt";
       }
     }
@@ -58,11 +58,11 @@ export const queryGeoPermission = async (): Promise<GeoPermissionState> => {
       if (status.state === "denied") return "denied";
       return "prompt";
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
       return "prompt";
     }
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     return "prompt";
   }
 };
@@ -143,7 +143,7 @@ const startGeoWatchInternal = async () => {
         );
         nativeWatchId = id;
       } catch (e) {
-        console.error(e);
+        console.warn('Plugin error skipped:', e);
       }
       return;
     }
@@ -162,7 +162,7 @@ const startGeoWatchInternal = async () => {
       { enableHighAccuracy: false, maximumAge: 300_000, timeout: 60_000 },
     );
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     watchRefCount = Math.max(0, watchRefCount - 1);
   }
 };
@@ -174,10 +174,10 @@ export const stopGeoWatch = () => {
   if (nativeWatchId) {
     try {
       Geolocation.clearWatch({ id: nativeWatchId }).catch((e) => {
-        console.error(e);
+        console.warn('Plugin error skipped:', e);
       });
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
     }
     nativeWatchId = null;
   }
@@ -185,7 +185,7 @@ export const stopGeoWatch = () => {
   try {
     navigator.geolocation.clearWatch(webWatchId);
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
   }
   webWatchId = null;
 };
@@ -226,12 +226,12 @@ export const getGeoPosition = async (
         cacheResult(result);
         return result;
       } catch (e) {
-        console.error(e);
+        console.warn('Plugin error skipped:', e);
         throw e;
       }
     }
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     throw e;
   }
 
@@ -245,7 +245,7 @@ export const getGeoPosition = async (
     try {
       return await webGetPosition(false, timeoutMs, Math.max(maximumAgeMs, 300_000));
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
       const stale = getCachedGeoPosition(900_000);
       if (stale) return stale;
       throw highAccErr;
@@ -259,7 +259,7 @@ export const requestGeoPermissionInteractive = async (): Promise<boolean> => {
     await getGeoPosition(0, 45_000, false);
     return true;
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     return getCachedGeoPosition() !== null;
   }
 };
@@ -283,11 +283,11 @@ export const queryBackgroundGeoPermission = async (): Promise<BackgroundGeoPermi
       const perm = await plugin.checkPermissions();
       return mapBackgroundLocationState(perm?.location);
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
       return "prompt";
     }
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     return "prompt";
   }
 };
@@ -307,7 +307,7 @@ export const ensureLocationNotificationPermission = async (): Promise<boolean> =
         status = await LocalNotifications.requestPermissions();
       }
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
       return false;
     }
 
@@ -322,12 +322,12 @@ export const ensureLocationNotificationPermission = async (): Promise<boolean> =
         lights: false,
       });
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
     }
 
     return status.display === "granted";
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     return false;
   }
 };
@@ -356,11 +356,11 @@ export const requestBackgroundGeoPermission = async (): Promise<BackgroundGeoPer
       }
       return state;
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
       return "denied";
     }
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     return "denied";
   }
 };
@@ -373,7 +373,7 @@ export const isBackgroundGeoSupported = (): boolean => {
       Capacitor.isPluginAvailable("BackgroundGeolocation")
     );
   } catch (e) {
-    console.error(e);
+    console.warn('Plugin error skipped:', e);
     return false;
   }
 };

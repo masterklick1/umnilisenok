@@ -239,83 +239,90 @@ export const useLocationTracker = (enabled = true) => {
         try {
           await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
         } catch (e) {
-          console.error(e);
+          console.warn('Plugin error skipped:', e);
         }
         backgroundWatcherRef.current = null;
       }
 
-      const geoPerm = await queryGeoPermission();
-      const bgPerm = await queryBackgroundGeoPermission();
-      if (geoPerm !== "granted" && bgPerm !== "always") {
-        setBackgroundTrackingEnabled(false);
-        return;
-      }
+      try {
+        const geoPerm = await queryGeoPermission();
+        const bgPerm = await queryBackgroundGeoPermission();
+        if (geoPerm !== "granted" && bgPerm !== "always") {
+          setBackgroundTrackingEnabled(false);
+          return;
+        }
 
-      await ensureLocationNotificationPermission();
+        await ensureLocationNotificationPermission();
 
-      const watcherId = await BackgroundGeolocation.addWatcher(
-        {
-          backgroundTitle: BG_GEO_NOTIFICATION_TITLE,
-          backgroundMessage: BG_GEO_NOTIFICATION_TEXT,
-          requestPermissions: false,
-          stale: false,
-          distanceFilter: 0,
-        },
-        async (location: any, error: any) => {
-          if (error) {
-            lastErrorRef.current = error?.message || "Ошибка фонового трекера";
-            publishStatus();
-            return;
-          }
-          if (!location) return;
-          try {
-            const { error: insertError } = await supabase.from("child_locations").insert([
-              {
-                child_id: id,
-                device_source: "phone_background",
-                latitude: location.latitude,
-                longitude: location.longitude,
-                accuracy: location.accuracy ?? null,
-              },
-            ]);
-
-            if (!insertError) {
-              lastSentAtRef.current = new Date().toISOString();
-              lastErrorRef.current = null;
-
-              const s = settingsRef.current;
-              if (s?.geofence_enabled && s.geofence_lat != null && s.geofence_lng != null) {
-                const radius = s.geofence_radius_m || 300;
-                const d = distanceM(location.latitude, location.longitude, s.geofence_lat, s.geofence_lng);
-                const inside = d <= radius;
-                const prev = lastInsideRef.current;
-                lastInsideRef.current = inside;
-                if (prev !== null && prev !== inside) {
-                  await supabase.from("geofence_events").insert({
-                    child_id: id,
-                    event_type: inside ? "enter" : "exit",
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    distance_m: d,
-                  });
-                }
-              }
-            } else {
-              lastErrorRef.current = insertError.message;
+        const watcherId = await BackgroundGeolocation.addWatcher(
+          {
+            backgroundTitle: BG_GEO_NOTIFICATION_TITLE,
+            backgroundMessage: BG_GEO_NOTIFICATION_TEXT,
+            requestPermissions: false,
+            stale: false,
+            distanceFilter: 0,
+          },
+          async (location: any, error: any) => {
+            if (error) {
+              lastErrorRef.current = error?.message || "Ошибка фонового трекера";
+              publishStatus();
+              return;
             }
-          } catch (e) {
-            lastErrorRef.current = e instanceof Error ? e.message : "Ошибка фоновой геолокации";
-          }
-          publishStatus();
-        },
-      );
+            if (!location) return;
+            try {
+              const { error: insertError } = await supabase.from("child_locations").insert([
+                {
+                  child_id: id,
+                  device_source: "phone_background",
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  accuracy: location.accuracy ?? null,
+                },
+              ]);
 
-      backgroundWatcherRef.current = watcherId;
-      lastErrorRef.current = null;
-      setBackgroundTrackingEnabled(true);
-      publishStatus();
+              if (!insertError) {
+                lastSentAtRef.current = new Date().toISOString();
+                lastErrorRef.current = null;
+
+                const s = settingsRef.current;
+                if (s?.geofence_enabled && s.geofence_lat != null && s.geofence_lng != null) {
+                  const radius = s.geofence_radius_m || 300;
+                  const d = distanceM(location.latitude, location.longitude, s.geofence_lat, s.geofence_lng);
+                  const inside = d <= radius;
+                  const prev = lastInsideRef.current;
+                  lastInsideRef.current = inside;
+                  if (prev !== null && prev !== inside) {
+                    await supabase.from("geofence_events").insert({
+                      child_id: id,
+                      event_type: inside ? "enter" : "exit",
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      distance_m: d,
+                    });
+                  }
+                }
+              } else {
+                lastErrorRef.current = insertError.message;
+              }
+            } catch (e) {
+              lastErrorRef.current = e instanceof Error ? e.message : "Ошибка фоновой геолокации";
+            }
+            publishStatus();
+          },
+        );
+
+        backgroundWatcherRef.current = watcherId;
+        lastErrorRef.current = null;
+        setBackgroundTrackingEnabled(true);
+        publishStatus();
+      } catch (e) {
+        console.warn('Plugin error skipped:', e);
+        lastErrorRef.current = e instanceof Error ? e.message : "Не удалось запустить фоновый трекинг";
+        setBackgroundTrackingEnabled(false);
+        publishStatus();
+      }
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
       lastErrorRef.current = e instanceof Error ? e.message : "Не удалось запустить фоновый трекинг";
       setBackgroundTrackingEnabled(false);
       publishStatus();
@@ -336,14 +343,14 @@ export const useLocationTracker = (enabled = true) => {
         try {
           await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
         } catch (e) {
-          console.error(e);
+          console.warn('Plugin error skipped:', e);
         }
         backgroundWatcherRef.current = null;
       }
       setBackgroundTrackingEnabled(false);
       publishStatus();
     } catch (e) {
-      console.error(e);
+      console.warn('Plugin error skipped:', e);
     }
   };
 
@@ -362,7 +369,7 @@ export const useLocationTracker = (enabled = true) => {
         await whenCapacitorReady();
         await startBackgroundTracking(childId, intervalSecRef.current);
       } catch (e) {
-        console.error(e);
+        console.warn('Plugin error skipped:', e);
       }
     };
 
@@ -370,7 +377,7 @@ export const useLocationTracker = (enabled = true) => {
 
     const onRestart = () => {
       void startBackgroundTracking(childId, intervalSecRef.current).catch((e) => {
-        console.error(e);
+        console.warn('Plugin error skipped:', e);
       });
     };
     window.addEventListener(BACKGROUND_GEO_RESTART_EVENT, onRestart);

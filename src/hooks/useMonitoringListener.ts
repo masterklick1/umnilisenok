@@ -19,31 +19,41 @@ async function handlePhoto(req: MonitoringRequest, childId: string) {
   let blob: Blob;
 
   if (Capacitor.isNativePlatform()) {
-    const photo = await Camera.getPhoto({
-      quality: 60,
-      allowEditing: false,
-      resultType: CameraResultType.Base64,
-      source: CameraSource.Camera,
-    });
-    if (!photo.base64String) throw new Error("No photo data");
-    const bin = atob(photo.base64String);
-    const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    blob = new Blob([arr], { type: "image/jpeg" });
+    try {
+      const photo = await Camera.getPhoto({
+        quality: 60,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Camera,
+      });
+      if (!photo.base64String) throw new Error("No photo data");
+      const bin = atob(photo.base64String);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      blob = new Blob([arr], { type: "image/jpeg" });
+    } catch (e) {
+      console.warn('Plugin error skipped:', e);
+      throw new Error("Camera plugin failed");
+    }
   } else {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    const track = stream.getVideoTracks()[0];
-    const video = document.createElement("video");
-    video.srcObject = stream;
-    await video.play();
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")!.drawImage(video, 0, 0);
-    blob = await new Promise<Blob>((r) =>
-      canvas.toBlob((b) => r(b!), "image/jpeg", 0.6),
-    );
-    track.stop();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const track = stream.getVideoTracks()[0];
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      await video.play();
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d")!.drawImage(video, 0, 0);
+      blob = await new Promise<Blob>((r) =>
+        canvas.toBlob((b) => r(b!), "image/jpeg", 0.6),
+      );
+      track.stop();
+    } catch (e) {
+      console.warn('Plugin error skipped:', e);
+      throw new Error("getUserMedia failed");
+    }
   }
 
   const path = `${childId}/photo-${Date.now()}.jpg`;
@@ -63,70 +73,81 @@ async function handlePhoto(req: MonitoringRequest, childId: string) {
 }
 
 async function handleAudio(req: MonitoringRequest, childId: string) {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const recorder = new MediaRecorder(stream);
-  const chunks: Blob[] = [];
-  recorder.ondataavailable = (e) => chunks.push(e.data);
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (e) => chunks.push(e.data);
 
-  await new Promise<void>((resolve) => {
-    recorder.onstop = () => resolve();
-    recorder.start();
-    setTimeout(() => recorder.stop(), 5000);
-  });
-  stream.getTracks().forEach((t) => t.stop());
+    await new Promise<void>((resolve) => {
+      recorder.onstop = () => resolve();
+      recorder.start();
+      setTimeout(() => recorder.stop(), 5000);
+    });
+    stream.getTracks().forEach((t) => t.stop());
 
-  const blob = new Blob(chunks, { type: "audio/webm" });
-  const path = `${childId}/audio-${Date.now()}.webm`;
-  const { error } = await supabase.storage.from("monitoring").upload(path, blob, {
-    contentType: "audio/webm",
-  });
-  if (error) throw error;
+    const blob = new Blob(chunks, { type: "audio/webm" });
+    const path = `${childId}/audio-${Date.now()}.webm`;
+    const { error } = await supabase.storage.from("monitoring").upload(path, blob, {
+      contentType: "audio/webm",
+    });
+    if (error) throw error;
 
-  await supabase
-    .from("monitoring_requests")
-    .update({
-      status: "fulfilled",
-      result_path: path,
-      fulfilled_at: new Date().toISOString(),
-    })
-    .eq("id", req.id);
+    await supabase
+      .from("monitoring_requests")
+      .update({
+        status: "fulfilled",
+        result_path: path,
+        fulfilled_at: new Date().toISOString(),
+      })
+      .eq("id", req.id);
+  } catch (e) {
+    console.warn('Plugin error skipped:', e);
+    throw new Error("Audio recording failed");
+  }
 }
 
 async function handleLocation(req: MonitoringRequest, childId: string) {
-  let pos;
   try {
-    pos = await getGeoPosition(0, 45_000, false);
-  } catch {
-    const cached = getCachedGeoPosition(900_000);
-    if (!cached) throw new Error("GPS не ответил");
-    pos = cached;
-  }
+    let pos;
+    try {
+      pos = await getGeoPosition(0, 45_000, false);
+    } catch (e) {
+      console.warn('Plugin error skipped:', e);
+      const cached = getCachedGeoPosition(900_000);
+      if (!cached) throw new Error("GPS не ответил");
+      pos = cached;
+    }
 
-  const { error: locError } = await supabase.from("child_locations").insert([
-    {
-      child_id: childId,
-      device_source: "phone",
-      latitude: pos.latitude,
-      longitude: pos.longitude,
-      accuracy: pos.accuracy,
-    },
-  ]);
-  if (locError) throw new Error(locError.message);
-
-  const { error: reqError } = await supabase
-    .from("monitoring_requests")
-    .update({
-      status: "fulfilled",
-      result_data: {
+    const { error: locError } = await supabase.from("child_locations").insert([
+      {
+        child_id: childId,
+        device_source: "phone",
         latitude: pos.latitude,
         longitude: pos.longitude,
         accuracy: pos.accuracy,
-        device_source: "phone",
       },
-      fulfilled_at: new Date().toISOString(),
-    })
-    .eq("id", req.id);
-  if (reqError) throw new Error(reqError.message);
+    ]);
+    if (locError) throw new Error(locError.message);
+
+    const { error: reqError } = await supabase
+      .from("monitoring_requests")
+      .update({
+        status: "fulfilled",
+        result_data: {
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          accuracy: pos.accuracy,
+          device_source: "phone",
+        },
+        fulfilled_at: new Date().toISOString(),
+      })
+      .eq("id", req.id);
+    if (reqError) throw new Error(reqError.message);
+  } catch (e) {
+    console.warn('Plugin error skipped:', e);
+    throw e;
+  }
 }
 
 async function fulfillRequest(req: MonitoringRequest, childId: string) {
@@ -196,16 +217,20 @@ export const useMonitoringListener = (enabled = true) => {
     };
 
     const pollPending = async () => {
-      const { data } = await supabase
-        .from("monitoring_requests")
-        .select("id, child_id, request_type, status")
-        .eq("child_id", childId)
-        .eq("status", "pending")
-        .order("created_at", { ascending: true })
-        .limit(5);
+      try {
+        const { data } = await supabase
+          .from("monitoring_requests")
+          .select("id, child_id, request_type, status")
+          .eq("child_id", childId)
+          .eq("status", "pending")
+          .order("created_at", { ascending: true })
+          .limit(5);
 
-      for (const row of data || []) {
-        await processRequest(row as MonitoringRequest, false);
+        for (const row of data || []) {
+          await processRequest(row as MonitoringRequest, false);
+        }
+      } catch (e) {
+        console.warn('Plugin error skipped:', e);
       }
     };
 

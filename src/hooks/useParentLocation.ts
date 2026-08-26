@@ -50,20 +50,39 @@ export const useParentLocation = ({
 
   useEffect(() => {
     if (!active) return;
-    startGeoWatch();
-    return () => stopGeoWatch();
+    try {
+      startGeoWatch();
+    } catch (e) {
+      console.warn('Plugin error skipped:', e);
+    }
+    return () => {
+      try {
+        stopGeoWatch();
+      } catch (e) {
+        console.warn('Plugin error skipped:', e);
+      }
+    };
   }, [active]);
 
   const syncPermission = useCallback(async () => {
-    const perm = await queryGeoPermission();
-    setPermission(perm);
-    return perm;
+    try {
+      const perm = await queryGeoPermission();
+      setPermission(perm);
+      return perm;
+    } catch (e) {
+      console.warn('Plugin error skipped:', e);
+      return "prompt" as GeoPermissionState;
+    }
   }, []);
 
   const setManualLocation = useCallback(
     (point: LatLng) => {
       if (!user?.id) return;
-      saveParentManualLocation(user.id, point, "manual");
+      try {
+        saveParentManualLocation(user.id, point, "manual");
+      } catch (e) {
+        console.warn('Plugin error skipped:', e);
+      }
       setManualLocationState(point);
       setLocation(point);
       setLastUpdatedAt(new Date().toISOString());
@@ -80,7 +99,11 @@ export const useParentLocation = ({
       const pos = await getGeoPosition(120_000, 45_000);
       const point = { lat: pos.latitude, lng: pos.longitude };
       if (user?.id) {
-        saveParentManualLocation(user.id, point, "gps");
+        try {
+          saveParentManualLocation(user.id, point, "gps");
+        } catch (e) {
+          console.warn('Plugin error skipped:', e);
+        }
       }
       setManualLocationState(null);
       setLocation(point);
@@ -134,7 +157,13 @@ export const useParentLocation = ({
   }, [active, routeActive, refresh, refreshIntervalSec]);
 
   const clear = useCallback(() => {
-    if (user?.id) clearParentManualLocation(user.id);
+    if (user?.id) {
+      try {
+        clearParentManualLocation(user.id);
+      } catch (e) {
+        console.warn('Plugin error skipped:', e);
+      }
+    }
     setLocation(null);
     setManualLocationState(null);
     setError(null);

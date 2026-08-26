@@ -32,6 +32,28 @@ export default function SettingsPage() {
   const [backgroundGeoPermission, setBackgroundGeoPermission] = useState<BackgroundGeoPermissionState>("prompt");
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [requestingBgGeo, setRequestingBgGeo] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("Удалить аккаунт и все данные безвозвратно?")) return;
+    if (!confirm("Точно удалить? Это действие нельзя отменить.")) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke("delete-account");
+      if (error) throw error;
+      toast({ title: "Аккаунт удалён", description: "Все данные удалены безвозвратно." });
+      await supabase.auth.signOut();
+      navigate("/auth", { replace: true });
+    } catch (e) {
+      toast({
+        title: "Не удалось удалить аккаунт",
+        description: e instanceof Error ? e.message : "Попробуйте позже",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     setSoundEnabled(localStorage.getItem(SOUND_KEY) !== "false");

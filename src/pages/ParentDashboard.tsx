@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorker, getPushStatus, unsubscribeFromPush, type PushStatus } from "@/lib/push";
-import { getStoredPin, isParentPinUnlocked, unlockParentPin } from "@/lib/parent-pin";
+import { hasParentPin, isParentPinUnlocked, purgeLegacyPin, unlockParentPin, verifyParentPin } from "@/lib/parent-pin";
 import { Input } from "@/components/ui/input";
 
 export default function ParentDashboard() {
@@ -49,8 +49,21 @@ export default function ParentDashboard() {
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [notifPrefs, setNotifPrefs] = useState<MonitoringNotifPrefs>(loadMonitoringPrefs());
   const [pinUnlocked, setPinUnlocked] = useState(() => isParentPinUnlocked());
+  const [pinRequired, setPinRequired] = useState<boolean | null>(null);
+  const [pinChecking, setPinChecking] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
+
+  useEffect(() => {
+    purgeLegacyPin();
+    let active = true;
+    hasParentPin().then((has) => {
+      if (active) setPinRequired(has);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => setNotifPrefs((e as CustomEvent).detail);
@@ -299,9 +312,12 @@ export default function ParentDashboard() {
     }
   }, [children, selectedChild, setSelectedChild]);
 
-  const verifyParentPin = () => {
-    const stored = getStoredPin();
-    if (stored && pinInput === stored) {
+  const submitParentPin = async () => {
+    if (!user) return;
+    setPinChecking(true);
+    const ok = await verifyParentPin(user.id, pinInput);
+    setPinChecking(false);
+    if (ok) {
       unlockParentPin();
       setPinUnlocked(true);
       setPinError(false);
@@ -311,7 +327,7 @@ export default function ParentDashboard() {
     setPinError(true);
   };
 
-  if (loading) {
+  if (loading || pinRequired === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-accent/5">
         <div className="text-4xl animate-bounce">👨‍👩‍👧‍👦</div>
@@ -319,7 +335,7 @@ export default function ParentDashboard() {
     );
   }
 
-  if (getStoredPin() && !pinUnlocked) {
+  if (pinRequired && !pinUnlocked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-accent/5 p-4">
         <Card className="w-full max-w-sm">
@@ -339,12 +355,16 @@ export default function ParentDashboard() {
                 setPinInput(e.target.value.replace(/\D/g, "").slice(0, 4));
                 setPinError(false);
               }}
-              onKeyDown={(e) => e.key === "Enter" && pinInput.length === 4 && verifyParentPin()}
+              onKeyDown={(e) => e.key === "Enter" && pinInput.length === 4 && submitParentPin()}
               className="text-center text-2xl tracking-widest"
             />
             {pinError && <p className="text-sm text-destructive text-center">Неверный PIN</p>}
-            <Button className="w-full" disabled={pinInput.length !== 4} onClick={verifyParentPin}>
-              Войти
+            <Button
+              className="w-full"
+              disabled={pinInput.length !== 4 || pinChecking}
+              onClick={submitParentPin}
+            >
+              {pinChecking ? "Проверяем…" : "Войти"}
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => navigate("/")}>
               Назад

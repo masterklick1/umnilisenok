@@ -29,6 +29,11 @@ const config: CapacitorConfig = {
     LocalNotifications: {
       iconColor: "#E67E22",
     },
+    // Ключ для нативной Google Maps SDK для Android/iOS.
+    // Android: значение читается из meta-data com.google.android.geo.API_KEY
+    // в AndroidManifest.xml (см. codemagic.yaml — awk-инъекция).
+    // Здесь поле оставлено для документации — реальный ключ подставляется в манифест.
+    GoogleMaps: {},
   },
 };
 

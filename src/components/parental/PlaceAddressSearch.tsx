@@ -9,11 +9,12 @@ import {
 } from "@/lib/saved-places";
 import { MyPlacePicker } from "@/components/parental/MyPlacePicker";
 import {
-  isGoogleMapsConfigured,
-  loadGoogleMaps,
-  searchPlaces,
-  type SearchPlaceResult,
-} from "@/lib/google-maps";
+  autocompletePlaces,
+  getPlaceDetails,
+  textSearchPlaces,
+  type AutocompleteSuggestion,
+  type PlaceSearchResult,
+} from "@/lib/maps-client";
 
 export interface SelectedPlacePayload {
   name: string;
@@ -45,70 +46,47 @@ export const PlaceAddressSearch = ({
   onSelectPlace,
   onManualCurrent,
 }: PlaceAddressSearchProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const onSelectRef = useRef(onSelectPlace);
-  onSelectRef.current = onSelectPlace;
   const [query, setQuery] = useState("");
   const [activePreset, setActivePreset] = useState<GeofencePreset | null>(null);
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<SearchPlaceResult[]>([]);
+  const [results, setResults] = useState<PlaceSearchResult[]>([]);
+  const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [autocompleteReady, setAutocompleteReady] = useState(false);
+  const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Debounced autocomplete через Edge places-proxy (Places API New).
+  // Работает одинаково в web и в Capacitor native — без browser-key.
   useEffect(() => {
-    if (!isGoogleMapsConfigured() || !inputRef.current) return;
-
-    let autocomplete: any = null;
-    loadGoogleMaps(["places"])
-      .then(() => {
-        const google = window.google;
-        if (!google?.maps?.places || !inputRef.current) return;
-
-        autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
-          componentRestrictions: { country: "ru" },
-          fields: ["geometry", "name", "formatted_address", "place_id"],
-        });
-
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          if (!place?.geometry?.location) return;
-          const preset = activePreset ?? GEOFENCE_PRESETS[0];
-          onSelectRef.current(
-            {
-              name: preset.name,
-              emoji: preset.emoji,
-              address: place.formatted_address || place.name || query,
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng(),
-              radius_m: preset.radius_m,
-            },
-            true,
-          );
-          setResults([]);
-          setSearchError(null);
-        });
-
-        setAutocompleteReady(true);
-      })
-      .catch(() => setAutocompleteReady(false));
-
+    if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
+    const q = query.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      setSuggesting(false);
+      return;
+    }
+    setSuggesting(true);
+    suggestTimerRef.current = setTimeout(async () => {
+      const items = await autocompletePlaces(q, childLocation ?? undefined);
+      setSuggestions(items.slice(0, 6));
+      setSuggesting(false);
+    }, 300);
     return () => {
-      if (autocomplete && window.google?.maps?.event) {
-        window.google.maps.event.clearInstanceListeners(autocomplete);
-      }
+      if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
     };
-  }, [activePreset, query]);
+  }, [query, childLocation]);
 
   const runSearch = useCallback(
-    async (searchQuery: string, preset: GeofencePreset | null) => {
+    async (searchQuery: string) => {
       const q = searchQuery.trim();
       if (!q) return;
 
       setSearching(true);
       setSearchError(null);
       setResults([]);
+      setSuggestions([]);
 
-      const found = await searchPlaces(q, childLocation ?? undefined);
+      const found = await textSearchPlaces(q, childLocation ?? undefined);
       setSearching(false);
 
       if (!found.length) {
@@ -139,10 +117,10 @@ export const PlaceAddressSearch = ({
                 : "детская площадка";
 
     setQuery(searchText);
-    runSearch(searchText, preset);
+    runSearch(searchText);
   };
 
-  const pickResult = (result: SearchPlaceResult, save: boolean) => {
+  const pickResult = (result: PlaceSearchResult, save: boolean) => {
     const preset = activePreset ?? {
       id: "custom",
       emoji: "📍",
@@ -162,7 +140,20 @@ export const PlaceAddressSearch = ({
       save,
     );
     setResults([]);
+    setSuggestions([]);
     setSearchError(null);
+  };
+
+  const pickSuggestion = async (s: AutocompleteSuggestion) => {
+    setSuggestions([]);
+    setSearching(true);
+    const details = await getPlaceDetails(s.placeId);
+    setSearching(false);
+    if (!details) {
+      setSearchError("Не удалось получить детали адреса.");
+      return;
+    }
+    pickResult(details, true);
   };
 
   return (
@@ -204,36 +195,59 @@ export const PlaceAddressSearch = ({
         ))}
       </div>
 
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Адрес или название: Садик №5, ул. Ленина 10…"
-            className="pl-9"
-            disabled={disabled || searching}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") runSearch(query, activePreset);
-            }}
-          />
+      <div className="relative">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Адрес или название: Садик №5, ул. Ленина 10…"
+              className="pl-9"
+              disabled={disabled || searching}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runSearch(query);
+              }}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={disabled || searching || !query.trim()}
+            onClick={() => runSearch(query)}
+          >
+            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Найти"}
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={disabled || searching || !query.trim()}
-          onClick={() => runSearch(query, activePreset)}
-        >
-          {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Найти"}
-        </Button>
+
+        {(suggesting || suggestions.length > 0) && !searching && (
+          <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border bg-popover shadow-md overflow-hidden">
+            {suggesting && (
+              <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
+                <Loader2 className="w-3 h-3 animate-spin" /> Поиск…
+              </div>
+            )}
+            {suggestions.map((s) => (
+              <button
+                key={s.placeId}
+                type="button"
+                className="w-full text-left px-3 py-2 hover:bg-accent transition text-xs border-b last:border-b-0"
+                onClick={() => pickSuggestion(s)}
+              >
+                <p className="font-medium truncate">{s.mainText || s.text}</p>
+                {s.secondaryText && (
+                  <p className="text-muted-foreground truncate">{s.secondaryText}</p>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {autocompleteReady && (
-        <p className="text-[10px] text-muted-foreground">
-          Подсказки Google при вводе адреса включены
-        </p>
-      )}
+      <p className="text-[10px] text-muted-foreground">
+        Подсказки Google при вводе адреса работают через защищённый сервер — без ограничений
+        браузера/устройства.
+      </p>
 
       {searchError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs space-y-2">
@@ -263,7 +277,7 @@ export const PlaceAddressSearch = ({
           <Label className="text-xs text-muted-foreground">Выберите адрес из списка</Label>
           {results.map((r) => (
             <div
-              key={r.id}
+              key={r.placeId}
               className="flex items-start gap-2 p-2 rounded-lg border bg-card text-xs"
             >
               <div className="flex-1 min-w-0">

@@ -13,14 +13,15 @@ const corsHeaders = {
 const VAPID_PUBLIC =
   Deno.env.get("VAPID_PUBLIC_KEY") ??
   "BCp-2vIxJ4Rbjk0Zk-1cPN6OCw5O1XFPKmrkVbA7X6nm5lk1Dum59dpnQUt1d6MUPFB0YuN4WvkJuBfTaNIx5Q8";
-// Fallback for environments where secrets can't be configured (e.g. Lovable without Cloud)
-const VAPID_PRIVATE_FALLBACK = "kQgRUcwvUipDz1rFMsOVuc_-v2LNDzAsuFC7XGYRNtQ";
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:support@umnilisenok.app";
 
 let vapidConfigured = false;
 
 const ensureVapid = () => {
-  const privateKey = Deno.env.get("VAPID_PRIVATE_KEY") ?? VAPID_PRIVATE_FALLBACK;
+  const privateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+  if (!privateKey) {
+    throw new Error("VAPID_PRIVATE_KEY is not configured");
+  }
   if (!vapidConfigured) {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, privateKey);
     vapidConfigured = true;

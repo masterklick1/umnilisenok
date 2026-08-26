@@ -25,11 +25,12 @@ const AppPlugin = registerPlugin<any>("App");
 
 const openAppSettings = async () => {
   try {
-    if (Capacitor.isNativePlatform()) {
-      await AppPlugin.openSettings?.();
-    }
-  } catch {
-    /* noop */
+    if (!Capacitor.isNativePlatform()) return;
+    await AppPlugin.openSettings?.();
+  } catch (err) {
+    // Не фейлим приложение, просто логируем предупреждение.
+    // eslint-disable-next-line no-console
+    console.warn("Plugin error skipped:", err);
   }
 };
 
@@ -93,14 +94,22 @@ function ChildLocationPanel() {
   const retry = async () => {
     setRetrying(true);
     try {
-      await whenCapacitorReady();
-      startGeoWatch();
-      await requestGeoPermissionInteractive();
-      if (keepAwake) await acquireWakeLock();
-      window.dispatchEvent(new CustomEvent("force-location-send"));
-      window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
-    } catch (e) {
-      console.error(e);
+      if (!Capacitor.isNativePlatform()) {
+        setRetrying(false);
+        return;
+      }
+      try {
+        await whenCapacitorReady();
+        startGeoWatch();
+        await requestGeoPermissionInteractive();
+        if (keepAwake) await acquireWakeLock();
+        window.dispatchEvent(new CustomEvent("force-location-send"));
+        window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+      } catch (err) {
+        // Плагин или разрешения не ответили — логируем и продолжаем.
+        // eslint-disable-next-line no-console
+        console.warn("Plugin error skipped:", err);
+      }
     } finally {
       setRetrying(false);
     }
@@ -125,8 +134,7 @@ function ChildLocationPanel() {
           <button
             type="button"
             aria-label="Геолокация"
-            className={`h-10 w-10 rounded-full border shadow-md backdrop-blur flex items-center justify-center text-base ${ringClass}`}
-          >
+            className={`h-10 w-10 rounded-full border shadow-md backdrop-blur flex items-center justify-center text-base ${ringClass}`}>
             {icon}
           </button>
         </PopoverTrigger>
@@ -177,20 +185,42 @@ export function ChildDeviceServices() {
 
     const boot = async () => {
       try {
+        if (!Capacitor.isNativePlatform()) return;
         await whenCapacitorReady();
         if (cancelled) return;
-        startGeoWatch();
-        const granted = await requestGeoPermissionInteractive();
-        if (cancelled) return;
-        if (granted) {
-          window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+
+        try {
+          startGeoWatch();
+          const granted = await requestGeoPermissionInteractive();
+          if (cancelled) return;
+          if (granted) {
+            window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+          }
+        } catch (err) {
+          // Ошибка плагина при старте гео — логируем и продолжаем.
+          // eslint-disable-next-line no-console
+          console.warn("Plugin error skipped:", err);
         }
-        if (user?.id && isPushSupported() && Notification.permission === "granted") {
-          subscribeToPush(user.id).catch(() => {});
+
+        try {
+          if (user?.id && isPushSupported() && Notification.permission === "granted") {
+            await subscribeToPush(user.id).catch(() => {});
+          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("Plugin error skipped:", err);
         }
-        if (loadKeepScreenOnPref()) syncWakeLockWithPref();
-      } catch (e) {
-        console.error(e);
+
+        try {
+          if (loadKeepScreenOnPref()) syncWakeLockWithPref();
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("Plugin error skipped:", err);
+        }
+      } catch (err) {
+        // Общий catch для boot — не даём падать приложению.
+        // eslint-disable-next-line no-console
+        console.warn("Plugin error skipped:", err);
       }
     };
 

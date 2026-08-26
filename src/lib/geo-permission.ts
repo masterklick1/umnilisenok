@@ -2,6 +2,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
 import { registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { isNativePluginAvailable, whenCapacitorReady } from "@/lib/native-ready";
 
 // Native-only plugin — register bridge directly (package has no JS entry).
 const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
@@ -23,6 +24,8 @@ let watchRefCount = 0;
 export const queryGeoPermission = async (): Promise<GeoPermissionState> => {
   if (Capacitor.isNativePlatform()) {
     try {
+      await whenCapacitorReady();
+      if (!isNativePluginAvailable("Geolocation")) return "prompt";
       const perm = await Geolocation.checkPermissions();
       if (perm.location === "granted") return "granted";
       if (perm.location === "denied") return "denied";
@@ -92,42 +95,52 @@ const webGetPosition = (
     );
   });
 
-/** Keep GPS warm while app is open. */
+/** Keep GPS warm while app is open. Never throws — safe to call from effects. */
 export const startGeoWatch = () => {
   watchRefCount += 1;
   if (watchRefCount > 1) return;
+  void startGeoWatchInternal();
+};
 
-  if (Capacitor.isNativePlatform()) {
-    if (nativeWatchId) return;
-    Geolocation.watchPosition(
-      { enableHighAccuracy: true, timeout: 60_000, maximumAge: 60_000 },
-      (pos) => {
-        if (!pos) return;
+const startGeoWatchInternal = async () => {
+  try {
+    await whenCapacitorReady();
+
+    if (Capacitor.isNativePlatform()) {
+      if (nativeWatchId) return;
+      if (!isNativePluginAvailable("Geolocation")) return;
+      const id = await Geolocation.watchPosition(
+        { enableHighAccuracy: true, timeout: 60_000, maximumAge: 60_000 },
+        (pos) => {
+          if (!pos) return;
+          cacheResult({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy ?? null,
+          });
+        },
+      );
+      nativeWatchId = id;
+      return;
+    }
+
+    if (webWatchId != null || !("geolocation" in navigator)) return;
+
+    webWatchId = navigator.geolocation.watchPosition(
+      (p) => {
         cacheResult({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy ?? null,
+          latitude: p.coords.latitude,
+          longitude: p.coords.longitude,
+          accuracy: p.coords.accuracy ?? null,
         });
       },
-    ).then((id) => {
-      nativeWatchId = id;
-    });
-    return;
+      () => {},
+      { enableHighAccuracy: false, maximumAge: 300_000, timeout: 60_000 },
+    );
+  } catch (e) {
+    console.warn("startGeoWatch failed", e);
+    watchRefCount = Math.max(0, watchRefCount - 1);
   }
-
-  if (webWatchId != null || !("geolocation" in navigator)) return;
-
-  webWatchId = navigator.geolocation.watchPosition(
-    (p) => {
-      cacheResult({
-        latitude: p.coords.latitude,
-        longitude: p.coords.longitude,
-        accuracy: p.coords.accuracy ?? null,
-      });
-    },
-    () => {},
-    { enableHighAccuracy: false, maximumAge: 300_000, timeout: 60_000 },
-  );
 };
 
 export const stopGeoWatch = () => {
@@ -154,6 +167,10 @@ export const getGeoPosition = async (
   }
 
   if (Capacitor.isNativePlatform()) {
+    await whenCapacitorReady();
+    if (!isNativePluginAvailable("Geolocation")) {
+      throw new Error("Плагин геолокации недоступен");
+    }
     const perm = await Geolocation.checkPermissions();
     if (perm.location !== "granted") {
       const req = await Geolocation.requestPermissions();
@@ -215,6 +232,8 @@ export const queryBackgroundGeoPermission = async (): Promise<BackgroundGeoPermi
   }
 
   try {
+    await whenCapacitorReady();
+    if (!isNativePluginAvailable("BackgroundGeolocation")) return "prompt";
     const perm = await BackgroundGeolocation.checkPermissions();
     return mapBackgroundLocationState(perm?.location);
   } catch {
@@ -232,6 +251,9 @@ export const ensureLocationNotificationPermission = async (): Promise<boolean> =
   }
 
   try {
+    await whenCapacitorReady();
+    if (!isNativePluginAvailable("LocalNotifications")) return false;
+
     let status = await LocalNotifications.checkPermissions();
     if (status.display !== "granted") {
       status = await LocalNotifications.requestPermissions();
@@ -250,7 +272,8 @@ export const ensureLocationNotificationPermission = async (): Promise<boolean> =
     });
 
     return status.display === "granted";
-  } catch {
+  } catch (e) {
+    console.warn("ensureLocationNotificationPermission failed", e);
     return false;
   }
 };
@@ -263,7 +286,12 @@ export const requestBackgroundGeoPermission = async (): Promise<BackgroundGeoPer
   }
 
   try {
+    await whenCapacitorReady();
     await ensureLocationNotificationPermission();
+
+    if (!isNativePluginAvailable("BackgroundGeolocation")) {
+      return "prompt";
+    }
 
     const perm = await BackgroundGeolocation.requestPermissions({
       permissions: ["location"],

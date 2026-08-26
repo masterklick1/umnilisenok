@@ -70,7 +70,9 @@ export default function SettingsPage() {
 
     // Проверить статус фоновой геолокации
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
-      queryBackgroundGeoPermission().then(setBackgroundGeoPermission);
+      queryBackgroundGeoPermission()
+        .then(setBackgroundGeoPermission)
+        .catch(() => setBackgroundGeoPermission("prompt"));
     }
   }, [user]);
 

@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useLocationTracker, type LocationTrackerStatus } from "@/hooks/useLocationTracker";
 import { useMonitoringListener } from "@/hooks/useMonitoringListener";
-import { requestGeoPermissionInteractive, startGeoWatch } from "@/lib/geo-permission";
+import { requestGeoPermissionInteractive, startGeoWatch, BACKGROUND_GEO_RESTART_EVENT } from "@/lib/geo-permission";
+import { whenCapacitorReady } from "@/lib/native-ready";
 import { isPushSupported, subscribeToPush } from "@/lib/push";
 import {
   acquireWakeLock,
@@ -91,11 +92,18 @@ function ChildLocationPanel() {
 
   const retry = async () => {
     setRetrying(true);
-    startGeoWatch();
-    await requestGeoPermissionInteractive();
-    if (keepAwake) await acquireWakeLock();
-    window.dispatchEvent(new CustomEvent("force-location-send"));
-    setRetrying(false);
+    try {
+      await whenCapacitorReady();
+      startGeoWatch();
+      await requestGeoPermissionInteractive();
+      if (keepAwake) await acquireWakeLock();
+      window.dispatchEvent(new CustomEvent("force-location-send"));
+      window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+    } catch (e) {
+      console.warn("location retry failed", e);
+    } finally {
+      setRetrying(false);
+    }
   };
 
   if (!status.trackingEnabled) return null;
@@ -165,12 +173,31 @@ export function ChildDeviceServices() {
 
   useEffect(() => {
     if (!active) return;
-    startGeoWatch();
-    requestGeoPermissionInteractive().catch(() => {});
-    if (user?.id && isPushSupported() && Notification.permission === "granted") {
-      subscribeToPush(user.id).catch(() => {});
-    }
-    if (loadKeepScreenOnPref()) syncWakeLockWithPref();
+    let cancelled = false;
+
+    const boot = async () => {
+      try {
+        await whenCapacitorReady();
+        if (cancelled) return;
+        startGeoWatch();
+        const granted = await requestGeoPermissionInteractive();
+        if (cancelled) return;
+        if (granted) {
+          window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+        }
+        if (user?.id && isPushSupported() && Notification.permission === "granted") {
+          subscribeToPush(user.id).catch(() => {});
+        }
+        if (loadKeepScreenOnPref()) syncWakeLockWithPref();
+      } catch (e) {
+        console.warn("Child device geo boot failed", e);
+      }
+    };
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
   }, [active, user?.id]);
 
   useEffect(() => {

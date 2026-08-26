@@ -21,7 +21,75 @@ const pluginManifest = join(
   root,
   "node_modules/@capacitor-community/background-geolocation/android/src/main/AndroidManifest.xml",
 );
-const appStrings = join(root, "android/app/src/main/res/values/strings.xml");
+const appManifest = join(root, "android/app/src/main/AndroidManifest.xml");
+
+const REQUIRED_PERMISSIONS = [
+  "android.permission.ACCESS_FINE_LOCATION",
+  "android.permission.ACCESS_COARSE_LOCATION",
+  "android.permission.ACCESS_BACKGROUND_LOCATION",
+  "android.permission.FOREGROUND_SERVICE",
+  "android.permission.FOREGROUND_SERVICE_LOCATION",
+  "android.permission.POST_NOTIFICATIONS",
+];
+
+const FGS_SERVICE_BLOCK = `        <service
+            android:name="com.equimaps.capacitor_background_geolocation.BackgroundGeolocationService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location"
+            android:stopWithTask="false"
+            tools:node="replace" />
+`;
+
+function ensureAppManifest() {
+  if (!existsSync(appManifest)) {
+    console.log("Skip app AndroidManifest patch: android platform not generated yet");
+    return;
+  }
+
+  let xml = readFileSync(appManifest, "utf8");
+  let changed = false;
+
+  if (!xml.includes("xmlns:tools=")) {
+    xml = xml.replace(
+      "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"",
+      "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"",
+    );
+    changed = true;
+  }
+
+  for (const perm of REQUIRED_PERMISSIONS) {
+    if (!xml.includes(perm)) {
+      xml = xml.replace(
+        /<manifest([^>]*)>/,
+        (m) => `${m}\n    <uses-permission android:name="${perm}" />`,
+      );
+      changed = true;
+    }
+  }
+
+  if (!xml.includes("BackgroundGeolocationService")) {
+    if (xml.includes("</application>")) {
+      xml = xml.replace("</application>", `${FGS_SERVICE_BLOCK}    </application>`);
+      changed = true;
+    }
+  } else if (!xml.includes('android:foregroundServiceType="location"')) {
+    xml = xml.replace(
+      /<service([^>]*BackgroundGeolocationService[^>]*)(\/>|>)/,
+      '<service$1 android:foregroundServiceType="location"$2',
+    );
+    changed = true;
+  }
+
+  if (changed) {
+    writeFileSync(appManifest, xml);
+    console.log("Patched android/app/src/main/AndroidManifest.xml (permissions + location FGS)");
+  } else {
+    console.log("android/app/src/main/AndroidManifest.xml already has location permissions and FGS type");
+  }
+}
+
+ensureAppManifest();
 
 const START_FOREGROUND_TYPED = `if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         startForeground(NOTIFICATION_ID, backgroundNotification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
@@ -76,6 +144,8 @@ const CHANNEL_NAME_TAG =
   '    <string name="capacitor_background_geolocation_notification_channel_name">Геолокация активна</string>';
 const CHANNEL_ICON_TAG =
   '    <string name="capacitor_background_geolocation_notification_icon">mipmap/ic_launcher</string>';
+
+const appStrings = join(root, "android/app/src/main/res/values/strings.xml");
 
 if (existsSync(appStrings)) {
   let strings = readFileSync(appStrings, "utf8");

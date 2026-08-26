@@ -19,6 +19,7 @@ import {
   BACKGROUND_GEO_RESTART_EVENT,
 } from "@/lib/geo-permission";
 import { registerPlugin } from "@capacitor/core";
+import { whenCapacitorReady, isNativePluginAvailable } from "@/lib/native-ready";
 
 // Package has no JS entry (native-only). Register plugin bridge directly so
 // web builds don't try to resolve the missing module.
@@ -98,18 +99,23 @@ export const useLocationTracker = (enabled = true) => {
   }, [childId]);
 
   const publishStatus = async () => {
-    const permission = await queryGeoPermission();
-    const bgPerm = isBackgroundGeoSupported() ? await queryBackgroundGeoPermission() : "unsupported";
-    setBackgroundPermission(bgPerm);
-    emitStatus({
-      permission,
-      backgroundPermission: bgPerm,
-      lastSentAt: lastSentAtRef.current,
-      lastError: lastErrorRef.current,
-      intervalSec: intervalSecRef.current,
-      trackingEnabled: trackingEnabledRef.current && !!childIdRef.current && enabledRef.current,
-      backgroundTrackingEnabled,
-    });
+    try {
+      await whenCapacitorReady();
+      const permission = await queryGeoPermission();
+      const bgPerm = isBackgroundGeoSupported() ? await queryBackgroundGeoPermission() : "unsupported";
+      setBackgroundPermission(bgPerm);
+      emitStatus({
+        permission,
+        backgroundPermission: bgPerm,
+        lastSentAt: lastSentAtRef.current,
+        lastError: lastErrorRef.current,
+        intervalSec: intervalSecRef.current,
+        trackingEnabled: trackingEnabledRef.current && !!childIdRef.current && enabledRef.current,
+        backgroundTrackingEnabled,
+      });
+    } catch (e) {
+      console.warn("publishStatus failed", e);
+    }
   };
 
   useEffect(() => {
@@ -226,21 +232,35 @@ export const useLocationTracker = (enabled = true) => {
     if (!BackgroundGeolocation) return;
 
     try {
+      await whenCapacitorReady();
+      if (!isNativePluginAvailable("BackgroundGeolocation")) return;
+
       if (backgroundWatcherRef.current) {
-        await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
+        try {
+          await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
+        } catch {
+          /* watcher may already be gone */
+        }
         backgroundWatcherRef.current = null;
       }
 
-      // Android 13+: POST_NOTIFICATIONS must be granted before startForeground().
+      // Android 14+ throws SecurityException (process crash on some OEMs) if a
+      // location FGS is started before ACCESS_FINE_LOCATION is granted.
+      // Auto-start must not prompt; settings button requests permissions.
+      const geoPerm = await queryGeoPermission();
+      const bgPerm = await queryBackgroundGeoPermission();
+      if (geoPerm !== "granted" && bgPerm !== "always") {
+        setBackgroundTrackingEnabled(false);
+        return;
+      }
+
       await ensureLocationNotificationPermission();
 
-      // addWatcher + backgroundMessage starts the location FGS with an ongoing notification.
-      // Tapping the notification launches the app (plugin PendingIntent).
       const watcherId = await BackgroundGeolocation.addWatcher(
         {
           backgroundTitle: BG_GEO_NOTIFICATION_TITLE,
           backgroundMessage: BG_GEO_NOTIFICATION_TEXT,
-          requestPermissions: true,
+          requestPermissions: false,
           stale: false,
           distanceFilter: 0,
         },
@@ -327,13 +347,20 @@ export const useLocationTracker = (enabled = true) => {
     }
 
     const startIfPermitted = async () => {
-      await startBackgroundTracking(childId, intervalSecRef.current);
+      try {
+        await whenCapacitorReady();
+        await startBackgroundTracking(childId, intervalSecRef.current);
+      } catch (e) {
+        console.warn("background tracking start failed", e);
+      }
     };
 
     startIfPermitted();
 
     const onRestart = () => {
-      startBackgroundTracking(childId, intervalSecRef.current);
+      void startBackgroundTracking(childId, intervalSecRef.current).catch((e) => {
+        console.warn("background tracking restart failed", e);
+      });
     };
     window.addEventListener(BACKGROUND_GEO_RESTART_EVENT, onRestart);
 

@@ -14,11 +14,16 @@ export const isPushSupported = () =>
   typeof window !== "undefined" &&
   "serviceWorker" in navigator &&
   "PushManager" in window &&
-  "Notification" in window;
+  typeof Notification !== "undefined";
 
 export const getPushPermission = (): NotificationPermission => {
   if (!isPushSupported()) return "denied";
-  return Notification.permission;
+  try {
+    return Notification.permission;
+  } catch (e) {
+    console.warn("Plugin error skipped:", e);
+    return "denied";
+  }
 };
 
 export const ensureServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
@@ -28,7 +33,7 @@ export const ensureServiceWorker = async (): Promise<ServiceWorkerRegistration |
     await navigator.serviceWorker.ready;
     return reg;
   } catch (e) {
-    console.error("SW register failed", e);
+    console.warn("Plugin error skipped:", e);
     return null;
   }
 };
@@ -36,38 +41,51 @@ export const ensureServiceWorker = async (): Promise<ServiceWorkerRegistration |
 export const subscribeToPush = async (userId: string): Promise<boolean> => {
   try {
     if (!isPushSupported()) return false;
-    const permission = await Notification.requestPermission();
+    
+    let permission: NotificationPermission = "denied";
+    try {
+      permission = await Notification.requestPermission();
+    } catch (e) {
+      console.warn("Plugin error skipped:", e);
+      return false;
+    }
+    
     if (permission !== "granted") return false;
 
     const reg = await ensureServiceWorker();
     if (!reg) return false;
 
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+    try {
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+
+      const json = sub.toJSON();
+      if (!json.endpoint || !json.keys) return false;
+
+      await supabase.from("push_subscriptions").upsert(
+        {
+          user_id: userId,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh!,
+          auth: json.keys.auth!,
+          user_agent: navigator.userAgent,
+          last_synced_at: new Date().toISOString(),
+        },
+        { onConflict: "endpoint" }
+      );
+
+      return true;
+    } catch (e) {
+      console.warn("Plugin error skipped:", e);
+      return false;
     }
-
-    const json = sub.toJSON();
-    if (!json.endpoint || !json.keys) return false;
-
-    await supabase.from("push_subscriptions").upsert(
-      {
-        user_id: userId,
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh!,
-        auth: json.keys.auth!,
-        user_agent: navigator.userAgent,
-        last_synced_at: new Date().toISOString(),
-      },
-      { onConflict: "endpoint" }
-    );
-
-    return true;
   } catch (e) {
-    console.error(e);
+    console.warn("Plugin error skipped:", e);
     return false;
   }
 };
@@ -78,11 +96,19 @@ export const unsubscribeFromPush = async () => {
     const reg = await navigator.serviceWorker.getRegistration();
     const sub = await reg?.pushManager.getSubscription();
     if (sub) {
-      await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-      await sub.unsubscribe();
+      try {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+      } catch (e) {
+        console.warn("Plugin error skipped:", e);
+      }
+      try {
+        await sub.unsubscribe();
+      } catch (e) {
+        console.warn("Plugin error skipped:", e);
+      }
     }
   } catch (e) {
-    console.error(e);
+    console.warn("Plugin error skipped:", e);
   }
 };
 
@@ -108,7 +134,21 @@ export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
       };
     }
 
-    const permission = Notification.permission;
+    let permission: NotificationPermission = "denied";
+    try {
+      permission = Notification.permission;
+    } catch (e) {
+      console.warn("Plugin error skipped:", e);
+      return {
+        supported: false,
+        permission: "unsupported",
+        subscribed: false,
+        endpoint: null,
+        lastSyncedAt: null,
+        matchesCurrentUser: false,
+      };
+    }
+
     const reg = await navigator.serviceWorker.getRegistration();
     const sub = await reg?.pushManager.getSubscription();
 
@@ -126,13 +166,17 @@ export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
     let lastSyncedAt: string | null = null;
     let matchesCurrentUser = false;
     if (userId) {
-      const { data } = await supabase
-        .from("push_subscriptions")
-        .select("last_synced_at, user_id")
-        .eq("endpoint", sub.endpoint)
-        .maybeSingle();
-      lastSyncedAt = (data as any)?.last_synced_at ?? null;
-      matchesCurrentUser = data?.user_id === userId;
+      try {
+        const { data } = await supabase
+          .from("push_subscriptions")
+          .select("last_synced_at, user_id")
+          .eq("endpoint", sub.endpoint)
+          .maybeSingle();
+        lastSyncedAt = (data as any)?.last_synced_at ?? null;
+        matchesCurrentUser = data?.user_id === userId;
+      } catch (e) {
+        console.warn("Plugin error skipped:", e);
+      }
     }
 
     return {
@@ -144,7 +188,7 @@ export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
       matchesCurrentUser,
     };
   } catch (e) {
-    console.error(e);
+    console.warn("Plugin error skipped:", e);
     return {
       supported: false,
       permission: "unsupported",
@@ -155,4 +199,3 @@ export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
     };
   }
 };
-

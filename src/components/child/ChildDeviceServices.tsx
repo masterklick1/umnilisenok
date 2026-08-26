@@ -203,8 +203,16 @@ export function ChildDeviceServices() {
         }
 
         try {
-          if (user?.id && isPushSupported() && Notification.permission === "granted") {
-            await subscribeToPush(user.id).catch(() => {});
+          if (user?.id && isPushSupported()) {
+            try {
+              // Guard Notification.permission access on Android WebView
+              if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                await subscribeToPush(user.id);
+              }
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.warn("Plugin error skipped:", err);
+            }
           }
         } catch (err) {
           // eslint-disable-next-line no-console

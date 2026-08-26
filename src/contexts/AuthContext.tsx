@@ -50,8 +50,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // On login/token refresh — re-bind existing browser push subscription
         // to the current user (handles mom↔dad switch on the same device).
-        if (event === "SIGNED_IN" && session?.user && isPushSupported() && Notification.permission === "granted") {
-          subscribeToPush(session.user.id).catch(() => {});
+        // GUARD: Notification.permission can crash on Android WebView, so check and wrap in try/catch.
+        if (event === "SIGNED_IN" && session?.user && isPushSupported()) {
+          try {
+            // On Android WebView, Notification.permission may throw or be unavailable.
+            // Only subscribe if we can safely check permission.
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+              subscribeToPush(session.user.id).catch((err) => {
+                // eslint-disable-next-line no-console
+                console.warn("Plugin error skipped:", err);
+              });
+            }
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn("Plugin error skipped:", err);
+          }
         }
       }
     );

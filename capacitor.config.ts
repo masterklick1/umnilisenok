@@ -11,6 +11,11 @@ const config: CapacitorConfig = {
   //   url: "https://86978e2a-f29e-4522-8874-3ecba72c9930.lovableproject.com?forceHideBadge=true",
   //   cleartext: true,
   // },
+  android: {
+    // Required by @capacitor-community/background-geolocation so location
+    // updates do not halt after ~5 minutes in the background.
+    useLegacyBridge: true,
+  },
   plugins: {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
@@ -18,11 +23,11 @@ const config: CapacitorConfig = {
     Camera: {
       androidScaleType: "CENTER_CROP",
     },
-    BackgroundGeolocation: {
-      androidNotificationTitle: "Умный Лисёнок отслеживает геопозицию",
-      androidNotificationText: "Нажмите, чтобы закрыть отслеживание",
-      androidNotificationIconName: "ic_stat_name",
-      androidForegroundServiceType: "location",
+    // Persistent FGS notification copy is passed to BackgroundGeolocation.addWatcher
+    // (backgroundTitle / backgroundMessage). This plugin does not read
+    // androidNotificationTitle from Capacitor config.
+    LocalNotifications: {
+      iconColor: "#E67E22",
     },
   },
 };

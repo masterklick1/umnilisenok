@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import JoinPage from "./pages/JoinPage";
 import SettingsPage from "./pages/SettingsPage";
+import DeleteAccountPage from "./pages/DeleteAccountPage";
 import { ChildDeviceServices } from "./components/child/ChildDeviceServices";
 import { ChildPlaceStatusBadge } from "./components/child/ChildPlaceStatusBadge";
 
@@ -77,6 +78,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/join" element={<JoinPage />} />
+            <Route path="/delete-account" element={<DeleteAccountPage />} />
             <Route
               path="/"
               element={

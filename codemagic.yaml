@@ -27,6 +27,7 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync android
+          node scripts/patch-background-geolocation-android.mjs
       - name: Generate Capacitor Assets
         script: |
           npm install -D @capacitor/assets
@@ -137,7 +138,9 @@ workflows:
             npx cap add android
           fi
       - name: Sync Capacitor
-        script: npx cap sync android
+        script: |
+          npx cap sync android
+          node scripts/patch-background-geolocation-android.mjs
       - name: Generate Capacitor Assets
         script: |
           npm install -D @capacitor/assets

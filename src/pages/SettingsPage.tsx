@@ -277,8 +277,8 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Фоновая геолокация — для родителей */}
-        {!isChild && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
+        {/* Фоновая геолокация — native Android (уведомление FGS на устройстве ребёнка) */}
+        {Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
           <>
             <Card className="p-5 mb-4">
               <div className="flex items-center justify-between mb-3">
@@ -288,6 +288,7 @@ export default function SettingsPage() {
               </div>
               <p className="text-sm text-muted-foreground mb-4">
                 Отслеживать местоположение ребёнка даже когда приложение закрыто.
+                В шторке Android появится постоянное уведомление «Геолокация активна».
                 {backgroundGeoPermission === "always" && (
                   <span className="block mt-2 text-green-600 dark:text-green-400">✅ Фоновый трекинг активен</span>
                 )}

@@ -13,6 +13,10 @@ import {
   type GeoPermissionState,
   type BackgroundGeoPermissionState,
   isBackgroundGeoSupported,
+  ensureLocationNotificationPermission,
+  BG_GEO_NOTIFICATION_TITLE,
+  BG_GEO_NOTIFICATION_TEXT,
+  BACKGROUND_GEO_RESTART_EVENT,
 } from "@/lib/geo-permission";
 import { registerPlugin } from "@capacitor/core";
 
@@ -217,27 +221,38 @@ export const useLocationTracker = (enabled = true) => {
     };
   }, [childId]);
 
-  // Фоновая геолокация (работает при закрытом приложении)
-  const startBackgroundTracking = async (id: string, intervalSeconds: number) => {
+  // Фоновая геолокация через Foreground Service + постоянное уведомление в шторке
+  const startBackgroundTracking = async (id: string, _intervalSeconds: number) => {
     if (!BackgroundGeolocation) return;
 
     try {
       if (backgroundWatcherRef.current) {
         await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
+        backgroundWatcherRef.current = null;
       }
 
-      // Запустить фоновое отслеживание
-      const watcherId = await BackgroundGeolocation.watchPosition(
+      // Android 13+: POST_NOTIFICATIONS must be granted before startForeground().
+      await ensureLocationNotificationPermission();
+
+      // addWatcher + backgroundMessage starts the location FGS with an ongoing notification.
+      // Tapping the notification launches the app (plugin PendingIntent).
+      const watcherId = await BackgroundGeolocation.addWatcher(
         {
-          enableHighAccuracy: true,
-          timeout: 15_000,
-          maximumAge: Math.min(intervalSeconds * 1000 * 2, 60_000),
-          distanceFilter: 0, // Записывать каждый такт, не зависит от расстояния
+          backgroundTitle: BG_GEO_NOTIFICATION_TITLE,
+          backgroundMessage: BG_GEO_NOTIFICATION_TEXT,
+          requestPermissions: true,
+          stale: false,
+          distanceFilter: 0,
         },
-        async (location: any) => {
+        async (location: any, error: any) => {
+          if (error) {
+            lastErrorRef.current = error?.message || "Ошибка фонового трекера";
+            publishStatus();
+            return;
+          }
           if (!location) return;
           try {
-            const { error } = await supabase.from("child_locations").insert([
+            const { error: insertError } = await supabase.from("child_locations").insert([
               {
                 child_id: id,
                 device_source: "phone_background",
@@ -247,11 +262,10 @@ export const useLocationTracker = (enabled = true) => {
               },
             ]);
 
-            if (!error) {
+            if (!insertError) {
               lastSentAtRef.current = new Date().toISOString();
               lastErrorRef.current = null;
 
-              // Проверка геофенса
               const s = settingsRef.current;
               if (s?.geofence_enabled && s.geofence_lat != null && s.geofence_lng != null) {
                 const radius = s.geofence_radius_m || 300;
@@ -270,15 +284,11 @@ export const useLocationTracker = (enabled = true) => {
                 }
               }
             } else {
-              lastErrorRef.current = error.message;
+              lastErrorRef.current = insertError.message;
             }
           } catch (e) {
             lastErrorRef.current = e instanceof Error ? e.message : "Ошибка фоновой геолокации";
           }
-          publishStatus();
-        },
-        (error: any) => {
-          lastErrorRef.current = error?.message || "Ошибка фонового трекера";
           publishStatus();
         },
       );
@@ -317,17 +327,18 @@ export const useLocationTracker = (enabled = true) => {
     }
 
     const startIfPermitted = async () => {
-      const bgPerm = await queryBackgroundGeoPermission();
-      if (bgPerm === "always") {
-        await startBackgroundTracking(childId, intervalSecRef.current);
-      } else {
-        setBackgroundTrackingEnabled(false);
-      }
+      await startBackgroundTracking(childId, intervalSecRef.current);
     };
 
     startIfPermitted();
 
+    const onRestart = () => {
+      startBackgroundTracking(childId, intervalSecRef.current);
+    };
+    window.addEventListener(BACKGROUND_GEO_RESTART_EVENT, onRestart);
+
     return () => {
+      window.removeEventListener(BACKGROUND_GEO_RESTART_EVENT, onRestart);
       stopBackgroundTracking();
     };
   }, [enabled, childId, trackingEnabled]);

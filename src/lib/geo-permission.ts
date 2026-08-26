@@ -1,9 +1,16 @@
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
 import { registerPlugin } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
-// Native-only plugin — register bridge directly (package has no web JS entry).
+// Native-only plugin — register bridge directly (package has no JS entry).
 const BackgroundGeolocation = registerPlugin<any>("BackgroundGeolocation");
+
+/** Must match the channel id created by the community background-geolocation plugin. */
+export const BG_GEO_NOTIFICATION_CHANNEL_ID = "com.equimaps.capacitor_background_geolocation";
+export const BG_GEO_NOTIFICATION_TITLE = "Геолокация активна";
+export const BG_GEO_NOTIFICATION_TEXT = "Умный Лисёнок защищает ребёнка";
+export const BG_GEO_NOTIFICATION_CHANNEL_NAME = "Геолокация активна";
 
 export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported" | "not-determined";
 export type BackgroundGeoPermissionState = "always" | "denied" | "prompt" | "unsupported" | "not-determined";
@@ -194,6 +201,14 @@ export const requestGeoPermissionInteractive = async (): Promise<boolean> => {
   }
 };
 
+const mapBackgroundLocationState = (location?: string): BackgroundGeoPermissionState => {
+  // Capacitor permission aliases are granted/denied/prompt — not Android's "always".
+  // ACCESS_FINE_LOCATION is enough to start the location foreground service.
+  if (location === "granted" || location === "always") return "always";
+  if (location === "denied") return "denied";
+  return "prompt";
+};
+
 export const queryBackgroundGeoPermission = async (): Promise<BackgroundGeoPermissionState> => {
   if (!Capacitor.isNativePlatform()) {
     return "unsupported";
@@ -201,13 +216,46 @@ export const queryBackgroundGeoPermission = async (): Promise<BackgroundGeoPermi
 
   try {
     const perm = await BackgroundGeolocation.checkPermissions();
-    if (perm.location === "always") return "always";
-    if (perm.location === "denied") return "denied";
-    return "prompt";
+    return mapBackgroundLocationState(perm?.location);
   } catch {
     return "prompt";
   }
 };
+
+/**
+ * Android 13+ requires POST_NOTIFICATIONS for the ongoing FGS notification
+ * in the status bar. Creates the plugin's notification channel as well.
+ */
+export const ensureLocationNotificationPermission = async (): Promise<boolean> => {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
+    return false;
+  }
+
+  try {
+    let status = await LocalNotifications.checkPermissions();
+    if (status.display !== "granted") {
+      status = await LocalNotifications.requestPermissions();
+    }
+
+    await LocalNotifications.createChannel({
+      id: BG_GEO_NOTIFICATION_CHANNEL_ID,
+      name: BG_GEO_NOTIFICATION_CHANNEL_NAME,
+      description: BG_GEO_NOTIFICATION_TEXT,
+      importance: 3,
+      visibility: 1,
+      vibration: false,
+      lights: false,
+    }).catch(() => {
+      /* Channel is also created by the native plugin on load. */
+    });
+
+    return status.display === "granted";
+  } catch {
+    return false;
+  }
+};
+
+export const BACKGROUND_GEO_RESTART_EVENT = "restart-background-geo";
 
 export const requestBackgroundGeoPermission = async (): Promise<BackgroundGeoPermissionState> => {
   if (!Capacitor.isNativePlatform()) {
@@ -215,19 +263,17 @@ export const requestBackgroundGeoPermission = async (): Promise<BackgroundGeoPer
   }
 
   try {
+    await ensureLocationNotificationPermission();
+
     const perm = await BackgroundGeolocation.requestPermissions({
       permissions: ["location"],
-      rationale: {
-        title: "📍 Доступ к геопозиции в фоне",
-        message: "Приложению нужен доступ к вашей геопозиции, даже когда оно закрыто, чтобы отслеживать местоположение ребёнка.",
-        buttonNegative: "Отменить",
-        buttonPositive: "Разрешить",
-      },
     });
-    
-    if (perm.location === "always") return "always";
-    if (perm.location === "denied") return "denied";
-    return "prompt";
+
+    const state = mapBackgroundLocationState(perm?.location);
+    if (state === "always" && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+    }
+    return state;
   } catch {
     return "denied";
   }

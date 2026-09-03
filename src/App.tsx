@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import Index from "./pages/Index";
@@ -30,7 +30,8 @@ const ChildDeviceServices = lazy(async () => {
     const mod = await import("./components/child/ChildDeviceServices");
     return { default: mod.ChildDeviceServices };
   } catch (e) {
-    console.error(e);
+    // eslint-disable-next-line no-console
+    console.error("[ChildDeviceServices] Failed to load:", e);
     return { default: () => null };
   }
 });
@@ -43,26 +44,60 @@ class NativeServicesBoundary extends Component<{ children: ReactNode }, { hasErr
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error(error);
-    console.error(info);
+    // eslint-disable-next-line no-console
+    console.error("[NativeServicesBoundary] Error caught:", error);
+    // eslint-disable-next-line no-console
+    console.error("[NativeServicesBoundary] Stack:", info.componentStack);
   }
 
   render() {
-    if (this.state.hasError) return null;
+    if (this.state.hasError) {
+      // Silent fail — don't crash the entire app
+      return null;
+    }
     return this.props.children;
   }
 }
 
-/** Mount device geo/push after the first paint so a plugin throw cannot block the UI. */
-function DeferredChildDeviceServices() {
-  const [mount, setMount] = useState(false);
+/**
+ * Conditional wrapper: только ребенок на защищённом маршруте может запустить нативные сервисы.
+ * НЕ запускаем на:
+ * - /auth, /join, /delete-account (публичные маршруты)
+ * - родительском аккаунте
+ * - лукат дата еще загружается
+ */
+function SafeChildDeviceServices() {
+  const { user, loading: authLoading, isDemo } = useAuth();
+  const { isChild, loading: roleLoading } = useUserRole();
+  const location = useLocation();
+  const [mounted, setMounted] = useState(false);
+
+  // Проверяем все условия для монтирования
+  const isAuthRoute = location.pathname.startsWith("/auth") || 
+                     location.pathname.startsWith("/join") || 
+                     location.pathname.startsWith("/delete-account");
+  
+  const shouldMount = !authLoading && !roleLoading && !!user?.id && !isDemo && isChild && !isAuthRoute;
 
   useEffect(() => {
-    const id = window.setTimeout(() => setMount(true), 0);
-    return () => window.clearTimeout(id);
-  }, []);
+    // Если условия больше не выполняются, размонтируем
+    if (!shouldMount) {
+      setMounted(false);
+      return;
+    }
 
-  if (!mount) return null;
+    // Даем WebView/Capacitor extra время для инициализации
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [shouldMount]);
+
+  // Не монтируем, если не полностью готово
+  if (!shouldMount || !mounted) {
+    return null;
+  }
 
   return (
     <NativeServicesBoundary>
@@ -122,8 +157,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          {/* Mount child device services only on native platforms to avoid any plugin calls on web */}
-          {Capacitor.isNativePlatform() && <DeferredChildDeviceServices />}
+          {/* Монтируем детские нативные сервисы ТОЛЬКО для аутентифицированного ребенка на защищенных маршрутах */}
+          {Capacitor.isNativePlatform() && <SafeChildDeviceServices />}
           <ChildPlaceStatusBadge />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />

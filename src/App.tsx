@@ -51,9 +51,9 @@ class NativeServicesBoundary extends Component<{ children: ReactNode }, { hasErr
   }
 }
 
-function SafeChildDeviceServices() {
+function SafeDeviceServices() {
   const { user, loading: authLoading, isDemo } = useAuth();
-  const { isChild, loading: roleLoading } = useUserRole();
+  const { loading: roleLoading } = useUserRole();
   const location = useLocation();
   const [mounted, setMounted] = useState(false);
 
@@ -62,7 +62,7 @@ function SafeChildDeviceServices() {
     location.pathname.startsWith("/join") ||
     location.pathname.startsWith("/delete-account");
 
-  const shouldMount = !authLoading && !roleLoading && !!user?.id && !isDemo && isChild && !isAuthRoute;
+  const shouldMount = !authLoading && !roleLoading && !!user?.id && !isDemo && !isAuthRoute;
 
   useEffect(() => {
     if (!shouldMount) {
@@ -138,7 +138,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          {Capacitor.isNativePlatform() && <SafeChildDeviceServices />}
+          {Capacitor.isNativePlatform() && <SafeDeviceServices />}
           <ChildPlaceStatusBadge />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />

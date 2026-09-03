@@ -30,8 +30,6 @@ const ChildDeviceServices = lazy(async () => {
     const mod = await import("./components/child/ChildDeviceServices");
     return { default: mod.ChildDeviceServices };
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error("[ChildDeviceServices] Failed to load:", e);
     return { default: () => null };
   }
 });
@@ -43,50 +41,35 @@ class NativeServicesBoundary extends Component<{ children: ReactNode }, { hasErr
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    // eslint-disable-next-line no-console
-    console.error("[NativeServicesBoundary] Error caught:", error);
-    // eslint-disable-next-line no-console
-    console.error("[NativeServicesBoundary] Stack:", info.componentStack);
+  componentDidCatch() {
+    // Silent
   }
 
   render() {
-    if (this.state.hasError) {
-      // Silent fail — don't crash the entire app
-      return null;
-    }
+    if (this.state.hasError) return null;
     return this.props.children;
   }
 }
 
-/**
- * Conditional wrapper: только ребенок на защищённом маршруте может запустить нативные сервисы.
- * НЕ запускаем на:
- * - /auth, /join, /delete-account (публичные маршруты)
- * - родительском аккаунте
- * - лукат дата еще загружается
- */
 function SafeChildDeviceServices() {
   const { user, loading: authLoading, isDemo } = useAuth();
   const { isChild, loading: roleLoading } = useUserRole();
   const location = useLocation();
   const [mounted, setMounted] = useState(false);
 
-  // Проверяем все условия для монтирования
-  const isAuthRoute = location.pathname.startsWith("/auth") || 
-                     location.pathname.startsWith("/join") || 
-                     location.pathname.startsWith("/delete-account");
-  
+  const isAuthRoute =
+    location.pathname.startsWith("/auth") ||
+    location.pathname.startsWith("/join") ||
+    location.pathname.startsWith("/delete-account");
+
   const shouldMount = !authLoading && !roleLoading && !!user?.id && !isDemo && isChild && !isAuthRoute;
 
   useEffect(() => {
-    // Если условия больше не выполняются, размонтируем
     if (!shouldMount) {
       setMounted(false);
       return;
     }
 
-    // Даем WebView/Capacitor extra время для инициализации
     const timer = setTimeout(() => {
       setMounted(true);
     }, 1000);
@@ -94,7 +77,6 @@ function SafeChildDeviceServices() {
     return () => clearTimeout(timer);
   }, [shouldMount]);
 
-  // Не монтируем, если не полностью готово
   if (!shouldMount || !mounted) {
     return null;
   }
@@ -108,7 +90,6 @@ function SafeChildDeviceServices() {
   );
 }
 
-// Protected Route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
@@ -157,7 +138,6 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          {/* Монтируем детские нативные сервисы ТОЛЬКО для аутентифицированного ребенка на защищенных маршрутах */}
           {Capacitor.isNativePlatform() && <SafeChildDeviceServices />}
           <ChildPlaceStatusBadge />
           <Routes>
@@ -244,7 +224,6 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

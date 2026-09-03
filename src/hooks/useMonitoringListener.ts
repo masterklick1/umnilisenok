@@ -1,261 +1,258 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
-import { useToast } from "@/hooks/use-toast";
-import { getGeoPosition, getCachedGeoPosition } from "@/lib/geo-permission";
+import { Camera } from "@capacitor/camera";
 
 interface MonitoringRequest {
   id: string;
-  child_id: string;
   request_type: "photo" | "audio" | "location";
-  status: string;
+  status: "pending" | "completed" | "failed";
 }
 
-const processing = new Set<string>();
+const recordAudio = async (durationMs: number): Promise<Blob | null> => {
+  try {
+    // Check if MediaDevices API is available
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      // eslint-disable-next-line no-console
+      console.warn("MediaDevices API not available");
+      return null;
+    }
 
-async function handlePhoto(req: MonitoringRequest, childId: string) {
-  let blob: Blob;
+    let stream: MediaStream | null = null;
+    let recorder: MediaRecorder | null = null;
 
-  if (Capacitor.isNativePlatform()) {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks: Blob[] = [];
+
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => {
+        try {
+          chunks.push(e.data);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("Failed to push audio chunk:", err);
+        }
+      };
+
+      await new Promise<void>((resolve) => {
+        try {
+          if (!recorder) return resolve();
+          recorder.onstop = () => resolve();
+          recorder.start();
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("Failed to start recorder:", err);
+          resolve();
+        }
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, durationMs));
+
+      try {
+        if (recorder && recorder.state !== "inactive") {
+          recorder.stop();
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to stop recorder:", err);
+      }
+
+      return chunks.length > 0 ? new Blob(chunks, { type: "audio/webm" }) : null;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Audio recording failed:", err);
+      return null;
+    } finally {
+      // Clean up stream
+      if (stream) {
+        try {
+          stream.getTracks().forEach((track) => track.stop());
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("Failed to stop stream:", err);
+        }
+      }
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("recordAudio outer catch:", err);
+    return null;
+  }
+};
+
+const takePhoto = async (): Promise<Blob | null> => {
+  try {
+    if (!Capacitor.isNativePlatform()) {
+      // eslint-disable-next-line no-console
+      console.warn("Camera not available on web");
+      return null;
+    }
+
     try {
       const photo = await Camera.getPhoto({
-        quality: 60,
+        quality: 90,
         allowEditing: false,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
+        resultType: "blob" as any,
       });
-      if (!photo.base64String) throw new Error("No photo data");
-      const bin = atob(photo.base64String);
-      const arr = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-      blob = new Blob([arr], { type: "image/jpeg" });
-    } catch (e) {
-      console.warn('Plugin error skipped:', e);
-      throw new Error("Camera plugin failed");
+
+      if (photo.blob) {
+        return photo.blob;
+      }
+      return null;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Camera.getPhoto failed:", err);
+      return null;
     }
-  } else {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      const track = stream.getVideoTracks()[0];
-      const video = document.createElement("video");
-      video.srcObject = stream;
-      await video.play();
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext("2d")!.drawImage(video, 0, 0);
-      blob = await new Promise<Blob>((r) =>
-        canvas.toBlob((b) => r(b!), "image/jpeg", 0.6),
-      );
-      track.stop();
-    } catch (e) {
-      console.warn('Plugin error skipped:', e);
-      throw new Error("getUserMedia failed");
-    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("takePhoto outer catch:", err);
+    return null;
   }
+};
 
-  const path = `${childId}/photo-${Date.now()}.jpg`;
-  const { error } = await supabase.storage.from("monitoring").upload(path, blob, {
-    contentType: "image/jpeg",
-  });
-  if (error) throw error;
-
-  await supabase
-    .from("monitoring_requests")
-    .update({
-      status: "fulfilled",
-      result_path: path,
-      fulfilled_at: new Date().toISOString(),
-    })
-    .eq("id", req.id);
-}
-
-async function handleAudio(req: MonitoringRequest, childId: string) {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
-    const chunks: Blob[] = [];
-    recorder.ondataavailable = (e) => chunks.push(e.data);
-
-    await new Promise<void>((resolve) => {
-      recorder.onstop = () => resolve();
-      recorder.start();
-      setTimeout(() => recorder.stop(), 5000);
-    });
-    stream.getTracks().forEach((t) => t.stop());
-
-    const blob = new Blob(chunks, { type: "audio/webm" });
-    const path = `${childId}/audio-${Date.now()}.webm`;
-    const { error } = await supabase.storage.from("monitoring").upload(path, blob, {
-      contentType: "audio/webm",
-    });
-    if (error) throw error;
-
-    await supabase
-      .from("monitoring_requests")
-      .update({
-        status: "fulfilled",
-        result_path: path,
-        fulfilled_at: new Date().toISOString(),
-      })
-      .eq("id", req.id);
-  } catch (e) {
-    console.warn('Plugin error skipped:', e);
-    throw new Error("Audio recording failed");
-  }
-}
-
-async function handleLocation(req: MonitoringRequest, childId: string) {
-  try {
-    let pos;
-    try {
-      pos = await getGeoPosition(0, 45_000, false);
-    } catch (e) {
-      console.warn('Plugin error skipped:', e);
-      const cached = getCachedGeoPosition(900_000);
-      if (!cached) throw new Error("GPS не ответил");
-      pos = cached;
-    }
-
-    const { error: locError } = await supabase.from("child_locations").insert([
-      {
-        child_id: childId,
-        device_source: "phone",
-        latitude: pos.latitude,
-        longitude: pos.longitude,
-        accuracy: pos.accuracy,
-      },
-    ]);
-    if (locError) throw new Error(locError.message);
-
-    const { error: reqError } = await supabase
-      .from("monitoring_requests")
-      .update({
-        status: "fulfilled",
-        result_data: {
-          latitude: pos.latitude,
-          longitude: pos.longitude,
-          accuracy: pos.accuracy,
-          device_source: "phone",
-        },
-        fulfilled_at: new Date().toISOString(),
-      })
-      .eq("id", req.id);
-    if (reqError) throw new Error(reqError.message);
-  } catch (e) {
-    console.warn('Plugin error skipped:', e);
-    throw e;
-  }
-}
-
-async function fulfillRequest(req: MonitoringRequest, childId: string) {
-  if (processing.has(req.id)) return;
-  processing.add(req.id);
-
-  try {
-    if (req.request_type === "photo") {
-      await handlePhoto(req, childId);
-    } else if (req.request_type === "audio") {
-      await handleAudio(req, childId);
-    } else if (req.request_type === "location") {
-      await handleLocation(req, childId);
-    }
-  } finally {
-    processing.delete(req.id);
-  }
-}
-
-/**
- * Listens for parent's monitoring requests and fulfills them
- * (take photo / record audio / send location).
- * Polls pending queue — Realtime alone misses requests if app was in background.
- */
-export const useMonitoringListener = (enabled = true) => {
+export const useMonitoringListener = (enabled: boolean = true) => {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const toastRef = useRef(toast);
-  toastRef.current = toast;
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!enabled || !user?.id) return;
 
-    const childId = user.id;
+    let active = true;
 
-    const processRequest = async (req: MonitoringRequest, notify: boolean) => {
-      if (req.status !== "pending") return;
-
-      if (notify) {
-        toastRef.current({
-          title: "👀 Родитель проверяет тебя",
-          description:
-            req.request_type === "photo"
-              ? "Делаем фото"
-              : req.request_type === "audio"
-                ? "Записываем звук (5 сек)"
-                : "Отправляем местоположение",
-        });
-      }
-
+    const setupListener = () => {
       try {
-        await fulfillRequest(req, childId);
-        if (req.request_type === "location") {
-          window.dispatchEvent(new CustomEvent("force-location-send"));
+        const channel = supabase
+          .channel(`monitoring-${user.id}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "parent_monitoring_requests",
+              filter: `child_id=eq.${user.id}`,
+            },
+            async (payload) => {
+              if (!active) return;
+
+              const req = payload.new as MonitoringRequest;
+              if (!req.id) return;
+
+              try {
+                let blob: Blob | null = null;
+                let dataUrl: string | null = null;
+
+                // Execute monitoring action with full error protection
+                if (req.request_type === "audio") {
+                  try {
+                    blob = await recordAudio(5000);
+                    if (blob) {
+                      dataUrl = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          try {
+                            resolve(reader.result as string);
+                          } catch (e) {
+                            // eslint-disable-next-line no-console
+                            console.warn("FileReader failed:", e);
+                            resolve("");
+                          }
+                        };
+                        reader.onerror = () => resolve("");
+                        reader.readAsDataURL(blob!);
+                      });
+                    }
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.warn("Audio capture failed:", err);
+                  }
+                } else if (req.request_type === "photo") {
+                  try {
+                    blob = await takePhoto();
+                    if (blob) {
+                      dataUrl = await new Promise<string>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          try {
+                            resolve(reader.result as string);
+                          } catch (e) {
+                            // eslint-disable-next-line no-console
+                            console.warn("FileReader failed:", e);
+                            resolve("");
+                          }
+                        };
+                        reader.onerror = () => resolve("");
+                        reader.readAsDataURL(blob!);
+                      });
+                    }
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.warn("Photo capture failed:", err);
+                  }
+                }
+
+                // Mark as completed/failed regardless of capture success
+                try {
+                  await supabase
+                    .from("parent_monitoring_requests")
+                    .update({
+                      status: dataUrl ? "completed" : "failed",
+                      data_url: dataUrl || null,
+                      completed_at: new Date().toISOString(),
+                    })
+                    .eq("id", req.id);
+                } catch (err) {
+                  // eslint-disable-next-line no-console
+                  console.warn("Failed to update monitoring request status:", err);
+                }
+              } catch (err) {
+                // eslint-disable-next-line no-console
+                console.warn("Monitoring request processing failed:", err);
+              }
+            },
+          )
+          .subscribe((status) => {
+            if (status === "CLOSED") {
+              // eslint-disable-next-line no-console
+              console.warn("Monitoring subscription closed");
+            }
+          });
+
+        if (active) {
+          unsubscribeRef.current = () => {
+            try {
+              supabase.removeChannel(channel);
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.warn("Failed to remove monitoring channel:", e);
+            }
+          };
         }
-      } catch (e) {
-        console.error("Monitoring request failed:", e);
-        await supabase
-          .from("monitoring_requests")
-          .update({
-            status: "failed",
-            fulfilled_at: new Date().toISOString(),
-            result_data: { error: e instanceof Error ? e.message : "unknown" },
-          })
-          .eq("id", req.id);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("setupListener failed:", err);
       }
     };
 
-    const pollPending = async () => {
-      try {
-        const { data } = await supabase
-          .from("monitoring_requests")
-          .select("id, child_id, request_type, status")
-          .eq("child_id", childId)
-          .eq("status", "pending")
-          .order("created_at", { ascending: true })
-          .limit(5);
-
-        for (const row of data || []) {
-          await processRequest(row as MonitoringRequest, false);
-        }
-      } catch (e) {
-        console.warn('Plugin error skipped:', e);
-      }
-    };
-
-    pollPending();
-    const pollInterval = window.setInterval(pollPending, 12_000);
-
-    const channel = supabase
-      .channel(`monitoring-${childId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "monitoring_requests",
-          filter: `child_id=eq.${childId}`,
-        },
-        async (payload) => {
-          await processRequest(payload.new as MonitoringRequest, true);
-        },
-      )
-      .subscribe();
+    try {
+      setupListener();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("useMonitoringListener setup failed:", err);
+    }
 
     return () => {
-      window.clearInterval(pollInterval);
-      supabase.removeChannel(channel);
+      active = false;
+      if (unsubscribeRef.current) {
+        try {
+          unsubscribeRef.current();
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("Failed to unsubscribe from monitoring:", e);
+        }
+      }
     };
   }, [enabled, user?.id]);
 };

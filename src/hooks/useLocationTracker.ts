@@ -56,7 +56,14 @@ const distanceM = (lat1: number, lng1: number, lat2: number, lng2: number) => {
 };
 
 const emitStatus = (status: LocationTrackerStatus) => {
-  window.dispatchEvent(new CustomEvent("location-tracker-status", { detail: status }));
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("location-tracker-status", { detail: status }));
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("Failed to emit status:", e);
+  }
 };
 
 export const useLocationTracker = (enabled = true) => {
@@ -84,415 +91,333 @@ export const useLocationTracker = (enabled = true) => {
   }, [intervalSec]);
 
   useEffect(() => {
-    trackingEnabledRef.current = trackingEnabled;
-  }, [trackingEnabled]);
-
-  useEffect(() => {
     enabledRef.current = enabled;
   }, [enabled]);
 
+  // Init & resolve child ID
   useEffect(() => {
-    childIdRef.current = childId;
-  }, [childId]);
+    if (!user?.id || !enabled) return;
 
-  const publishStatus = async () => {
-    try {
-      await whenCapacitorReady();
-      const permission = await queryGeoPermission();
-      const bgPerm = isBackgroundGeoSupported() ? await queryBackgroundGeoPermission() : "unsupported";
-      setBackgroundPermission(bgPerm);
-      emitStatus({
-        permission,
-        backgroundPermission: bgPerm,
-        lastSentAt: lastSentAtRef.current,
-        lastError: lastErrorRef.current,
-        intervalSec: intervalSecRef.current,
-        trackingEnabled: trackingEnabledRef.current && !!childIdRef.current && enabledRef.current,
-        backgroundTrackingEnabled,
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    if (!user?.id) {
-      setChildId(null);
-      return;
-    }
     let active = true;
 
-    const resolve = async () => {
-      const id = await resolveChildTrackingId(user);
-      if (active) setChildId(id);
+    const init = async () => {
+      try {
+        const id = await resolveChildTrackingId(user.id);
+        if (active) {
+          setChildId(id);
+          childIdRef.current = id;
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to resolve child ID:", e);
+        if (active) {
+          setChildId(null);
+        }
+      }
     };
 
-    resolve();
-    const interval = window.setInterval(resolve, 30_000);
+    void init();
+    return () => {
+      active = false;
+    };
+  }, [user?.id, enabled]);
 
+  // Poll settings
+  useEffect(() => {
+    if (!childId || !enabled) return;
+
+    let active = true;
+
+    const pollSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from("child_settings")
+          .select("*")
+          .eq("child_id", childId)
+          .single();
+
+        if (active && data) {
+          settingsRef.current = data as Settings;
+          setTrackingEnabled(data.location_enabled ?? true);
+          setIntervalSec(data.location_interval_seconds ?? DEFAULT_INTERVAL_SEC);
+          setBackgroundTrackingEnabled(data.geofence_enabled ?? false);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to poll settings:", e);
+      }
+    };
+
+    void pollSettings();
+    const interval = window.setInterval(pollSettings, SETTINGS_POLL_MS);
     return () => {
       active = false;
       window.clearInterval(interval);
     };
-  }, [user]);
+  }, [childId, enabled]);
 
-  const loadSettings = async (id: string) => {
-    const { data } = await supabase
-      .from("child_settings")
-      .select(
-        "location_interval_seconds, location_enabled, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m",
-      )
-      .eq("child_id", id)
-      .maybeSingle();
-
-    if (data) {
-      settingsRef.current = data as Settings;
-      const sec = Math.max(15, data.location_interval_seconds || DEFAULT_INTERVAL_SEC);
-      setIntervalSec(sec);
-      intervalSecRef.current = sec;
-      setTrackingEnabled(data.location_enabled !== false);
-      return;
-    }
-
-    const { data: inserted, error } = await supabase
-      .from("child_settings")
-      .upsert(
-        {
-          child_id: id,
-          location_interval_seconds: DEFAULT_INTERVAL_SEC,
-          location_enabled: true,
-        },
-        { onConflict: "child_id" },
-      )
-      .select(
-        "location_interval_seconds, location_enabled, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m",
-      )
-      .maybeSingle();
-
-    if (error) {
-      lastErrorRef.current = `Настройки: ${error.message}`;
-    } else if (inserted) {
-      settingsRef.current = inserted as Settings;
-      const sec = Math.max(15, inserted.location_interval_seconds || DEFAULT_INTERVAL_SEC);
-      setIntervalSec(sec);
-      intervalSecRef.current = sec;
-      setTrackingEnabled(inserted.location_enabled !== false);
-    }
+  const publishStatus = () => {
+    emitStatus({
+      permission: "prompt",
+      backgroundPermission,
+      lastSentAt: lastSentAtRef.current,
+      lastError: lastErrorRef.current,
+      intervalSec: intervalSecRef.current,
+      trackingEnabled: trackingEnabledRef.current,
+      backgroundTrackingEnabled,
+    });
   };
 
-  useEffect(() => {
-    if (!childId) return;
-    let active = true;
+  const tick = async (force = false) => {
+    if (!trackingEnabledRef.current || !childIdRef.current) return;
+    if (tickInFlightRef.current && !force) return;
 
-    const apply = (row: Settings | null) => {
-      if (!row) return;
-      settingsRef.current = row;
-      const sec = Math.max(15, row.location_interval_seconds || DEFAULT_INTERVAL_SEC);
-      setIntervalSec(sec);
-      intervalSecRef.current = sec;
-      setTrackingEnabled(row.location_enabled !== false);
-    };
+    tickInFlightRef.current = true;
 
-    (async () => {
-      await loadSettings(childId);
-      if (active) publishStatus();
-    })();
-
-    const ch = supabase
-      .channel(`child-settings-${childId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "child_settings", filter: `child_id=eq.${childId}` },
-        (payload) => {
-          apply(payload.new as Settings);
+    try {
+      try {
+        const pos = await getGeoPosition(120_000, 45_000, !force);
+        if (!pos) {
+          lastErrorRef.current = "No position";
           publishStatus();
-        },
-      )
-      .subscribe();
-
-    settingsPollRef.current = window.setInterval(() => {
-      if (active) loadSettings(childId).then(() => publishStatus());
-    }, SETTINGS_POLL_MS);
-
-    return () => {
-      active = false;
-      if (settingsPollRef.current) {
-        window.clearInterval(settingsPollRef.current);
-        settingsPollRef.current = null;
-      }
-      supabase.removeChannel(ch);
-    };
-  }, [childId]);
-
-  // Фоновая геолокация через Foreground Service + постоянное уведомление в шторке
-  const startBackgroundTracking = async (id: string, _intervalSeconds: number) => {
-    try {
-      if (!Capacitor.isNativePlatform()) return;
-      await whenCapacitorReady();
-      if (!Capacitor.isPluginAvailable("BackgroundGeolocation")) return;
-      if (!isNativePluginAvailable("BackgroundGeolocation")) return;
-
-      const BackgroundGeolocation = getBackgroundGeolocation();
-      if (!BackgroundGeolocation) return;
-
-      if (backgroundWatcherRef.current) {
-        try {
-          await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
-        } catch (e) {
-          console.warn('Plugin error skipped:', e);
-        }
-        backgroundWatcherRef.current = null;
-      }
-
-      try {
-        const geoPerm = await queryGeoPermission();
-        const bgPerm = await queryBackgroundGeoPermission();
-        if (geoPerm !== "granted" && bgPerm !== "always") {
-          setBackgroundTrackingEnabled(false);
           return;
         }
 
-        await ensureLocationNotificationPermission();
+        // Check geofence if enabled
+        if (settingsRef.current?.geofence_enabled && settingsRef.current?.geofence_lat) {
+          const dist = distanceM(
+            pos.latitude,
+            pos.longitude,
+            settingsRef.current.geofence_lat,
+            settingsRef.current.geofence_lng!,
+          );
+          const inside = dist <= (settingsRef.current.geofence_radius_m ?? 100);
 
-        const watcherId = await BackgroundGeolocation.addWatcher(
-          {
-            backgroundTitle: BG_GEO_NOTIFICATION_TITLE,
-            backgroundMessage: BG_GEO_NOTIFICATION_TEXT,
-            requestPermissions: false,
-            stale: false,
-            distanceFilter: 0,
-          },
-          async (location: any, error: any) => {
-            if (error) {
-              lastErrorRef.current = error?.message || "Ошибка фонового трекера";
-              publishStatus();
-              return;
-            }
-            if (!location) return;
+          if (inside !== lastInsideRef.current) {
+            lastInsideRef.current = inside;
             try {
-              const { error: insertError } = await supabase.from("child_locations").insert([
-                {
-                  child_id: id,
-                  device_source: "phone_background",
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  accuracy: location.accuracy ?? null,
-                },
-              ]);
-
-              if (!insertError) {
-                lastSentAtRef.current = new Date().toISOString();
-                lastErrorRef.current = null;
-
-                const s = settingsRef.current;
-                if (s?.geofence_enabled && s.geofence_lat != null && s.geofence_lng != null) {
-                  const radius = s.geofence_radius_m || 300;
-                  const d = distanceM(location.latitude, location.longitude, s.geofence_lat, s.geofence_lng);
-                  const inside = d <= radius;
-                  const prev = lastInsideRef.current;
-                  lastInsideRef.current = inside;
-                  if (prev !== null && prev !== inside) {
-                    await supabase.from("geofence_events").insert({
-                      child_id: id,
-                      event_type: inside ? "enter" : "exit",
-                      latitude: location.latitude,
-                      longitude: location.longitude,
-                      distance_m: d,
-                    });
-                  }
-                }
-              } else {
-                lastErrorRef.current = insertError.message;
-              }
+              await supabase.from("child_place_status").upsert({
+                child_id: childIdRef.current,
+                inside,
+                detected_at: new Date().toISOString(),
+              });
             } catch (e) {
-              lastErrorRef.current = e instanceof Error ? e.message : "Ошибка фоновой геолокации";
+              // eslint-disable-next-line no-console
+              console.warn("Geofence insert failed:", e);
             }
-            publishStatus();
-          },
-        );
+          }
+        }
 
-        backgroundWatcherRef.current = watcherId;
-        lastErrorRef.current = null;
-        setBackgroundTrackingEnabled(true);
-        publishStatus();
-      } catch (e) {
-        console.warn('Plugin error skipped:', e);
-        lastErrorRef.current = e instanceof Error ? e.message : "Не удалось запустить фоновый трекинг";
-        setBackgroundTrackingEnabled(false);
-        publishStatus();
-      }
-    } catch (e) {
-      console.warn('Plugin error skipped:', e);
-      lastErrorRef.current = e instanceof Error ? e.message : "Не удалось запустить фоновый трекинг";
-      setBackgroundTrackingEnabled(false);
-      publishStatus();
-    }
-  };
-
-  const stopBackgroundTracking = async () => {
-    try {
-      if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable("BackgroundGeolocation")) {
-        backgroundWatcherRef.current = null;
-        setBackgroundTrackingEnabled(false);
-        return;
-      }
-      const BackgroundGeolocation = getBackgroundGeolocation();
-      if (!BackgroundGeolocation) return;
-
-      if (backgroundWatcherRef.current) {
+        // Always upsert location
         try {
-          await BackgroundGeolocation.removeWatcher({ id: backgroundWatcherRef.current });
+          await supabase.from("child_locations").insert([
+            {
+              child_id: childIdRef.current,
+              device_source: "phone_web",
+              latitude: pos.latitude,
+              longitude: pos.longitude,
+              accuracy: pos.accuracy,
+            },
+          ]);
         } catch (e) {
-          console.warn('Plugin error skipped:', e);
+          // eslint-disable-next-line no-console
+          console.warn("Location insert failed:", e);
         }
-        backgroundWatcherRef.current = null;
-      }
-      setBackgroundTrackingEnabled(false);
-      publishStatus();
-    } catch (e) {
-      console.warn('Plugin error skipped:', e);
-    }
-  };
-
-  // Фоновое отслеживание (включается параллельно с переднеплановым)
-  useEffect(() => {
-    if (!enabled || !childId || !trackingEnabled || !isBackgroundGeoSupported()) {
-      stopBackgroundTracking();
-      return;
-    }
-
-    const startIfPermitted = async () => {
-      try {
-        if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable("BackgroundGeolocation")) {
-          return;
-        }
-        await whenCapacitorReady();
-        await startBackgroundTracking(childId, intervalSecRef.current);
-      } catch (e) {
-        console.warn('Plugin error skipped:', e);
-      }
-    };
-
-    startIfPermitted();
-
-    const onRestart = () => {
-      void startBackgroundTracking(childId, intervalSecRef.current).catch((e) => {
-        console.warn('Plugin error skipped:', e);
-      });
-    };
-    window.addEventListener(BACKGROUND_GEO_RESTART_EVENT, onRestart);
-
-    return () => {
-      window.removeEventListener(BACKGROUND_GEO_RESTART_EVENT, onRestart);
-      stopBackgroundTracking();
-    };
-  }, [enabled, childId, trackingEnabled]);
-
-  // Переднеплановое отслеживание (работает, пока приложение открыто)
-  useEffect(() => {
-    if (!enabled || !childId || !trackingEnabled) {
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      publishStatus();
-      return;
-    }
-
-    let cancelled = false;
-    startGeoWatch();
-
-    const checkGeofence = async (lat: number, lng: number) => {
-      const s = settingsRef.current;
-      if (!s?.geofence_enabled || s.geofence_lat == null || s.geofence_lng == null) {
-        lastInsideRef.current = null;
-        return;
-      }
-      const radius = s.geofence_radius_m || 300;
-      const d = distanceM(lat, lng, s.geofence_lat, s.geofence_lng);
-      const inside = d <= radius;
-      const prev = lastInsideRef.current;
-      lastInsideRef.current = inside;
-      if (prev === null || prev === inside) return;
-
-      await supabase.from("geofence_events").insert({
-        child_id: childId,
-        event_type: inside ? "enter" : "exit",
-        latitude: lat,
-        longitude: lng,
-        distance_m: d,
-      });
-      supabase.functions
-        .invoke("notify-geofence", { body: { event_type: inside ? "enter" : "exit", distance_m: d } })
-        .catch(() => {});
-    };
-
-    const obtainPosition = async (forceFresh: boolean) => {
-      const maxAge = Math.max(intervalSecRef.current * 1000, 120_000);
-      if (!forceFresh) {
-        const cached = getCachedGeoPosition(maxAge * 2);
-        if (cached) return cached;
-      }
-      return getGeoPosition(maxAge, 45_000, !forceFresh);
-    };
-
-    const tick = async (force = false) => {
-      if (tickInFlightRef.current || cancelled) return;
-
-      tickInFlightRef.current = true;
-      try {
-        const pos = await obtainPosition(force);
-
-        const { error } = await supabase.from("child_locations").insert([
-          {
-            child_id: childId,
-            device_source: "phone",
-            latitude: pos.latitude,
-            longitude: pos.longitude,
-            accuracy: pos.accuracy,
-          },
-        ]);
-
-        if (error) throw new Error(error.message);
 
         lastSentAtRef.current = new Date().toISOString();
         lastErrorRef.current = null;
-        await checkGeofence(pos.latitude, pos.longitude);
-      } catch (e) {
-        lastErrorRef.current = e instanceof Error ? e.message : "Ошибка геолокации";
-        console.error(e);
-      } finally {
-        tickInFlightRef.current = false;
-        publishStatus();
+      } catch (posErr) {
+        lastErrorRef.current = (posErr as Error).message || "Position error";
       }
+
+      publishStatus();
+    } finally {
+      tickInFlightRef.current = false;
+    }
+  };
+
+  // Location tracking loop
+  useEffect(() => {
+    if (!enabled || !childId) {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+      }
+      return;
+    }
+
+    trackingEnabledRef.current = trackingEnabled;
+
+    const scheduleNext = () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => {
+        void tick().then(scheduleNext);
+      }, intervalSecRef.current * 1000);
     };
 
-    tick(true);
-    timerRef.current = window.setInterval(() => tick(false), intervalSecRef.current * 1000);
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") tick(true);
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
-    const onForceSend = () => tick(true);
-    window.addEventListener("force-location-send", onForceSend);
+    void tick().then(scheduleNext);
 
     return () => {
-      cancelled = true;
-      stopGeoWatch();
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("force-location-send", onForceSend);
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-        timerRef.current = null;
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+    };
+  }, [enabled, childId, trackingEnabled]);
+
+  // Background geo watcher
+  useEffect(() => {
+    if (!enabled || !childId || !Capacitor.isNativePlatform()) return;
+
+    let active = true;
+
+    const setupBackgroundGeo = async () => {
+      try {
+        await whenCapacitorReady();
+        if (!active) return;
+
+        try {
+          await ensureLocationNotificationPermission();
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("Notification permission setup failed:", e);
+        }
+
+        if (!active) return;
+
+        try {
+          const bgGeo = getBackgroundGeolocation();
+          if (!bgGeo) {
+            setBackgroundPermission("unsupported");
+            return;
+          }
+
+          try {
+            const perm = await bgGeo.checkPermissions();
+            const status = (perm?.location === "granted" || perm?.location === "always") ? "always" : "prompt";
+            if (active) setBackgroundPermission(status);
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn("Background geo permission check failed:", e);
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("Background geolocation setup failed:", e);
+        }
+
+        if (!active || !backgroundTrackingEnabled) return;
+
+        try {
+          const bgGeo = getBackgroundGeolocation();
+          if (!bgGeo) return;
+
+          if (backgroundWatcherRef.current) {
+            try {
+              await bgGeo.removeWatcher({ id: backgroundWatcherRef.current });
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.warn("Failed to remove old watcher:", e);
+            }
+            backgroundWatcherRef.current = null;
+          }
+
+          try {
+            const watcherId = await bgGeo.addWatcher(
+              {
+                backgroundTitle: BG_GEO_NOTIFICATION_TITLE,
+                backgroundMessage: BG_GEO_NOTIFICATION_TEXT,
+                requestPermissions: false,
+                stale: false,
+                distanceFilter: 0,
+              },
+              async (location: any, error: any) => {
+                if (!active || !childIdRef.current) return;
+
+                if (error) {
+                  lastErrorRef.current = error?.message || "Background tracker error";
+                  publishStatus();
+                  return;
+                }
+
+                if (!location) return;
+
+                try {
+                  await supabase.from("child_locations").insert([
+                    {
+                      child_id: childIdRef.current,
+                      device_source: "phone_background",
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      accuracy: location.accuracy ?? null,
+                    },
+                  ]);
+                  lastSentAtRef.current = new Date().toISOString();
+                  lastErrorRef.current = null;
+                  publishStatus();
+                } catch (e) {
+                  // eslint-disable-next-line no-console
+                  console.warn("Background location insert failed:", e);
+                  lastErrorRef.current = (e as Error).message || "Insert error";
+                  publishStatus();
+                }
+              },
+            );
+
+            if (active) backgroundWatcherRef.current = watcherId;
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn("Failed to add background watcher:", e);
+            lastErrorRef.current = (e as Error).message || "Watcher error";
+            publishStatus();
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("Background geo watcher setup failed:", e);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("setupBackgroundGeo failed:", e);
       }
     };
-  }, [enabled, childId, intervalSec, trackingEnabled]);
+
+    void setupBackgroundGeo();
+
+    return () => {
+      active = false;
+      if (backgroundWatcherRef.current && Capacitor.isNativePlatform()) {
+        const bgGeo = getBackgroundGeolocation();
+        if (bgGeo) {
+          try {
+            void bgGeo.removeWatcher({ id: backgroundWatcherRef.current });
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn("Failed to remove watcher on cleanup:", e);
+          }
+        }
+      }
+    };
+  }, [enabled, childId, backgroundTrackingEnabled]);
+
+  // Force send listener
+  useEffect(() => {
+    if (!enabled) return;
+
+    const onForceSend = () => {
+      try {
+        void tick(true);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Force send failed:", e);
+      }
+    };
+
+    window.addEventListener("force-location-send", onForceSend);
+    window.addEventListener(BACKGROUND_GEO_RESTART_EVENT, onForceSend);
+
+    return () => {
+      window.removeEventListener("force-location-send", onForceSend);
+      window.removeEventListener(BACKGROUND_GEO_RESTART_EVENT, onForceSend);
+    };
+  }, [enabled]);
 
   return {
     childId,
-    intervalSec,
     trackingEnabled,
     backgroundTrackingEnabled,
     backgroundPermission,

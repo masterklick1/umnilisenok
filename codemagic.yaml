@@ -41,39 +41,66 @@ workflows:
           echo "--- Manifest BEFORE ---"
           cat "$MANIFEST"
 
-          if [ -n "$GOOGLE_MAPS_ANDROID_API_KEY" ] && ! grep -q "com.google.android.geo.API_KEY" "$MANIFEST"; then
-            echo "Injecting Google Maps API Key..."
-            awk -v key="$GOOGLE_MAPS_ANDROID_API_KEY" '
-              /<application[ >]/ && !done {
-                print
-                print "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"" key "\" />"
-                done=1
-                next
-              }
-              { print }
-            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
-          elif [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
-            echo "Warning: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set!"
-          fi
+          python3 - << 'EOF'
+          import os
+          import xml.etree.ElementTree as ET
 
-          if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
-            awk '
-              /<manifest[ >]/ && !done {
-                print
-                print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />"
-                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
-                print "    <uses-permission android:name=\"android.permission.CAMERA\" />"
-                print "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"
-                done=1
-                next
-              }
-              { print }
-            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
-          fi
+          manifest_path = "android/app/src/main/AndroidManifest.xml"
+          api_key = os.environ.get("GOOGLE_MAPS_ANDROID_API_KEY", "").strip()
+
+          print(f"DEBUG: Found API Key length = {len(api_key)}")
+
+          if not api_key:
+              print("WARNING: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set or empty!")
+          else:
+              ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
+              ET.register_namespace('tools', 'http://schemas.android.com/tools')
+              
+              tree = ET.parse(manifest_path)
+              root = tree.getroot()
+              
+              # Добавляем разрешения, если их нет
+              required_permissions = [
+                  "android.permission.INTERNET",
+                  "android.permission.ACCESS_FINE_LOCATION",
+                  "android.permission.ACCESS_COARSE_LOCATION",
+                  "android.permission.ACCESS_BACKGROUND_LOCATION",
+                  "android.permission.FOREGROUND_SERVICE",
+                  "android.permission.FOREGROUND_SERVICE_LOCATION",
+                  "android.permission.POST_NOTIFICATIONS",
+                  "android.permission.CAMERA",
+                  "android.permission.RECORD_AUDIO"
+              ]
+              
+              existing_permissions = [p.get('{http://schemas.android.com/apk/res/android}name') for p in root.findall('uses-permission')]
+              
+              for perm in required_permissions:
+                  if perm not in existing_permissions:
+                      elem = ET.Element('uses-permission')
+                      elem.set('{http://schemas.android.com/apk/res/android}name', perm)
+                      root.insert(0, elem)
+
+              application = root.find('application')
+              if application is not None:
+                  android_name = '{http://schemas.android.com/apk/res/android}name'
+                  android_value = '{http://schemas.android.com/apk/res/android}value'
+                  
+                  exists = False
+                  for meta in application.findall('meta-data'):
+                      if meta.get(android_name) == 'com.google.android.geo.API_KEY':
+                          meta.set(android_value, api_key)
+                          exists = True
+                          break
+                  
+                  if not exists:
+                      meta = ET.SubElement(application, 'meta-data')
+                      meta.set(android_name, 'com.google.android.geo.API_KEY')
+                      meta.set(android_value, api_key)
+                  
+                  tree.write(manifest_path, encoding='utf-8', xml_declaration=True)
+                  print("SUCCESS: Google Maps API Key injected into AndroidManifest.xml")
+          EOF
+
           echo "--- Manifest AFTER ---"
           cat "$MANIFEST"
 
@@ -151,39 +178,66 @@ workflows:
           echo "--- Manifest BEFORE ---"
           cat "$MANIFEST"
 
-          if [ -n "$GOOGLE_MAPS_ANDROID_API_KEY" ] && ! grep -q "com.google.android.geo.API_KEY" "$MANIFEST"; then
-            echo "Injecting Google Maps API Key..."
-            awk -v key="$GOOGLE_MAPS_ANDROID_API_KEY" '
-              /<application[ >]/ && !done {
-                print
-                print "        <meta-data android:name=\"com.google.android.geo.API_KEY\" android:value=\"" key "\" />"
-                done=1
-                next
-              }
-              { print }
-            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
-          elif [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
-            echo "Warning: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set!"
-          fi
+          python3 - << 'EOF'
+          import os
+          import xml.etree.ElementTree as ET
 
-          if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
-            awk '
-              /<manifest[ >]/ && !done {
-                print
-                print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />"
-                print "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_LOCATION\" />"
-                print "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
-                print "    <uses-permission android:name=\"android.permission.CAMERA\" />"
-                print "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"
-                done=1
-                next
-              }
-              { print }
-            ' "$MANIFEST" > "$MANIFEST.tmp" && mv "$MANIFEST.tmp" "$MANIFEST"
-          fi
+          manifest_path = "android/app/src/main/AndroidManifest.xml"
+          api_key = os.environ.get("GOOGLE_MAPS_ANDROID_API_KEY", "").strip()
+
+          print(f"DEBUG: Found API Key length = {len(api_key)}")
+
+          if not api_key:
+              print("WARNING: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set or empty!")
+          else:
+              ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
+              ET.register_namespace('tools', 'http://schemas.android.com/tools')
+              
+              tree = ET.parse(manifest_path)
+              root = tree.getroot()
+              
+              # Добавляем разрешения, если их нет
+              required_permissions = [
+                  "android.permission.INTERNET",
+                  "android.permission.ACCESS_FINE_LOCATION",
+                  "android.permission.ACCESS_COARSE_LOCATION",
+                  "android.permission.ACCESS_BACKGROUND_LOCATION",
+                  "android.permission.FOREGROUND_SERVICE",
+                  "android.permission.FOREGROUND_SERVICE_LOCATION",
+                  "android.permission.POST_NOTIFICATIONS",
+                  "android.permission.CAMERA",
+                  "android.permission.RECORD_AUDIO"
+              ]
+              
+              existing_permissions = [p.get('{http://schemas.android.com/apk/res/android}name') for p in root.findall('uses-permission')]
+              
+              for perm in required_permissions:
+                  if perm not in existing_permissions:
+                      elem = ET.Element('uses-permission')
+                      elem.set('{http://schemas.android.com/apk/res/android}name', perm)
+                      root.insert(0, elem)
+
+              application = root.find('application')
+              if application is not None:
+                  android_name = '{http://schemas.android.com/apk/res/android}name'
+                  android_value = '{http://schemas.android.com/apk/res/android}value'
+                  
+                  exists = False
+                  for meta in application.findall('meta-data'):
+                      if meta.get(android_name) == 'com.google.android.geo.API_KEY':
+                          meta.set(android_value, api_key)
+                          exists = True
+                          break
+                  
+                  if not exists:
+                      meta = ET.SubElement(application, 'meta-data')
+                      meta.set(android_name, 'com.google.android.geo.API_KEY')
+                      meta.set(android_value, api_key)
+                  
+                  tree.write(manifest_path, encoding='utf-8', xml_declaration=True)
+                  print("SUCCESS: Google Maps API Key injected into AndroidManifest.xml")
+          EOF
+
           echo "--- Manifest AFTER ---"
           cat "$MANIFEST"
 

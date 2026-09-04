@@ -3,16 +3,17 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useLocationTracker, type LocationTrackerStatus } from "@/hooks/useLocationTracker";
-import { useMonitoringListener, prewarmMonitoringPermissions } from "@/hooks/useMonitoringListener";
+import { useMonitoringListener } from "@/hooks/useMonitoringListener";
 import {
   requestGeoPermissionInteractive,
   requestBackgroundGeoPermission,
+  queryGeoPermission,
   startGeoWatch,
   BACKGROUND_GEO_RESTART_EVENT,
 } from "@/lib/geo-permission";
+import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
 import { whenCapacitorReady } from "@/lib/native-ready";
 import { isPushSupported, subscribeToPush } from "@/lib/push";
-import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
 import {
   acquireWakeLock,
   isWakeLockSupported,
@@ -171,30 +172,14 @@ function ChildLocationPanel() {
   );
 }
 
-const GEO_DISCLOSURE_KEY = "geo-disclosure-accepted-v1";
-
-const isDisclosureAccepted = () => {
-  try {
-    return localStorage.getItem(GEO_DISCLOSURE_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
-
-const markDisclosureAccepted = () => {
-  try {
-    localStorage.setItem(GEO_DISCLOSURE_KEY, "1");
-  } catch {
-    /* ignore */
-  }
-};
+const LOCATION_DISCLOSURE_KEY = "location-disclosure-acknowledged-v1";
 
 /** Фоновые сервисы ребёнка: геолокация и ответы родителю — только на аккаунте ребёнка. */
 export function ChildDeviceServices() {
   const { user, isDemo } = useAuth();
   const route = useLocation();
   const { isChild, loading: roleLoading } = useUserRole();
-  const [showDisclosure, setShowDisclosure] = useState(false);
+  const [showLocationDisclosure, setShowLocationDisclosure] = useState(false);
 
   const active =
     !!user?.id &&
@@ -204,34 +189,31 @@ export function ChildDeviceServices() {
     route.pathname !== "/auth" &&
     route.pathname !== "/join";
 
-  const startPermissionFlow = async () => {
+  const startLocationServices = async (cancelledRef: { current: boolean }) => {
     try {
       startGeoWatch();
       const granted = await requestGeoPermissionInteractive();
-      await requestBackgroundGeoPermission();
+      if (cancelledRef.current) return;
       if (granted) {
         window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+        try {
+          await requestBackgroundGeoPermission();
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("Plugin error skipped:", err);
+        }
       }
     } catch (err) {
       // Ошибка плагина при старте гео — логируем и продолжаем.
       // eslint-disable-next-line no-console
       console.warn("Plugin error skipped:", err);
     }
-
-    // Разрешения камеры/микрофона запрашиваем заранее — команды родителя
-    // потом выполняются автоматически, без окон на экране ребёнка.
-    await prewarmMonitoringPermissions();
-  };
-
-  const handleDisclosureConfirm = async () => {
-    markDisclosureAccepted();
-    setShowDisclosure(false);
-    await startPermissionFlow();
   };
 
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
+    const cancelledRef = { current: false };
 
     const boot = async () => {
       try {
@@ -239,12 +221,21 @@ export function ChildDeviceServices() {
         await whenCapacitorReady();
         if (cancelled) return;
 
-        // Prominent disclosure ДО первого системного запроса разрешений.
-        if (!isDisclosureAccepted()) {
-          setShowDisclosure(true);
-        } else {
-          await startPermissionFlow();
+        try {
+          const alreadyAcknowledged = localStorage.getItem(LOCATION_DISCLOSURE_KEY) === "1";
+          const currentPermission = await queryGeoPermission();
           if (cancelled) return;
+
+          if (!alreadyAcknowledged && (currentPermission === "prompt" || currentPermission === "not-determined")) {
+            // Показываем предупреждение (in-app disclosure) до самого первого системного
+            // запроса на доступ к местоположению — требование Google Play.
+            setShowLocationDisclosure(true);
+          } else {
+            await startLocationServices(cancelledRef);
+          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("Plugin error skipped:", err);
         }
 
         try {
@@ -280,8 +271,21 @@ export function ChildDeviceServices() {
     void boot();
     return () => {
       cancelled = true;
+      cancelledRef.current = true;
     };
   }, [active, user?.id]);
+
+  const handleLocationDisclosureConfirm = () => {
+    setShowLocationDisclosure(false);
+    localStorage.setItem(LOCATION_DISCLOSURE_KEY, "1");
+    void startLocationServices({ current: false });
+  };
+
+  const handleLocationDisclosureCancel = () => {
+    // Не запоминаем отказ — предупреждение появится снова при следующем запуске,
+    // трекинг до согласия не запускаем.
+    setShowLocationDisclosure(false);
+  };
 
   useEffect(() => {
     if (!active) return;
@@ -302,12 +306,12 @@ export function ChildDeviceServices() {
 
   return (
     <>
-      <ProminentDisclosureModal
-        open={showDisclosure}
-        onConfirm={handleDisclosureConfirm}
-        onCancel={() => setShowDisclosure(false)}
-      />
       <ChildLocationPanel />
+      <ProminentDisclosureModal
+        open={showLocationDisclosure}
+        onConfirm={handleLocationDisclosureConfirm}
+        onCancel={handleLocationDisclosureCancel}
+      />
     </>
   );
 }

@@ -5,9 +5,9 @@ import { isNativePluginAvailable, whenCapacitorReady } from "@/lib/native-ready"
 
 /** Must match the channel id created by the community background-geolocation plugin. */
 export const BG_GEO_NOTIFICATION_CHANNEL_ID = "com.equimaps.capacitor_background_geolocation";
-export const BG_GEO_NOTIFICATION_TITLE = "Геолокация активна";
-export const BG_GEO_NOTIFICATION_TEXT = "Умный Лисёнок защищает ребёнка";
-export const BG_GEO_NOTIFICATION_CHANNEL_NAME = "Геолокация активна";
+export const BG_GEO_NOTIFICATION_TITLE = "Умный Лисёнок работает в фоновом режиме";
+export const BG_GEO_NOTIFICATION_TEXT = "Геолокация и функции защиты активны";
+export const BG_GEO_NOTIFICATION_CHANNEL_NAME = "Фоновая защита";
 
 export type GeoPermissionState = "granted" | "denied" | "prompt" | "unsupported" | "not-determined";
 export type BackgroundGeoPermissionState = "always" | "denied" | "prompt" | "unsupported" | "not-determined";

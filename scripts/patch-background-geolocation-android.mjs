@@ -141,7 +141,7 @@ if (existsSync(pluginManifest)) {
 }
 
 const CHANNEL_NAME_TAG =
-  '    <string name="capacitor_background_geolocation_notification_channel_name">Геолокация активна</string>';
+  '    <string name="capacitor_background_geolocation_notification_channel_name">Фоновая защита</string>';
 const CHANNEL_ICON_TAG =
   '    <string name="capacitor_background_geolocation_notification_icon">mipmap/ic_launcher</string>';
 

@@ -1,12 +1,4 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface ProminentDisclosureModalProps {
   open: boolean;
@@ -19,8 +11,8 @@ export function ProminentDisclosureModal({ open, onConfirm, onCancel }: Prominen
     <AlertDialog open={open}>
       <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-xl">📍 Доступ к местоположению</AlertDialogTitle>
-          <AlertDialogDescription className="text-base mt-3">
+          <AlertDialogTitle className="text-xl">📍 Геолокация в фоновом режиме</AlertDialogTitle>
+          <AlertDialogDescription className="text-base mt-4">
             Приложение «Умный Лисёнок» собирает данные о местоположении в фоновом режиме, чтобы
             родители могли видеть геопозицию ребёнка на карте в реальном времени, даже когда
             приложение закрыто или не используется. Нажмите «Понятно» для перехода к настройкам
@@ -33,7 +25,7 @@ export function ProminentDisclosureModal({ open, onConfirm, onCancel }: Prominen
             Отмена
           </AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} className="flex-1">
-            Понятно / Настроить
+            Понятно
           </AlertDialogAction>
         </div>
       </AlertDialogContent>

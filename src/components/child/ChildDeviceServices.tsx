@@ -3,10 +3,16 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useLocationTracker, type LocationTrackerStatus } from "@/hooks/useLocationTracker";
-import { useMonitoringListener } from "@/hooks/useMonitoringListener";
-import { requestGeoPermissionInteractive, startGeoWatch, BACKGROUND_GEO_RESTART_EVENT } from "@/lib/geo-permission";
+import { useMonitoringListener, prewarmMonitoringPermissions } from "@/hooks/useMonitoringListener";
+import {
+  requestGeoPermissionInteractive,
+  requestBackgroundGeoPermission,
+  startGeoWatch,
+  BACKGROUND_GEO_RESTART_EVENT,
+} from "@/lib/geo-permission";
 import { whenCapacitorReady } from "@/lib/native-ready";
 import { isPushSupported, subscribeToPush } from "@/lib/push";
+import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
 import {
   acquireWakeLock,
   isWakeLockSupported,
@@ -165,11 +171,30 @@ function ChildLocationPanel() {
   );
 }
 
+const GEO_DISCLOSURE_KEY = "geo-disclosure-accepted-v1";
+
+const isDisclosureAccepted = () => {
+  try {
+    return localStorage.getItem(GEO_DISCLOSURE_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const markDisclosureAccepted = () => {
+  try {
+    localStorage.setItem(GEO_DISCLOSURE_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+};
+
 /** Фоновые сервисы ребёнка: геолокация и ответы родителю — только на аккаунте ребёнка. */
 export function ChildDeviceServices() {
   const { user, isDemo } = useAuth();
   const route = useLocation();
   const { isChild, loading: roleLoading } = useUserRole();
+  const [showDisclosure, setShowDisclosure] = useState(false);
 
   const active =
     !!user?.id &&
@@ -178,6 +203,31 @@ export function ChildDeviceServices() {
     !roleLoading &&
     route.pathname !== "/auth" &&
     route.pathname !== "/join";
+
+  const startPermissionFlow = async () => {
+    try {
+      startGeoWatch();
+      const granted = await requestGeoPermissionInteractive();
+      await requestBackgroundGeoPermission();
+      if (granted) {
+        window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
+      }
+    } catch (err) {
+      // Ошибка плагина при старте гео — логируем и продолжаем.
+      // eslint-disable-next-line no-console
+      console.warn("Plugin error skipped:", err);
+    }
+
+    // Разрешения камеры/микрофона запрашиваем заранее — команды родителя
+    // потом выполняются автоматически, без окон на экране ребёнка.
+    await prewarmMonitoringPermissions();
+  };
+
+  const handleDisclosureConfirm = async () => {
+    markDisclosureAccepted();
+    setShowDisclosure(false);
+    await startPermissionFlow();
+  };
 
   useEffect(() => {
     if (!active) return;
@@ -189,17 +239,12 @@ export function ChildDeviceServices() {
         await whenCapacitorReady();
         if (cancelled) return;
 
-        try {
-          startGeoWatch();
-          const granted = await requestGeoPermissionInteractive();
+        // Prominent disclosure ДО первого системного запроса разрешений.
+        if (!isDisclosureAccepted()) {
+          setShowDisclosure(true);
+        } else {
+          await startPermissionFlow();
           if (cancelled) return;
-          if (granted) {
-            window.dispatchEvent(new CustomEvent(BACKGROUND_GEO_RESTART_EVENT));
-          }
-        } catch (err) {
-          // Ошибка плагина при старте гео — логируем и продолжаем.
-          // eslint-disable-next-line no-console
-          console.warn("Plugin error skipped:", err);
         }
 
         try {
@@ -255,5 +300,14 @@ export function ChildDeviceServices() {
 
   if (!active) return null;
 
-  return <ChildLocationPanel />;
+  return (
+    <>
+      <ProminentDisclosureModal
+        open={showDisclosure}
+        onConfirm={handleDisclosureConfirm}
+        onCancel={() => setShowDisclosure(false)}
+      />
+      <ChildLocationPanel />
+    </>
+  );
 }

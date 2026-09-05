@@ -1085,10 +1085,27 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Локация ещё не передана. Ребёнок должен открыть приложение и разрешить геопозицию.
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Точка ребёнка ещё не пришла. Ребёнок должен открыть приложение и разрешить
+                геопозицию. Карта ниже показывает сохранённые места.
+              </p>
+              <LocationMap
+                latitude={fallbackCenter.lat}
+                longitude={fallbackCenter.lng}
+                label={childName}
+                height={340}
+                geofences={savedPlaces.map((place) => ({
+                  id: place.id,
+                  lat: place.lat,
+                  lng: place.lng,
+                  radius: place.radius_m,
+                  label: `${place.emoji} ${place.name}`,
+                }))}
+              />
+            </div>
           )}
+
         </CardContent>
       </Card>
 

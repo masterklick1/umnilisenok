@@ -88,7 +88,6 @@ Deno.serve(async (req) => {
     }
 
     await admin.from("monitoring_requests").delete().or(`parent_id.eq.${childId},child_id.eq.${childId}`);
-    await admin.from("parent_monitoring_requests").delete().or(`parent_id.eq.${childId},child_id.eq.${childId}`);
     await admin.from("game_sessions").delete().or(`parent_id.eq.${childId},child_id.eq.${childId}`);
     await admin.from("parent_child_links").delete().or(`parent_id.eq.${childId},child_id.eq.${childId}`);
     await admin.from("child_invites").delete().or(`parent_id.eq.${childId},child_id.eq.${childId}`);

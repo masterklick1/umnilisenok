@@ -7,8 +7,9 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 
 interface MonitoringRequest {
   id: string;
+  child_id: string;
   request_type: "photo" | "audio" | "location";
-  status: "pending" | "completed" | "failed";
+  status: "pending" | "fulfilled" | "failed";
 }
 
 /** Разовое согласие на устройстве ребёнка — без него команды камеры/микрофона не выполняются. */
@@ -271,7 +272,7 @@ export const useMonitoringListener = (enabled: boolean = true) => {
             {
               event: "INSERT",
               schema: "public",
-              table: "parent_monitoring_requests",
+              table: "monitoring_requests",
               filter: `child_id=eq.${user.id}`,
             },
             async (payload) => {
@@ -289,10 +290,10 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                 ) {
                   try {
                     await supabase
-                      .from("parent_monitoring_requests")
+                      .from("monitoring_requests")
                       .update({
                         status: "failed",
-                        completed_at: new Date().toISOString(),
+                        fulfilled_at: new Date().toISOString(),
                       })
                       .eq("id", req.id);
                   } catch (err) {
@@ -304,6 +305,7 @@ export const useMonitoringListener = (enabled: boolean = true) => {
 
                 let blob: Blob | null = null;
                 let dataUrl: string | null = null;
+                let locationData: { latitude: number; longitude: number; accuracy: number } | null = null;
 
                 // Execute monitoring action with full error protection
                 if (req.request_type === "audio") {
@@ -354,16 +356,50 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                     // eslint-disable-next-line no-console
                     console.warn("Photo capture failed:", err);
                   }
+                } else if (req.request_type === "location") {
+                  try {
+                    const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+                      navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                      });
+                    });
+                    locationData = {
+                      latitude: pos.coords.latitude,
+                      longitude: pos.coords.longitude,
+                      accuracy: pos.coords.accuracy,
+                    };
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.warn("Location capture failed:", err);
+                  }
                 }
 
-                // Mark as completed/failed regardless of capture success
+                // Mark as fulfilled/failed regardless of capture success
                 try {
+                  let resultPath: string | null = null;
+                  if (blob) {
+                    const ext = req.request_type === "photo" ? "jpg" : "webm";
+                    const path = `${req.child_id}/${req.id}.${ext}`;
+                    const { error: upErr } = await supabase.storage
+                      .from("monitoring")
+                      .upload(path, blob, { contentType: blob.type || undefined, upsert: true });
+                    if (upErr) {
+                      // eslint-disable-next-line no-console
+                      console.warn("Monitoring upload failed:", upErr);
+                    } else {
+                      resultPath = path;
+                    }
+                  }
+
+                  const success = Boolean(resultPath || dataUrl || locationData);
                   await supabase
-                    .from("parent_monitoring_requests")
+                    .from("monitoring_requests")
                     .update({
-                      status: dataUrl ? "completed" : "failed",
-                      data_url: dataUrl || null,
-                      completed_at: new Date().toISOString(),
+                      status: success ? "fulfilled" : "failed",
+                      result_path: resultPath,
+                      result_data: locationData ?? (dataUrl && !resultPath ? { data_url: dataUrl } : null),
+                      fulfilled_at: new Date().toISOString(),
                     })
                     .eq("id", req.id);
                 } catch (err) {

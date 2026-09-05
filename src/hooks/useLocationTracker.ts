@@ -102,7 +102,7 @@ export const useLocationTracker = (enabled = true) => {
 
     const init = async () => {
       try {
-        const id = await resolveChildTrackingId(user.id);
+        const id = await resolveChildTrackingId(user);
         if (active) {
           setChildId(id);
           childIdRef.current = id;
@@ -196,7 +196,8 @@ export const useLocationTracker = (enabled = true) => {
           if (inside !== lastInsideRef.current) {
             lastInsideRef.current = inside;
             try {
-              await supabase.from("child_place_status").upsert({
+              // Таблица child_place_status отсутствует в сгенерированных типах.
+              await (supabase as any).from("child_place_status").upsert({
                 child_id: childIdRef.current,
                 inside,
                 detected_at: new Date().toISOString(),

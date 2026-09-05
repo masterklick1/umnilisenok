@@ -573,6 +573,15 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     ? { lat: location.latitude, lng: location.longitude }
     : null;
 
+  // Куда центрировать карту, пока точки ребёнка нет: место родителя → сохранённое место → Москва.
+  const fallbackCenter: LatLng =
+    effectiveParentLocation ??
+    (savedPlaces.length > 0
+      ? { lat: savedPlaces[0].lat, lng: savedPlaces[0].lng }
+      : { lat: 55.7558, lng: 37.6173 });
+
+
+
   const distanceToChild =
     effectiveParentLocation && childPoint
       ? distanceMeters(effectiveParentLocation, childPoint)

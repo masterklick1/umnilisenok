@@ -145,6 +145,147 @@ workflows:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/mapping.txt
 
+  android-release-apk:
+    name: Android Release APK (подписанный APK для установки на телефон)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      android_signing:
+        - umnilisenok_keystore
+      node: 22
+      java: 21
+      groups:
+        - google_maps
+      vars:
+        PACKAGE_NAME: "app.lovable.umnilisenok"
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci || npm install
+      - name: Build web (Vite)
+        script: |
+          npm run build
+      - name: Add Android platform if missing
+        script: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+      - name: Sync Capacitor
+        script: |
+          npx cap sync android
+          node scripts/patch-background-geolocation-android.mjs
+      - name: Generate Capacitor Assets
+        script: |
+          npm install -D @capacitor/assets
+          npx capacitor-assets generate --android || echo "Assets generator warning ignored"
+      - name: Print keystore SHA-1
+        script: |
+          keytool -list -v -keystore "$CM_KEYSTORE_PATH" -storepass "$CM_KEYSTORE_PASSWORD" -alias "$CM_KEY_ALIAS" | grep "SHA1:"
+      - name: Force required permissions and Maps API key in manifest
+        script: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          echo "--- Manifest BEFORE ---"
+          cat "$MANIFEST"
+
+          python3 - << 'EOF'
+          import os
+          import xml.etree.ElementTree as ET
+
+          manifest_path = "android/app/src/main/AndroidManifest.xml"
+          api_key = os.environ.get("GOOGLE_MAPS_ANDROID_API_KEY", "").strip()
+
+          print(f"DEBUG: Found API Key length = {len(api_key)}")
+
+          if not api_key:
+              print("WARNING: GOOGLE_MAPS_ANDROID_API_KEY env variable is not set or empty!")
+          else:
+              ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
+              ET.register_namespace('tools', 'http://schemas.android.com/tools')
+              
+              tree = ET.parse(manifest_path)
+              root = tree.getroot()
+              
+              # Добавляем разрешения, если их нет
+              required_permissions = [
+                  "android.permission.INTERNET",
+                  "android.permission.ACCESS_FINE_LOCATION",
+                  "android.permission.ACCESS_COARSE_LOCATION",
+                  "android.permission.ACCESS_BACKGROUND_LOCATION",
+                  "android.permission.FOREGROUND_SERVICE",
+                  "android.permission.FOREGROUND_SERVICE_LOCATION",
+                  "android.permission.POST_NOTIFICATIONS",
+                  "android.permission.CAMERA",
+                  "android.permission.RECORD_AUDIO"
+              ]
+              
+              existing_permissions = [p.get('{http://schemas.android.com/apk/res/android}name') for p in root.findall('uses-permission')]
+              
+              for perm in required_permissions:
+                  if perm not in existing_permissions:
+                      elem = ET.Element('uses-permission')
+                      elem.set('{http://schemas.android.com/apk/res/android}name', perm)
+                      root.insert(0, elem)
+
+              application = root.find('application')
+              if application is not None:
+                  android_name = '{http://schemas.android.com/apk/res/android}name'
+                  android_value = '{http://schemas.android.com/apk/res/android}value'
+                  
+                  exists = False
+                  for meta in application.findall('meta-data'):
+                      if meta.get(android_name) == 'com.google.android.geo.API_KEY':
+                          meta.set(android_value, api_key)
+                          exists = True
+                          break
+                  
+                  if not exists:
+                      meta = ET.SubElement(application, 'meta-data')
+                      meta.set(android_name, 'com.google.android.geo.API_KEY')
+                      meta.set(android_value, api_key)
+                  
+                  tree.write(manifest_path, encoding='utf-8', xml_declaration=True)
+                  print("SUCCESS: Google Maps API Key injected into AndroidManifest.xml")
+          EOF
+
+          echo "--- Manifest AFTER ---"
+          cat "$MANIFEST"
+
+      - name: Configure release signing in build.gradle
+        script: |
+          GRADLE_FILE="android/app/build.gradle"
+          if grep -q "signingConfigs.release" "$GRADLE_FILE"; then
+            echo "signingConfigs.release уже настроен — пропускаем"
+            exit 0
+          fi
+          awk '
+            /buildTypes[[:space:]]*\{/ && !inserted {
+              print "    signingConfigs {"
+              print "        release {"
+              print "            if (System.getenv()[\"CM_KEYSTORE_PATH\"]) {"
+              print "                storeFile file(System.getenv()[\"CM_KEYSTORE_PATH\"])"
+              print "                storePassword System.getenv()[\"CM_KEYSTORE_PASSWORD\"]"
+              print "                keyAlias System.getenv()[\"CM_KEY_ALIAS\"]"
+              print "                keyPassword System.getenv()[\"CM_KEY_PASSWORD\"]"
+              print "            }"
+              print "        }"
+              print "    }"
+              inserted = 1
+            }
+            { print }
+          ' "$GRADLE_FILE" > "$GRADLE_FILE.tmp" && mv "$GRADLE_FILE.tmp" "$GRADLE_FILE"
+          sed -i.bak '/release {/,/}/ {
+            /minifyEnabled/ a\
+            signingConfig signingConfigs.release
+          }' "$GRADLE_FILE"
+          echo "--- build.gradle after patch ---"
+          cat "$GRADLE_FILE"
+      - name: Build signed Release APK
+        script: |
+          cd android
+          ./gradlew assembleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+
   android-debug:
     name: Android Debug APK (для теста на телефоне)
     max_build_duration: 45
@@ -172,6 +313,10 @@ workflows:
         script: |
           npm install -D @capacitor/assets
           npx capacitor-assets generate --android || echo "Assets generator warning ignored"
+      - name: Print debug keystore SHA-1
+        script: |
+          cd android
+          ./gradlew signingReport | grep "SHA1" || true
       - name: Force required permissions and Maps API key in manifest
         script: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -196,7 +341,6 @@ workflows:
               tree = ET.parse(manifest_path)
               root = tree.getroot()
               
-              # Добавляем разрешения, если их нет
               required_permissions = [
                   "android.permission.INTERNET",
                   "android.permission.ACCESS_FINE_LOCATION",

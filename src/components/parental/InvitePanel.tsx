@@ -214,9 +214,7 @@ export function InvitePanel() {
         </Card>
       )}
 
-          </CardContent>
-        </Card>
-      )}
+
     </div>
   );
 }

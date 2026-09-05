@@ -4,28 +4,44 @@ interface ProminentDisclosureModalProps {
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
-export function ProminentDisclosureModal({ open, onConfirm, onCancel }: ProminentDisclosureModalProps) {
+const DEFAULT_TITLE = "📍 Геолокация в фоновом режиме";
+const DEFAULT_DESCRIPTION =
+  "Приложение «Умный Лисёнок» собирает данные о местоположении в фоновом режиме, чтобы " +
+  "родители могли видеть геопозицию ребёнка на карте в реальном времени, даже когда " +
+  "приложение закрыто или не используется. Нажмите «Понятно» для перехода к настройкам " +
+  "разрешений.";
+
+export function ProminentDisclosureModal({
+  open,
+  onConfirm,
+  onCancel,
+  title = DEFAULT_TITLE,
+  description = DEFAULT_DESCRIPTION,
+  confirmLabel = "Понятно",
+  cancelLabel = "Отмена",
+}: ProminentDisclosureModalProps) {
   return (
     <AlertDialog open={open}>
       <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-xl">📍 Геолокация в фоновом режиме</AlertDialogTitle>
+          <AlertDialogTitle className="text-xl">{title}</AlertDialogTitle>
           <AlertDialogDescription className="text-base mt-4">
-            Приложение «Умный Лисёнок» собирает данные о местоположении в фоновом режиме, чтобы
-            родители могли видеть геопозицию ребёнка на карте в реальном времени, даже когда
-            приложение закрыто или не используется. Нажмите «Понятно» для перехода к настройкам
-            разрешений.
+            {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="flex gap-2 pt-2">
           <AlertDialogCancel onClick={onCancel} className="flex-1">
-            Отмена
+            {cancelLabel}
           </AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} className="flex-1">
-            Понятно
+            {confirmLabel}
           </AlertDialogAction>
         </div>
       </AlertDialogContent>

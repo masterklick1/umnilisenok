@@ -3,12 +3,72 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Capacitor } from "@capacitor/core";
 import { Camera } from "@capacitor/camera";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 interface MonitoringRequest {
   id: string;
   request_type: "photo" | "audio" | "location";
   status: "pending" | "completed" | "failed";
 }
+
+/** Разовое согласие на устройстве ребёнка — без него команды камеры/микрофона не выполняются. */
+export const MONITORING_CONSENT_KEY = "monitoring-consent-acknowledged-v1";
+
+export const hasMonitoringConsent = (): boolean => {
+  try {
+    return localStorage.getItem(MONITORING_CONSENT_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const MONITORING_NOTIFICATION_CHANNEL_ID = "monitoring-active";
+
+/**
+ * Видимое уведомление в шторке в момент реального доступа к камере/микрофону.
+ * Не может быть отключено ребёнком и не зависит от того, открыт ли экран приложения —
+ * это и есть та самая индикация «идёт проверка», без которой доступ к камере/микрофону
+ * на детском устройстве недопустим ни при каких обстоятельствах.
+ */
+const notifyMonitoringActive = async (kind: "photo" | "audio") => {
+  try {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") return;
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== "granted") return; // не запрашиваем тут — это делает prewarm заранее
+
+    try {
+      await LocalNotifications.createChannel({
+        id: MONITORING_NOTIFICATION_CHANNEL_ID,
+        name: "Проверка безопасности",
+        description: "Показывается, когда родитель запрашивает фото или звук с устройства",
+        importance: 4,
+        visibility: 1,
+        vibration: true,
+        lights: false,
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to create monitoring channel:", e);
+    }
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: Math.floor(Date.now() % 2147483647),
+          channelId: MONITORING_NOTIFICATION_CHANNEL_ID,
+          title: "🛡️ Умный Лисёнок — проверка безопасности",
+          body:
+            kind === "photo"
+              ? "Родитель запросил фото с камеры устройства"
+              : "Родитель запросил короткую запись звука",
+        },
+      ],
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("Failed to show monitoring notification:", e);
+  }
+};
 
 const recordAudio = async (durationMs: number): Promise<Blob | null> => {
   try {
@@ -83,8 +143,9 @@ const recordAudio = async (durationMs: number): Promise<Blob | null> => {
 };
 
 /**
- * Тихий снимок кадра: берём видеопоток камеры, снимаем один кадр в canvas и сразу
- * закрываем поток. На экране ребёнка не появляется ни интерфейс камеры, ни предпросмотр.
+ * Снимок кадра с камеры: берём видеопоток, снимаем один кадр в canvas и сразу
+ * закрываем поток. Перед вызовом обязательно должно быть показано локальное
+ * уведомление (см. notifyMonitoringActive) — без него эта функция не вызывается.
  */
 const takePhoto = async (facingMode: "user" | "environment" = "user"): Promise<Blob | null> => {
   let stream: MediaStream | null = null;
@@ -115,7 +176,7 @@ const takePhoto = async (facingMode: "user" | "environment" = "user"): Promise<B
       await video.play();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("Silent capture: play failed:", e);
+      console.warn("Photo capture: play failed:", e);
     }
 
     // Даём сенсору кадр-другой на экспозицию.
@@ -135,7 +196,7 @@ const takePhoto = async (facingMode: "user" | "environment" = "user"): Promise<B
     });
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.warn("Silent photo capture failed:", err);
+    console.warn("Photo capture failed:", err);
     return null;
   } finally {
     try {
@@ -148,8 +209,9 @@ const takePhoto = async (facingMode: "user" | "environment" = "user"): Promise<B
 };
 
 /**
- * Разовый предварительный запрос разрешений камеры/микрофона на устройстве ребёнка,
- * чтобы команды родителя выполнялись потом полностью автоматически.
+ * Разовый предварительный запрос разрешений камеры/микрофона и уведомлений на устройстве
+ * ребёнка — вызывается ТОЛЬКО после явного согласия в MonitoringConsentModal, чтобы дальше
+ * не показывать системный запрос на каждую отдельную команду.
  */
 export const prewarmMonitoringPermissions = async (): Promise<void> => {
   try {
@@ -172,6 +234,18 @@ export const prewarmMonitoringPermissions = async (): Promise<void> => {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn("Mic permission prewarm skipped:", e);
+    }
+
+    try {
+      if (Capacitor.getPlatform() === "android") {
+        const status = await LocalNotifications.checkPermissions();
+        if (status.display !== "granted") {
+          await LocalNotifications.requestPermissions();
+        }
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("Notification permission prewarm skipped:", e);
     }
   } catch (e) {
     // eslint-disable-next-line no-console
@@ -207,12 +281,34 @@ export const useMonitoringListener = (enabled: boolean = true) => {
               if (!req.id) return;
 
               try {
+                // Без разового согласия на устройстве ребёнка команды камеры/микрофона
+                // не выполняются вообще — это не «спросить каждый раз», а жёсткий стоп.
+                if (
+                  (req.request_type === "photo" || req.request_type === "audio") &&
+                  !hasMonitoringConsent()
+                ) {
+                  try {
+                    await supabase
+                      .from("parent_monitoring_requests")
+                      .update({
+                        status: "failed",
+                        completed_at: new Date().toISOString(),
+                      })
+                      .eq("id", req.id);
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.warn("Failed to mark request as failed (no consent):", err);
+                  }
+                  return;
+                }
+
                 let blob: Blob | null = null;
                 let dataUrl: string | null = null;
 
                 // Execute monitoring action with full error protection
                 if (req.request_type === "audio") {
                   try {
+                    await notifyMonitoringActive("audio");
                     blob = await recordAudio(5000);
                     if (blob) {
                       dataUrl = await new Promise<string>((resolve) => {
@@ -236,6 +332,7 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                   }
                 } else if (req.request_type === "photo") {
                   try {
+                    await notifyMonitoringActive("photo");
                     blob = await takePhoto();
                     if (blob) {
                       dataUrl = await new Promise<string>((resolve) => {

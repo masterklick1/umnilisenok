@@ -7,8 +7,9 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 
 interface MonitoringRequest {
   id: string;
+  child_id: string;
   request_type: "photo" | "audio" | "location";
-  status: "pending" | "completed" | "failed";
+  status: "pending" | "fulfilled" | "failed";
 }
 
 /** Разовое согласие на устройстве ребёнка — без него команды камеры/микрофона не выполняются. */
@@ -271,7 +272,7 @@ export const useMonitoringListener = (enabled: boolean = true) => {
             {
               event: "INSERT",
               schema: "public",
-              table: "parent_monitoring_requests",
+              table: "monitoring_requests",
               filter: `child_id=eq.${user.id}`,
             },
             async (payload) => {
@@ -289,10 +290,10 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                 ) {
                   try {
                     await supabase
-                      .from("parent_monitoring_requests")
+                      .from("monitoring_requests")
                       .update({
                         status: "failed",
-                        completed_at: new Date().toISOString(),
+                        fulfilled_at: new Date().toISOString(),
                       })
                       .eq("id", req.id);
                   } catch (err) {

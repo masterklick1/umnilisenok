@@ -1,7 +1,18 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, Trophy, Flame, Smartphone, Shield, Eye } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Star, Trophy, Flame, Smartphone, Shield, Eye, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -22,6 +33,7 @@ interface ChildCardProps {
   onStartSession: () => void;
   onOpenSafety?: () => void;
   onOpenMirror?: () => void;
+  onDeleteChild?: () => void;
 }
 
 export const ChildCard = ({
@@ -31,6 +43,7 @@ export const ChildCard = ({
   onStartSession,
   onOpenSafety,
   onOpenMirror,
+  onDeleteChild,
 }: ChildCardProps) => {
   const isRecentlyActive =
     child.last_activity_at &&
@@ -38,11 +51,46 @@ export const ChildCard = ({
 
   return (
     <Card
-      className={`cursor-pointer transition-all ${
+      className={`relative cursor-pointer transition-all ${
         isSelected ? "ring-2 ring-primary shadow-lg" : "hover:shadow-md"
       } ${isRecentlyActive && !isSelected ? "ring-1 ring-green-400" : ""}`}
       onClick={onSelect}
     >
+      {onDeleteChild && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              aria-label="Удалить аккаунт ребёнка"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Удалить аккаунт «{child.first_name || "Ребёнок"}»?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Аккаунт ребёнка, весь прогресс, история геолокации, сохранённые места и другие
+                данные будут удалены безвозвратно. Отменить это действие нельзя.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={onDeleteChild}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Удалить безвозвратно
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           <div className="text-5xl">{child.avatar_url || "👶"}</div>

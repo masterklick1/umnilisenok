@@ -33,6 +33,7 @@ export default function ParentDashboard() {
     selectedChild,
     setSelectedChild,
     createChildAccount,
+    deleteChildAccount,
     childActivities,
     childAnalysis,
     analyzeChild,
@@ -389,6 +390,7 @@ export default function ParentDashboard() {
         onStartSession={() => handleStartChildSession(child.child_id, child.first_name || "Ребёнок")}
         onOpenSafety={() => openChildTab(child.child_id, "safety")}
         onOpenMirror={() => openChildTab(child.child_id, "mirror")}
+        onDeleteChild={() => deleteChildAccount(child.child_id)}
       />
     ));
 

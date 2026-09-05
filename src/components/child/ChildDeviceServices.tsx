@@ -12,6 +12,7 @@ import {
   BACKGROUND_GEO_RESTART_EVENT,
 } from "@/lib/geo-permission";
 import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
+import { MONITORING_CONSENT_KEY, prewarmMonitoringPermissions } from "@/hooks/useMonitoringListener";
 import { whenCapacitorReady } from "@/lib/native-ready";
 import { isPushSupported, subscribeToPush } from "@/lib/push";
 import {
@@ -174,12 +175,21 @@ function ChildLocationPanel() {
 
 const LOCATION_DISCLOSURE_KEY = "location-disclosure-acknowledged-v1";
 
+const MONITORING_DISCLOSURE_TITLE = "🛡️ Функции безопасности (камера, звук)";
+const MONITORING_DISCLOSURE_DESCRIPTION =
+  "Приложение «Умный Лисёнок» позволяет родителям запрашивать фото с камеры и короткую " +
+  "запись звука с этого устройства в целях безопасности ребёнка. Каждый раз, когда это " +
+  "происходит, в шторке уведомлений появляется сообщение об этом. Нажмите «Понятно», чтобы " +
+  "включить эту функцию.";
+
+type DisclosureStep = "location" | "monitoring";
+
 /** Фоновые сервисы ребёнка: геолокация и ответы родителю — только на аккаунте ребёнка. */
 export function ChildDeviceServices() {
   const { user, isDemo } = useAuth();
   const route = useLocation();
   const { isChild, loading: roleLoading } = useUserRole();
-  const [showLocationDisclosure, setShowLocationDisclosure] = useState(false);
+  const [disclosureQueue, setDisclosureQueue] = useState<DisclosureStep[]>([]);
 
   const active =
     !!user?.id &&
@@ -226,10 +236,17 @@ export function ChildDeviceServices() {
           const currentPermission = await queryGeoPermission();
           if (cancelled) return;
 
-          if (!alreadyAcknowledged && (currentPermission === "prompt" || currentPermission === "not-determined")) {
-            // Показываем предупреждение (in-app disclosure) до самого первого системного
-            // запроса на доступ к местоположению — требование Google Play.
-            setShowLocationDisclosure(true);
+          const needsLocationDisclosure =
+            !alreadyAcknowledged && (currentPermission === "prompt" || currentPermission === "not-determined");
+          const needsMonitoringDisclosure = localStorage.getItem(MONITORING_CONSENT_KEY) !== "1";
+
+          if (needsLocationDisclosure || needsMonitoringDisclosure) {
+            // Показываем предупреждения (in-app disclosure) до самого первого системного
+            // запроса на доступ к местоположению/камере/микрофону — требование Google Play.
+            const steps: DisclosureStep[] = [];
+            if (needsLocationDisclosure) steps.push("location");
+            if (needsMonitoringDisclosure) steps.push("monitoring");
+            setDisclosureQueue(steps);
           } else {
             await startLocationServices(cancelledRef);
           }
@@ -275,16 +292,31 @@ export function ChildDeviceServices() {
     };
   }, [active, user?.id]);
 
-  const handleLocationDisclosureConfirm = () => {
-    setShowLocationDisclosure(false);
-    localStorage.setItem(LOCATION_DISCLOSURE_KEY, "1");
-    void startLocationServices({ current: false });
+  const currentDisclosure = disclosureQueue[0] ?? null;
+
+  const advanceDisclosureQueue = () => {
+    setDisclosureQueue((q) => q.slice(1));
   };
 
-  const handleLocationDisclosureCancel = () => {
-    // Не запоминаем отказ — предупреждение появится снова при следующем запуске,
-    // трекинг до согласия не запускаем.
-    setShowLocationDisclosure(false);
+  const handleDisclosureConfirm = () => {
+    if (currentDisclosure === "location") {
+      localStorage.setItem(LOCATION_DISCLOSURE_KEY, "1");
+      void startLocationServices({ current: false });
+    } else if (currentDisclosure === "monitoring") {
+      localStorage.setItem(MONITORING_CONSENT_KEY, "1");
+      void prewarmMonitoringPermissions();
+      // Если геолокация не была отдельным шагом (уже разрешена раньше), запускаем её здесь.
+      if (!disclosureQueue.includes("location")) {
+        void startLocationServices({ current: false });
+      }
+    }
+    advanceDisclosureQueue();
+  };
+
+  const handleDisclosureCancel = () => {
+    // Отказ от согласия не запоминаем навсегда — предупреждение появится снова при
+    // следующем запуске, соответствующая функция до согласия не активируется.
+    advanceDisclosureQueue();
   };
 
   useEffect(() => {
@@ -308,9 +340,12 @@ export function ChildDeviceServices() {
     <>
       <ChildLocationPanel />
       <ProminentDisclosureModal
-        open={showLocationDisclosure}
-        onConfirm={handleLocationDisclosureConfirm}
-        onCancel={handleLocationDisclosureCancel}
+        open={currentDisclosure !== null}
+        onConfirm={handleDisclosureConfirm}
+        onCancel={handleDisclosureCancel}
+        {...(currentDisclosure === "monitoring"
+          ? { title: MONITORING_DISCLOSURE_TITLE, description: MONITORING_DISCLOSURE_DESCRIPTION }
+          : {})}
       />
     </>
   );

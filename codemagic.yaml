@@ -12,6 +12,8 @@ workflows:
         - google_maps
       vars:
         PACKAGE_NAME: "app.lovable.umnilisenok"
+        VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: $VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY
+        GOOGLE_MAPS_ANDROID_API_KEY: $GOOGLE_MAPS_ANDROID_API_KEY
     scripts:
       - name: Install npm dependencies
         script: |
@@ -158,6 +160,8 @@ workflows:
         - google_maps
       vars:
         PACKAGE_NAME: "app.lovable.umnilisenok"
+        VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: $VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY
+        GOOGLE_MAPS_ANDROID_API_KEY: $GOOGLE_MAPS_ANDROID_API_KEY
     scripts:
       - name: Install npm dependencies
         script: |
@@ -295,6 +299,10 @@ workflows:
       java: 21
       groups:
         - google_maps
+      vars:
+        PACKAGE_NAME: "app.lovable.umnilisenok"
+        VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: $VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY
+        GOOGLE_MAPS_ANDROID_API_KEY: $GOOGLE_MAPS_ANDROID_API_KEY
     scripts:
       - name: Install npm dependencies
         script: npm ci || npm install

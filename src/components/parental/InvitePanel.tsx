@@ -173,7 +173,8 @@ export function InvitePanel() {
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Действует 24 часа · Одноразовый
+              Код постоянный — сохраните его. По нему ребёнок сможет войти в свой аккаунт снова,
+              если приложение удалят и установят заново.
             </p>
           </CardContent>
         </Card>
@@ -182,7 +183,7 @@ export function InvitePanel() {
       {invites.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">История приглашений</CardTitle>
+            <CardTitle className="text-base">Коды детей (постоянные)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {invites.map((inv) => (
@@ -193,23 +194,26 @@ export function InvitePanel() {
                 </div>
                 <div>
                   {inv.used_at ? (
-                    <Badge variant="secondary">Использован</Badge>
-                  ) : isExpired(inv) ? (
-                    <Badge variant="outline">Истёк</Badge>
+                    <Badge variant="secondary">Аккаунт создан</Badge>
                   ) : (
-                    <Badge>Активен</Badge>
+                    <Badge>Ждёт входа</Badge>
                   )}
                 </div>
-                {!inv.used_at && !isExpired(inv) && (
-                  <Button variant="ghost" size="icon" onClick={() => setActiveInvite(inv)}>
-                    <QrCode className="w-4 h-4" />
-                  </Button>
-                )}
+                <Button variant="ghost" size="icon" onClick={() => copy(inv.code, "Код")}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setActiveInvite(inv)}>
+                  <QrCode className="w-4 h-4" />
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => remove(inv.id)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
           </CardContent>
         </Card>
       )}

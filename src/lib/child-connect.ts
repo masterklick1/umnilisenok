@@ -40,13 +40,36 @@ const redeemInvite = async (code: string, childId: string) => {
   return lastError;
 };
 
-/** Parent created invite — child connects with code only (no email/password). */
+/** Parent created invite — child connects with code only (no email/password).
+ *  Код постоянный: если аккаунт по нему уже создан, входим в тот же аккаунт
+ *  (например, после переустановки приложения). */
 export const connectChildWithInviteCode = async (
   rawCode: string,
 ): Promise<{ ok: true; childId: string; childName: string } | { ok: false; error: string }> => {
   const code = parseInviteCode(rawCode);
   if (!code || code.length !== 6) {
     return { ok: false, error: "Неверный код. Нужно 6 символов." };
+  }
+
+  // 1) Повторный вход в уже созданный детский аккаунт по тому же коду.
+  try {
+    const { data: loginData } = await supabase.functions.invoke("child-code-login", {
+      body: { code },
+    });
+    if (loginData?.status === "existing" && loginData.tokenHash) {
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        token_hash: loginData.tokenHash as string,
+        type: "email",
+      });
+      if (!otpError) {
+        sessionStorage.setItem("activeChildId", loginData.childId);
+        sessionStorage.setItem("activeChildName", loginData.childName);
+        return { ok: true, childId: loginData.childId, childName: loginData.childName };
+      }
+      return { ok: false, error: otpError.message };
+    }
+  } catch {
+    // функция недоступна — пробуем обычную привязку ниже
   }
 
   const { data, error: lookupError } = await supabase.rpc("get_invite_by_code", { p_code: code });
@@ -56,8 +79,9 @@ export const connectChildWithInviteCode = async (
 
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) {
-    return { ok: false, error: "Код не найден, истёк или уже использован. Попроси родителя новый код." };
+    return { ok: false, error: "Код не найден. Попроси родителя новый код." };
   }
+
 
   const childName = row.child_first_name as string;
   const email = `child_${Date.now()}_${Math.random().toString(36).slice(2)}@internal.app`;

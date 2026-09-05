@@ -225,6 +225,37 @@ export const useParentalControl = () => {
     }
   };
 
+  // Delete child account entirely (profile, data, auth user) — server-side verifies
+  // that this child is actually linked to the requesting parent before deleting anything.
+  const deleteChildAccount = async (childId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-child-account", {
+        body: { childId },
+      });
+      if (error) throw error;
+      if ((data as { error?: string } | null)?.error) {
+        throw new Error((data as { error: string }).error);
+      }
+
+      if (selectedChild === childId) setSelectedChild(null);
+      await fetchChildren();
+
+      toast({
+        title: "Аккаунт удалён",
+        description: "Аккаунт ребёнка и все его данные удалены безвозвратно.",
+      });
+      return { error: null };
+    } catch (error) {
+      console.error("Error deleting child account:", error);
+      toast({
+        title: "Не удалось удалить аккаунт",
+        description: error instanceof Error ? error.message : "Попробуйте позже",
+        variant: "destructive",
+      });
+      return { error };
+    }
+  };
+
   // Fetch child activities (for mirror)
   const fetchChildActivities = useCallback(async (childId: string) => {
     try {
@@ -433,6 +464,7 @@ export const useParentalControl = () => {
     selectedChild,
     setSelectedChild,
     createChildAccount,
+    deleteChildAccount,
     childActivities,
     childAnalysis,
     analyzeChild,

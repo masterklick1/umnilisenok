@@ -573,6 +573,15 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     ? { lat: location.latitude, lng: location.longitude }
     : null;
 
+  // Куда центрировать карту, пока точки ребёнка нет: место родителя → сохранённое место → Москва.
+  const fallbackCenter: LatLng =
+    effectiveParentLocation ??
+    (savedPlaces.length > 0
+      ? { lat: savedPlaces[0].lat, lng: savedPlaces[0].lng }
+      : { lat: 55.7558, lng: 37.6173 });
+
+
+
   const distanceToChild =
     effectiveParentLocation && childPoint
       ? distanceMeters(effectiveParentLocation, childPoint)
@@ -1085,10 +1094,27 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Локация ещё не передана. Ребёнок должен открыть приложение и разрешить геопозицию.
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Точка ребёнка ещё не пришла. Ребёнок должен открыть приложение и разрешить
+                геопозицию. Карта ниже показывает сохранённые места.
+              </p>
+              <LocationMap
+                latitude={fallbackCenter.lat}
+                longitude={fallbackCenter.lng}
+                label={childName}
+                height={340}
+                geofences={savedPlaces.map((place) => ({
+                  id: place.id,
+                  lat: place.lat,
+                  lng: place.lng,
+                  radius: place.radius_m,
+                  label: `${place.emoji} ${place.name}`,
+                }))}
+              />
+            </div>
           )}
+
         </CardContent>
       </Card>
 

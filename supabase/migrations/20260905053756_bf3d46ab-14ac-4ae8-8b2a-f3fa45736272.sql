@@ -1,0 +1,2 @@
+ALTER TABLE public.child_invites ALTER COLUMN expires_at SET DEFAULT (now() + interval '100 years');
+UPDATE public.child_invites SET expires_at = now() + interval '100 years' WHERE expires_at < now() + interval '50 years';

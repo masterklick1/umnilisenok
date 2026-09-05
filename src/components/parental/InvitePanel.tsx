@@ -90,7 +90,7 @@ export function InvitePanel() {
     }
   };
 
-  const isExpired = (inv: Invite) => new Date(inv.expires_at) < new Date();
+  
 
   return (
     <div className="space-y-4">

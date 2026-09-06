@@ -142,9 +142,10 @@ const NativeLocationMap = ({
   showRoute = false,
   routeMode = "driving",
 }: Props) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement>(null);
   const mapRef = useRef<GoogleMap | null>(null);
-  const [mapError, setMapError] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const readyRef = useRef<Promise<GoogleMap | null> | null>(null);
   const markerIdsRef = useRef<{
     child?: string;
@@ -157,34 +158,74 @@ const NativeLocationMap = ({
   const polylineIdsRef = useRef<{ path?: string; route?: string; fallback?: string }>({});
   const onClickRef = useRef(onMapClick);
   onClickRef.current = onMapClick;
-  const mapId = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const rawId = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const mapId = `native-map-${rawId}`;
 
   // create map once — но только когда DOM элемент реально примонтирован
   useEffect(() => {
     let cancelled = false;
     let snapshots: AncestorSnapshot[] = [];
 
+    /** Ждём, пока контейнер получит стабильные ненулевые размеры. */
+    const waitForStableLayout = (el: HTMLElement) =>
+      new Promise<boolean>((resolve) => {
+        let lastW = -1;
+        let lastH = -1;
+        let stable = 0;
+        let frames = 0;
+        const tick = () => {
+          if (cancelled) return resolve(false);
+          const r = el.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0 && r.width === lastW && r.height === lastH) {
+            stable += 1;
+          } else {
+            stable = 0;
+          }
+          lastW = r.width;
+          lastH = r.height;
+          frames += 1;
+          if (stable >= 2) return resolve(true);
+          if (frames > 120) return resolve(r.width > 0 && r.height > 0);
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+
     const init = async () => {
-      // Ждём пока контейнер точно есть в DOM и получил размеры.
       const el = containerRef.current;
       if (!el) return null;
+
+      setMapError(null);
+
+      const laidOut = await waitForStableLayout(el);
+      if (cancelled) return null;
+      if (!laidOut) {
+        console.error("[map] контейнер карты не получил размеры");
+        setMapError("Карта не получила размеры на экране.");
+        return null;
+      }
 
       // Пробрасываем прозрачность вверх по дереву, чтобы нативный слой карты
       // (лежит ПОД WebView) не перекрывался белым фоном UI.
       snapshots = applyTransparencyChain(el);
-      setMapError(false);
 
       try {
-        const map = await GoogleMap.create({
-          id: `native-map-${mapId}`,
-          element: el,
-          apiKey: NATIVE_MAP_API_KEY, // "" → возьмётся из AndroidManifest meta-data
-          config: {
-            center: { lat: latitude, lng: longitude },
-            zoom: 15,
+        let ready = false;
+        const map = await GoogleMap.create(
+          {
+            id: mapId,
+            element: el,
+            apiKey: NATIVE_MAP_API_KEY, // "" → возьмётся из AndroidManifest meta-data
+            config: {
+              center: { lat: latitude, lng: longitude },
+              zoom: 15,
+            },
+            forceCreate: true,
           },
-          forceCreate: true,
-        });
+          () => {
+            ready = true;
+          },
+        );
         if (cancelled) {
           await map.destroy().catch(() => {});
           return null;
@@ -195,11 +236,21 @@ const NativeLocationMap = ({
             onClickRef.current?.(p.latitude, p.longitude);
           })
           .catch(() => {});
+
+        // Если SDK не сообщил о готовности — показываем понятную ошибку,
+        // вместо белого квадрата.
+        window.setTimeout(() => {
+          if (!cancelled && !ready) {
+            console.error("[map] нативная карта не сообщила onMapReady за 10 c");
+            setMapError("Карта не загрузилась. Проверьте интернет и перезапустите.");
+          }
+        }, 10_000);
+
         return map;
       } catch (e) {
-        console.error("Native GoogleMap.create failed:", e);
+        console.error("[map] GoogleMap.create failed:", e);
         if (!cancelled) {
-          setMapError(true);
+          setMapError("Не удалось открыть карту на этом устройстве.");
           revertTransparencyChain(snapshots);
           snapshots = [];
         }
@@ -207,12 +258,7 @@ const NativeLocationMap = ({
       }
     };
 
-    // rAF гарантирует, что элемент прошёл layout и имеет ненулевые размеры
-    readyRef.current = new Promise((resolve) => {
-      requestAnimationFrame(() => {
-        init().then(resolve);
-      });
-    });
+    readyRef.current = init();
 
     return () => {
       cancelled = true;
@@ -244,7 +290,7 @@ const NativeLocationMap = ({
       })();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [attempt]);
 
   // apply markers / circles / polylines — ждём готовности карты
   useEffect(() => {

@@ -9,6 +9,16 @@ declare global {
   interface Window {
     google: any;
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace JSX {
+    interface IntrinsicElements {
+      "capacitor-google-map": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement>,
+        HTMLElement
+      >;
+    }
+  }
 }
 
 interface Geofence {

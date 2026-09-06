@@ -469,15 +469,24 @@ const NativeLocationMap = ({
   ]);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-lg" style={{ height }}>
-      <div
-        ref={containerRef}
-        className="capacitor-map-transparent-ancestor h-full w-full"
-        style={{ background: "transparent" }}
+    <div className="relative w-full" style={{ height, background: "transparent" }}>
+      {/* Нативная карта Android рисуется ПОД WebView: никаких overflow-hidden
+          и скруглений на этом контейнере — они обрезают нативный слой. */}
+      <capacitor-google-map
+        ref={containerRef as React.Ref<HTMLElement>}
+        className="capacitor-map-transparent-ancestor block"
+        style={{ display: "block", width: "100%", height, background: "transparent" }}
       />
       {mapError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted px-6 text-center text-sm text-muted-foreground">
-          Карта не загрузилась. Проверьте подключение и настройки Google Maps.
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted px-6 text-center text-sm text-muted-foreground">
+          <span>{mapError}</span>
+          <button
+            type="button"
+            onClick={() => setAttempt((n) => n + 1)}
+            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
+          >
+            Повторить
+          </button>
         </div>
       )}
     </div>

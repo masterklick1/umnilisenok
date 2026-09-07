@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Gamepad2, Plus, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface GameSession {
   id: string;
@@ -108,17 +109,29 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chosenChild, setChosenChild] = useState<string | null>(selectedChild);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleCreateGame = async (childId: string, gameType: string) => {
     setIsCreating(true);
     const initialState = getInitialState(gameType);
     const { error, session } = await onCreateGame(childId, gameType, initialState);
     setIsCreating(false);
-    
-    if (!error && session) {
-      setDialogOpen(false);
-      navigate(`/games/${(session as { id: string }).id}`);
+
+    if (error || !session) {
+      toast({
+        title: "Не удалось создать игру",
+        description: "Проверьте связь с интернетом и попробуйте ещё раз.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    setDialogOpen(false);
+    toast({
+      title: "Игра создана 🎮",
+      description: "Приглашение отправлено ребёнку на его телефон.",
+    });
+    navigate(`/games/${(session as { id: string }).id}`);
   };
 
   const activeSessions = sessions.filter((s) => s.status === "active" || s.status === "waiting");

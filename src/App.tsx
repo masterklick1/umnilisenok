@@ -21,6 +21,7 @@ import JoinPage from "./pages/JoinPage";
 import SettingsPage from "./pages/SettingsPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import { ChildPlaceStatusBadge } from "./components/child/ChildPlaceStatusBadge";
+import { GameInviteWatcher } from "./components/child/GameInviteWatcher";
 import { Capacitor } from "@capacitor/core";
 
 const queryClient = new QueryClient();
@@ -140,6 +141,7 @@ const App = () => (
         <BrowserRouter>
           {Capacitor.isNativePlatform() && <SafeDeviceServices />}
           <ChildPlaceStatusBadge />
+          <GameInviteWatcher />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/join" element={<JoinPage />} />

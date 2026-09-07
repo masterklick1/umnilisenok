@@ -140,6 +140,7 @@ const App = () => (
         <BrowserRouter>
           {Capacitor.isNativePlatform() && <SafeDeviceServices />}
           <ChildPlaceStatusBadge />
+          <GameInviteWatcher />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/join" element={<JoinPage />} />

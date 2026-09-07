@@ -114,11 +114,22 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
     const initialState = getInitialState(gameType);
     const { error, session } = await onCreateGame(childId, gameType, initialState);
     setIsCreating(false);
-    
-    if (!error && session) {
-      setDialogOpen(false);
-      navigate(`/games/${(session as { id: string }).id}`);
+
+    if (error || !session) {
+      toast({
+        title: "Не удалось создать игру",
+        description: "Проверьте связь с интернетом и попробуйте ещё раз.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    setDialogOpen(false);
+    toast({
+      title: "Игра создана 🎮",
+      description: "Приглашение отправлено ребёнку на его телефон.",
+    });
+    navigate(`/games/${(session as { id: string }).id}`);
   };
 
   const activeSessions = sessions.filter((s) => s.status === "active" || s.status === "waiting");

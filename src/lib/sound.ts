@@ -1,3 +1,6 @@
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
+import { Capacitor } from '@capacitor/core';
+
 export const SOUND_KEY = "settings.soundEnabled";
 
 export const isSoundEnabled = (): boolean => {
@@ -29,7 +32,7 @@ const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
       resolve(window.speechSynthesis.getVoices());
     };
     window.speechSynthesis.addEventListener?.("voiceschanged", finish, { once: true });
-    // некоторые движки (Android WebView) не шлют событие — опрашиваем сами
+    
     let tries = 0;
     const timer = setInterval(() => {
       tries += 1;
@@ -42,7 +45,6 @@ const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
   return voicesPromise;
 };
 
-// Прогреваем список голосов заранее, чтобы первое нажатие уже звучало
 if (hasTTS()) {
   loadVoices();
 }
@@ -52,7 +54,7 @@ const pickRussianVoice = (voices: SpeechSynthesisVoice[]) =>
   voices.find((v) => v.name?.toLowerCase().includes("russ")) ||
   null;
 
-const doSpeak = (text: string, voices: SpeechSynthesisVoice[]) => {
+const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
   const synth = window.speechSynthesis;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "ru-RU";
@@ -66,13 +68,11 @@ const doSpeak = (text: string, voices: SpeechSynthesisVoice[]) => {
   } catch {
     /* игнорируем */
   }
-  // Chrome/Android иногда остаётся в состоянии paused
   try {
     synth.resume();
   } catch {
     /* игнорируем */
   }
-  // небольшая задержка после cancel(), иначе речь молча проглатывается
   setTimeout(() => {
     try {
       synth.speak(utterance);
@@ -82,11 +82,46 @@ const doSpeak = (text: string, voices: SpeechSynthesisVoice[]) => {
   }, 60);
 };
 
-export const speak = (text: string) => {
-  if (!text || !isSoundEnabled() || !hasTTS()) return;
-  if (voicesReady) {
-    doSpeak(text, window.speechSynthesis.getVoices());
+export const speak = async (text: string): Promise<void> => {
+  if (!text || !isSoundEnabled()) return;
+
+  // Нативная озвучка для Android / iOS
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await TextToSpeech.stop();
+      await TextToSpeech.speak({
+        text,
+        lang: 'ru-RU',
+        rate: 0.9,
+        pitch: 1.0,
+        volume: 1.0,
+        category: 'ambient',
+      });
+    } catch (error) {
+      console.error('Ошибка нативной речи Android:', error);
+    }
     return;
   }
-  loadVoices().then((voices) => doSpeak(text, voices));
+
+  // Озвучка для Браузера (Web)
+  if (!hasTTS()) return;
+
+  if (voicesReady) {
+    doSpeakWeb(text, window.speechSynthesis.getVoices());
+    return;
+  }
+  
+  loadVoices().then((voices) => doSpeakWeb(text, voices));
+};
+
+export const stopSpeech = async (): Promise<void> => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await TextToSpeech.stop();
+    } else if (hasTTS()) {
+      window.speechSynthesis.cancel();
+    }
+  } catch (error) {
+    console.error('Ошибка остановки речи:', error);
+  }
 };

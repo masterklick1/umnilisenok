@@ -12,8 +12,6 @@ workflows:
         - google_maps
       vars:
         PACKAGE_NAME: "app.lovable.umnilisenok"
-        VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: $VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY
-        GOOGLE_MAPS_ANDROID_API_KEY: $GOOGLE_MAPS_ANDROID_API_KEY
     scripts:
       - name: Install npm dependencies
         script: |
@@ -61,7 +59,6 @@ workflows:
               tree = ET.parse(manifest_path)
               root = tree.getroot()
               
-              # Добавляем разрешения, если их нет
               required_permissions = [
                   "android.permission.INTERNET",
                   "android.permission.ACCESS_FINE_LOCATION",
@@ -160,8 +157,6 @@ workflows:
         - google_maps
       vars:
         PACKAGE_NAME: "app.lovable.umnilisenok"
-        VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: $VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY
-        GOOGLE_MAPS_ANDROID_API_KEY: $GOOGLE_MAPS_ANDROID_API_KEY
     scripts:
       - name: Install npm dependencies
         script: |
@@ -209,7 +204,6 @@ workflows:
               tree = ET.parse(manifest_path)
               root = tree.getroot()
               
-              # Добавляем разрешения, если их нет
               required_permissions = [
                   "android.permission.INTERNET",
                   "android.permission.ACCESS_FINE_LOCATION",
@@ -301,8 +295,6 @@ workflows:
         - google_maps
       vars:
         PACKAGE_NAME: "app.lovable.umnilisenok"
-        VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: $VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY
-        GOOGLE_MAPS_ANDROID_API_KEY: $GOOGLE_MAPS_ANDROID_API_KEY
     scripts:
       - name: Install npm dependencies
         script: npm ci || npm install

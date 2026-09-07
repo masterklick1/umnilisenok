@@ -7,8 +7,14 @@
     <meta name="description" content="«Любимое приложение умных детей.» (The favorite app of smart kids.)">
     <meta name="author" content="Smart Fox Learning" />
 
-    
-    
+    <!-- Разрешаем запросы к Google Maps, стилям и скриптам в WebView -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src * 'unsafe-inline' 'unsafe-eval' data: gap: content: blob:; 
+                   script-src * 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://*.gstatic.com; 
+                   connect-src * 'unsafe-inline' https://*.googleapis.com https://*.gstatic.com; 
+                   img-src * 'unsafe-inline' data: blob: https://*.googleapis.com https://*.gstatic.com https://storage.googleapis.com; 
+                   style-src * 'unsafe-inline' https://fonts.googleapis.com;">
+
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/WBsE2jEShUWnMiTIaAbhhSp6dUn2/social-images/social-1781954636989-Снимок_экрана_20-6-2026_161710_umnilisenok.lovable.app.webp">
 
@@ -16,10 +22,10 @@
     <meta name="twitter:site" content="@SmartFoxLearning" />
     <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/WBsE2jEShUWnMiTIaAbhhSp6dUn2/social-images/social-1781954636989-Снимок_экрана_20-6-2026_161710_umnilisenok.lovable.app.webp">
     <meta property="og:title" content="🦊 Умный Лисёнок - Обучающее приложение для детей и Контроль">
-  <meta name="twitter:title" content="🦊 Умный Лисёнок - Обучающее приложение для детей и Контроль">
-  <meta property="og:description" content="«Любимое приложение умных детей.» (The favorite app of smart kids.)">
-  <meta name="twitter:description" content="«Любимое приложение умных детей.» (The favorite app of smart kids.)">
-</head>
+    <meta name="twitter:title" content="🦊 Умный Лисёнок - Обучающее приложение для детей и Контроль">
+    <meta property="og:description" content="«Любимое приложение умных детей.» (The favorite app of smart kids.)">
+    <meta name="twitter:description" content="«Любимое приложение умных детей.» (The favorite app of smart kids.)">
+  </head>
 
   <body>
     <div id="root"></div>

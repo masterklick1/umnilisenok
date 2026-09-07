@@ -42,8 +42,11 @@ const NATIVE_MAP_API_KEY =
 
 /**
  * Dual-mode карта:
- *   • native (Capacitor) → рендер через @capacitor/google-maps.
- *   • при ошибке нативного слоя / web → fallback на WebLocationMap.
+ *   • native (Capacitor) → рендер через @capacitor/google-maps (нативное окно
+ *     Android / iOS поверх Webview). Выглядит идеально плавно, но требует
+ *     прозрачных родителей в DOM.
+ *   • при ошибке нативного слоя / web → fallback на WebLocationMap
+ *     (JS Google Maps API).
  */
 export const LocationMap = (props: Props) => {
   const [nativeFailed, setNativeFailed] = useState(false);
@@ -292,7 +295,7 @@ const NativeLocationMap = ({
 
       try {
         const center = { lat: latitude, lng: longitude };
-        await map.setCamera({ coordinate: center, animate: true });
+        await map.setCamera({ coordinate: center, zoom: 15, animate: true });
 
         if (markerIdsRef.current.child) {
           await map.removeMarker(markerIdsRef.current.child).catch(() => {});
@@ -524,6 +527,7 @@ const WebLocationMap = ({
           mapRef.current = new google.maps.Map(ref.current, {
             center,
             zoom: 15,
+            minZoom: 10,
             disableDefaultUI: false,
             streetViewControl: false,
             mapTypeControl: false,
@@ -545,6 +549,7 @@ const WebLocationMap = ({
         } else {
           childMarkerRef.current?.setPosition(center);
           mapRef.current.panTo(center);
+          mapRef.current.setZoom(15);
         }
 
         if (accuracy && accuracy > 0) {
@@ -701,16 +706,6 @@ const WebLocationMap = ({
           }
         } else if (parentMarkerRef.current) {
           parentMarkerRef.current.setMap(null);
-        }
-
-        const bounds = new google.maps.LatLngBounds();
-        bounds.extend(center);
-        pathCoords.forEach((p) => bounds.extend(p));
-        if (parentLocation) bounds.extend(parentLocation);
-        geofences.forEach((z) => bounds.extend({ lat: z.lat, lng: z.lng }));
-        if (geofence) bounds.extend({ lat: geofence.lat, lng: geofence.lng });
-        if (pathCoords.length > 1 || parentLocation || geofences.length > 0) {
-          mapRef.current.fitBounds(bounds, 48);
         }
 
         routeLineRef.current?.setMap(null);

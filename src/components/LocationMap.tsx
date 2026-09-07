@@ -37,20 +37,19 @@ interface Props {
   routeMode?: TravelMode;
 }
 
-// Ключ для нативной карты. На Android читается из meta-data манифеста, но
-// плагин ТРЕБУЕТ передать apiKey в JS — можно передать пустую строку, тогда
-// используется значение из манифеста.
 const NATIVE_MAP_API_KEY =
-  (import.meta.env.VITE_GOOGLE_MAPS_NATIVE_KEY as string | undefined) ?? "";
+  (import.meta.env.VITE_GOOGLE_MAPS_NATIVE_KEY as string | undefined) || "";
 
 /**
  * Dual-mode карта:
  *   • native (Capacitor) → рендер через @capacitor/google-maps.
- *   • web/preview → рендер через window.google.maps.Map.
+ *   • при ошибке нативного слоя / web → fallback на WebLocationMap.
  */
 export const LocationMap = (props: Props) => {
-  if (isNative()) {
-    return <NativeLocationMap {...props} />;
+  const [nativeFailed, setNativeFailed] = useState(false);
+
+  if (isNative() && !nativeFailed) {
+    return <NativeLocationMap {...props} onError={() => setNativeFailed(true)} />;
   }
   return <WebLocationMap {...props} />;
 };
@@ -118,6 +117,10 @@ const revertTransparencyChain = (snapshots: AncestorSnapshot[]) => {
 /* ============================================================
  * NATIVE (Capacitor Google Maps SDK)
  * ============================================================ */
+interface NativeProps extends Props {
+  onError?: () => void;
+}
+
 const NativeLocationMap = ({
   latitude,
   longitude,
@@ -131,7 +134,8 @@ const NativeLocationMap = ({
   parentLocation = null,
   showRoute = false,
   routeMode = "driving",
-}: Props) => {
+  onError,
+}: NativeProps) => {
   const containerRef = useRef<HTMLElement>(null);
   const mapRef = useRef<GoogleMap | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -151,12 +155,10 @@ const NativeLocationMap = ({
   const rawId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const mapId = `native-map-${rawId}`;
 
-  // create map once — но только когда DOM элемент реально примонтирован
   useEffect(() => {
     let cancelled = false;
     let snapshots: AncestorSnapshot[] = [];
 
-    /** Ждём, пока контейнер получит стабильные ненулевые размеры. */
     const waitForStableLayout = (el: HTMLElement) =>
       new Promise<boolean>((resolve) => {
         let lastW = -1;
@@ -192,11 +194,10 @@ const NativeLocationMap = ({
       if (!laidOut) {
         console.error("[map] контейнер карты не получил размеры");
         setMapError("Карта не получила размеры на экране.");
+        onError?.();
         return null;
       }
 
-      // Пробрасываем прозрачность вверх по дереву, чтобы нативный слой карты
-      // (лежит ПОД WebView) не перекрывался белым фоном UI.
       snapshots = applyTransparencyChain(el);
 
       try {
@@ -205,7 +206,7 @@ const NativeLocationMap = ({
           {
             id: mapId,
             element: el,
-            apiKey: NATIVE_MAP_API_KEY, // "" → возьмётся из AndroidManifest meta-data
+            apiKey: NATIVE_MAP_API_KEY,
             config: {
               center: { lat: latitude, lng: longitude },
               zoom: 15,
@@ -227,22 +228,22 @@ const NativeLocationMap = ({
           })
           .catch(() => {});
 
-        // Если SDK не сообщил о готовности — показываем понятную ошибку,
-        // вместо белого квадрата.
         window.setTimeout(() => {
           if (!cancelled && !ready) {
             console.error("[map] нативная карта не сообщила onMapReady за 10 c");
-            setMapError("Карта не загрузилась. Проверьте интернет и перезапустите.");
+            setMapError("Нативная карта временно недоступна.");
+            onError?.();
           }
         }, 10_000);
 
         return map;
       } catch (e) {
-        console.error("[map] GoogleMap.create failed:", e);
+        console.error("[map] GoogleMap.create failed, falling back to web:", e);
         if (!cancelled) {
-          setMapError("Не удалось открыть карту на этом устройстве.");
+          setMapError("Переключение на стандартный режим...");
           revertTransparencyChain(snapshots);
           snapshots = [];
+          onError?.();
         }
         return null;
       }
@@ -282,7 +283,6 @@ const NativeLocationMap = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]);
 
-  // apply markers / circles / polylines — ждём готовности карты
   useEffect(() => {
     let cancelled = false;
 
@@ -294,7 +294,6 @@ const NativeLocationMap = ({
         const center = { lat: latitude, lng: longitude };
         await map.setCamera({ coordinate: center, animate: true });
 
-        // child marker
         if (markerIdsRef.current.child) {
           await map.removeMarker(markerIdsRef.current.child).catch(() => {});
         }
@@ -303,7 +302,6 @@ const NativeLocationMap = ({
           title: label || "Ребёнок",
         });
 
-        // parent marker
         if (markerIdsRef.current.parent) {
           await map.removeMarker(markerIdsRef.current.parent).catch(() => {});
           markerIdsRef.current.parent = undefined;
@@ -315,7 +313,6 @@ const NativeLocationMap = ({
           });
         }
 
-        // zones
         for (const id of markerIdsRef.current.zones) {
           await map.removeMarker(id).catch(() => {});
         }
@@ -327,16 +324,18 @@ const NativeLocationMap = ({
 
         for (const zone of geofences) {
           const color = zone.color ?? "#22c55e";
-          const cid = await (map as any).addCircles([
-            {
-              center: { lat: zone.lat, lng: zone.lng },
-              radius: zone.radius,
-              strokeColor: color,
-              strokeWeight: 2,
-              fillColor: color + "22",
-            },
-          ]);
-          circleIdsRef.current.zones.push(...cid);
+          if (typeof (map as any).addCircles === "function") {
+            const cid = await (map as any).addCircles([
+              {
+                center: { lat: zone.lat, lng: zone.lng },
+                radius: zone.radius,
+                strokeColor: color,
+                strokeWeight: 2,
+                fillColor: color + "22",
+              },
+            ]).catch(() => []);
+            if (Array.isArray(cid)) circleIdsRef.current.zones.push(...cid);
+          }
           const mid = await map.addMarker({
             coordinate: { lat: zone.lat, lng: zone.lng },
             title: zone.label || "Место",
@@ -344,12 +343,11 @@ const NativeLocationMap = ({
           markerIdsRef.current.zones.push(mid);
         }
 
-        // legacy geofence highlight
         if (circleIdsRef.current.legacy) {
           await map.removeCircles([circleIdsRef.current.legacy]).catch(() => {});
           circleIdsRef.current.legacy = undefined;
         }
-        if (geofence) {
+        if (geofence && typeof (map as any).addCircles === "function") {
           const cid = await (map as any).addCircles([
             {
               center: { lat: geofence.lat, lng: geofence.lng },
@@ -358,16 +356,15 @@ const NativeLocationMap = ({
               strokeWeight: 3,
               fillColor: "#2563eb10",
             },
-          ]);
-          circleIdsRef.current.legacy = cid[0];
+          ]).catch(() => []);
+          if (Array.isArray(cid) && cid[0]) circleIdsRef.current.legacy = cid[0];
         }
 
-        // accuracy circle
         if (circleIdsRef.current.accuracy) {
           await map.removeCircles([circleIdsRef.current.accuracy]).catch(() => {});
           circleIdsRef.current.accuracy = undefined;
         }
-        if (accuracy && accuracy > 0) {
+        if (accuracy && accuracy > 0 && typeof (map as any).addCircles === "function") {
           const cid = await (map as any).addCircles([
             {
               center,
@@ -376,11 +373,10 @@ const NativeLocationMap = ({
               strokeWeight: 1,
               fillColor: "#3b82f620",
             },
-          ]);
-          circleIdsRef.current.accuracy = cid[0];
+          ]).catch(() => []);
+          if (Array.isArray(cid) && cid[0]) circleIdsRef.current.accuracy = cid[0];
         }
 
-        // movement path
         if (polylineIdsRef.current.path) {
           await map.removePolylines([polylineIdsRef.current.path]).catch(() => {});
           polylineIdsRef.current.path = undefined;
@@ -389,7 +385,7 @@ const NativeLocationMap = ({
           ...movementPath.map((p) => ({ lat: p.lat, lng: p.lng })),
           center,
         ];
-        if (pathCoords.length >= 2) {
+        if (pathCoords.length >= 2 && typeof (map as any).addPolylines === "function") {
           const ids = await (map as any).addPolylines([
             {
               path: pathCoords,
@@ -397,11 +393,10 @@ const NativeLocationMap = ({
               strokeWeight: 4,
               geodesic: true,
             },
-          ]);
-          polylineIdsRef.current.path = ids[0];
+          ]).catch(() => []);
+          if (Array.isArray(ids) && ids[0]) polylineIdsRef.current.path = ids[0];
         }
 
-        // route
         if (polylineIdsRef.current.route) {
           await map.removePolylines([polylineIdsRef.current.route]).catch(() => {});
           polylineIdsRef.current.route = undefined;
@@ -410,7 +405,7 @@ const NativeLocationMap = ({
           await map.removePolylines([polylineIdsRef.current.fallback]).catch(() => {});
           polylineIdsRef.current.fallback = undefined;
         }
-        if (showRoute && parentLocation) {
+        if (showRoute && parentLocation && typeof (map as any).addPolylines === "function") {
           const dir = await getDirections(parentLocation, center, routeMode);
           if (cancelled) return;
           if (dir?.path?.length) {
@@ -420,8 +415,8 @@ const NativeLocationMap = ({
                 strokeColor: "#2563eb",
                 strokeWeight: 5,
               },
-            ]);
-            polylineIdsRef.current.route = ids[0];
+            ]).catch(() => []);
+            if (Array.isArray(ids) && ids[0]) polylineIdsRef.current.route = ids[0];
           } else {
             const ids = await (map as any).addPolylines([
               {
@@ -430,8 +425,8 @@ const NativeLocationMap = ({
                 strokeWeight: 3,
                 geodesic: true,
               },
-            ]);
-            polylineIdsRef.current.fallback = ids[0];
+            ]).catch(() => []);
+            if (Array.isArray(ids) && ids[0]) polylineIdsRef.current.fallback = ids[0];
           }
         }
       } catch (e) {
@@ -460,8 +455,6 @@ const NativeLocationMap = ({
 
   return (
     <div className="relative w-full" style={{ height, background: "transparent" }}>
-      {/* Нативная карта Android рисуется ПОД WebView: никаких overflow-hidden
-          и скруглений на этом контейнере — они обрезают нативный слой. */}
       <capacitor-google-map
         ref={containerRef as React.Ref<HTMLElement>}
         className="capacitor-map-transparent-ancestor block"
@@ -484,7 +477,7 @@ const NativeLocationMap = ({
 };
 
 /* ============================================================
- * WEB (Google Maps JavaScript API — fallback для preview/desktop)
+ * WEB (Google Maps JavaScript API — fallback)
  * ============================================================ */
 const WebLocationMap = ({
   latitude,

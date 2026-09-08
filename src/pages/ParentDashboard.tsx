@@ -13,15 +13,50 @@ import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
 import { SelectedChildBar } from "@/components/parental/SelectedChildBar";
-import { ArrowLeft, Users, Eye, Brain, Gamepad2, LogOut, Shield, Link2, Bell, BellOff, RefreshCw, CheckCircle2, XCircle, House, Lock } from "lucide-react";
+import {
+  ArrowLeft,
+  Users,
+  Eye,
+  Brain,
+  Gamepad2,
+  LogOut,
+  Shield,
+  Link2,
+  Bell,
+  BellOff,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  House,
+  Lock,
+} from "lucide-react";
 import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
 import { MonitoringPanel } from "@/components/parental/MonitoringPanel";
-import { MonitoringNotificationSettings, loadMonitoringPrefs, shouldNotify, type MonitoringNotifPrefs } from "@/components/parental/MonitoringNotificationSettings";
+import {
+  MonitoringNotificationSettings,
+  loadMonitoringPrefs,
+  shouldNotify,
+  type MonitoringNotifPrefs,
+} from "@/components/parental/MonitoringNotificationSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import { isPushSupported, getPushPermission, subscribeToPush, ensureServiceWorker, getPushStatus, unsubscribeFromPush, type PushStatus } from "@/lib/push";
-import { hasParentPin, isParentPinUnlocked, purgeLegacyPin, unlockParentPin, verifyParentPin } from "@/lib/parent-pin";
+import {
+  isPushSupported,
+  getPushPermission,
+  subscribeToPush,
+  ensureServiceWorker,
+  getPushStatus,
+  unsubscribeFromPush,
+  type PushStatus,
+} from "@/lib/push";
+import {
+  hasParentPin,
+  isParentPinUnlocked,
+  purgeLegacyPin,
+  unlockParentPin,
+  verifyParentPin,
+} from "@/lib/parent-pin";
 import { Input } from "@/components/ui/input";
 
 export default function ParentDashboard() {
@@ -45,7 +80,7 @@ export default function ParentDashboard() {
   const [activeTab, setActiveTab] = useState("children");
   const { toast } = useToast();
   const [pushPerm, setPushPerm] = useState<NotificationPermission | "unsupported">(
-    isPushSupported() ? getPushPermission() : "unsupported"
+    isPushSupported() ? getPushPermission() : "unsupported",
   );
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [notifPrefs, setNotifPrefs] = useState<MonitoringNotifPrefs>(loadMonitoringPrefs());
@@ -79,7 +114,6 @@ export default function ParentDashboard() {
     setPushPerm(s.permission);
   };
 
-  // Auto-register SW + try to silently reuse subscription
   useEffect(() => {
     if (!user?.id || !isPushSupported()) return;
     (async () => {
@@ -91,13 +125,11 @@ export default function ParentDashboard() {
     })();
   }, [user?.id]);
 
-  // Periodic push status re-sync every 5 minutes (and on tab focus)
   useEffect(() => {
     if (!user?.id || !isPushSupported()) return;
 
     const tick = async () => {
       if (Notification.permission === "granted") {
-        // Re-upsert keeps last_synced_at fresh and re-binds endpoint to current user
         await subscribeToPush(user.id).catch(() => {});
       }
       await refreshPushStatus();
@@ -144,7 +176,7 @@ export default function ParentDashboard() {
     });
   };
 
-  // Realtime SOS notification across all linked children
+  // Realtime подписки
   useEffect(() => {
     const childIds = children.map((c) => c.child_id);
     if (childIds.length === 0) return;
@@ -169,7 +201,7 @@ export default function ParentDashboard() {
               </ToastAction>
             ),
           });
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -206,18 +238,29 @@ export default function ParentDashboard() {
               </ToastAction>
             ),
           });
-        }
+        },
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "monitoring_requests" },
         (payload) => {
-          const r = payload.new as { child_id: string; parent_id: string; request_type: string; status: string };
+          const r = payload.new as {
+            child_id: string;
+            parent_id: string;
+            request_type: string;
+            status: string;
+          };
           if (!childIds.includes(r.child_id)) return;
           if (r.status !== "fulfilled" && r.status !== "failed") return;
+
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("monitoring-request-updated", { detail: r }));
+          }
+
           if (!shouldNotify(notifPrefs, r.request_type, r.status)) return;
           const child = children.find((c) => c.child_id === r.child_id);
-          const typeLabel = r.request_type === "photo" ? "фото" : r.request_type === "audio" ? "звук" : "локацию";
+          const typeLabel =
+            r.request_type === "photo" ? "фото" : r.request_type === "audio" ? "звук" : "локацию";
           const ok = r.status === "fulfilled";
           toast({
             title: ok ? `✅ Получен ответ: ${typeLabel}` : `❌ Ошибка запроса: ${typeLabel}`,
@@ -230,16 +273,16 @@ export default function ParentDashboard() {
               </ToastAction>
             ),
           });
-        }
+        },
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void channel.unsubscribe();
     };
   }, [children, setSelectedChild, toast, notifPrefs]);
 
-  // Timeout watcher: notify when a child hasn't responded within N minutes
+  // Таймаут ответов
   useEffect(() => {
     const childIds = children.map((c) => c.child_id);
     if (childIds.length === 0) return;
@@ -299,7 +342,6 @@ export default function ParentDashboard() {
     setActiveTab(tab);
   };
 
-  // Auto-select child who is playing on own phone right now
   useEffect(() => {
     if (selectedChild || children.length === 0) return;
     const playingNow = children.find(
@@ -617,6 +659,7 @@ export default function ParentDashboard() {
               </>
             )}
           </TabsContent>
+
           {/* Safety Tab */}
           <TabsContent value="safety" className="space-y-4">
             {selectedChildData ? (
@@ -652,7 +695,6 @@ export default function ParentDashboard() {
             )}
           </TabsContent>
 
-
           {/* Mirror Tab */}
           <TabsContent value="mirror">
             {selectedChildData ? (
@@ -665,7 +707,7 @@ export default function ParentDashboard() {
               <Card>
                 <CardContent className="py-8 text-center space-y-2">
                   <p className="text-muted-foreground">
-                    Выберите ребёнка на вкладке «Это устройство»
+                    Выберите ребёнка на вкладке «Дети»
                   </p>
                   <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                     Если ребёнок на своём телефоне — выберите карточку с меткой «📱 Свой

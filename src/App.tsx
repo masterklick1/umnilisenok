@@ -11,6 +11,7 @@ import MathPage from "./pages/MathPage";
 import AlphabetPage from "./pages/AlphabetPage";
 import EnglishPage from "./pages/EnglishPage";
 import EnglishAlphabetPage from "./pages/EnglishAlphabetPage";
+import EnglishWordsPage from "./pages/EnglishWordsPage";
 import WorldPage from "./pages/WorldPage";
 import CreativityPage from "./pages/CreativityPage";
 import VirtualHomePage from "./pages/VirtualHomePage";
@@ -185,6 +186,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <EnglishAlphabetPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/english/words"
+              element={
+                <ProtectedRoute>
+                  <EnglishWordsPage />
                 </ProtectedRoute>
               }
             />

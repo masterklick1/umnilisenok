@@ -9,11 +9,15 @@ export default function EnglishPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleModuleClick = (title: string) => {
-    toast({
-      title: `${title} 🚀`,
-      description: "Урок скоро станет доступен!",
-    });
+  const handleModuleClick = (id: string, title: string) => {
+    if (id === "abc") {
+      navigate("/english/alphabet");
+    } else {
+      toast({
+        title: `${title} 🚀`,
+        description: "Урок скоро станет доступен!",
+      });
+    }
   };
 
   const modules = [
@@ -83,7 +87,7 @@ export default function EnglishPage() {
           {modules.map((mod) => (
             <Card
               key={mod.id}
-              onClick={() => handleModuleClick(mod.title)}
+              onClick={() => handleModuleClick(mod.id, mod.title)}
               className={`${mod.bgColor} border-2 ${mod.borderColor} p-6 text-center cursor-pointer hover:scale-[1.02] transition-all shadow-md flex flex-col items-center justify-center min-h-[160px]`}
             >
               <div className="mb-3 p-3 bg-white/80 rounded-2xl shadow-sm">

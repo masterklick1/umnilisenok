@@ -14,6 +14,12 @@ export default function EnglishPage() {
       navigate("/english/alphabet");
     } else if (id === "words") {
       navigate("/english/words");
+    } else if (id === "quiz") {
+      navigate("/english/quiz");
+    } else if (id === "vowels") {
+      navigate("/english/vowels");
+    } else if (id === "missing") {
+      navigate("/english/missing");
     } else {
       toast({
         title: `${title} 🚀`,

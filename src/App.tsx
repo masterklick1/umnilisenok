@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import MathPage from "./pages/MathPage";
 import AlphabetPage from "./pages/AlphabetPage";
 import EnglishPage from "./pages/EnglishPage";
+import EnglishAlphabetPage from "./pages/EnglishAlphabetPage";
 import WorldPage from "./pages/WorldPage";
 import CreativityPage from "./pages/CreativityPage";
 import VirtualHomePage from "./pages/VirtualHomePage";
@@ -176,6 +177,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <EnglishPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/english/alphabet"
+              element={
+                <ProtectedRoute>
+                  <EnglishAlphabetPage />
                 </ProtectedRoute>
               }
             />

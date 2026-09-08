@@ -9,6 +9,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import Index from "./pages/Index";
 import MathPage from "./pages/MathPage";
 import AlphabetPage from "./pages/AlphabetPage";
+import EnglishPage from "./pages/EnglishPage";
 import WorldPage from "./pages/WorldPage";
 import CreativityPage from "./pages/CreativityPage";
 import VirtualHomePage from "./pages/VirtualHomePage";
@@ -167,6 +168,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AlphabetPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/english"
+              element={
+                <ProtectedRoute>
+                  <EnglishPage />
                 </ProtectedRoute>
               }
             />

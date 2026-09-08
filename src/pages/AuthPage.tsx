@@ -28,6 +28,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const { signUp, signIn, startDemo, isDemo, user } = useAuth();
@@ -67,6 +68,12 @@ export default function AuthPage() {
 
     try {
       if (isSignUp) {
+        if (!acceptedPolicy) {
+          setErrors({ policy: "Необходимо принять политику конфиденциальности" });
+          setIsLoading(false);
+          return;
+        }
+
         const result = signUpSchema.safeParse({ email, password, firstName });
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
@@ -203,7 +210,38 @@ export default function AuthPage() {
               />
               {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+
+            {isSignUp && (
+              <div className="space-y-1">
+                <div className="flex items-start space-x-2 pt-2">
+                  <input
+                    type="checkbox"
+                    id="policy"
+                    checked={acceptedPolicy}
+                    onChange={(e) => setAcceptedPolicy(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <Label htmlFor="policy" className="text-xs leading-normal cursor-pointer text-muted-foreground">
+                    Я принимаю{" "}
+                    <a
+                      href="https://telegra.ph/Politika-konfidencialnosti-Umnyj-Lisjonok-08-25"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline font-medium hover:opacity-80"
+                    >
+                      Политику конфиденциальности
+                    </a>
+                  </Label>
+                </div>
+                {errors.policy && <p className="text-sm text-destructive">{errors.policy}</p>}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading || (isSignUp && !acceptedPolicy)}
+            >
               {isLoading ? "Загрузка..." : isSignUp ? "Зарегистрироваться" : "Войти"}
             </Button>
           </form>

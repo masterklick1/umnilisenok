@@ -154,6 +154,17 @@ export default function AuthPage() {
                 Уроки без регистрации, родительский контроль после аккаунта
               </span>
             </Button>
+
+            <div className="pt-2 text-center">
+              <a
+                href="https://telegra.ph/Politika-konfidencialnosti-Umnyj-Lisyonok-08-25"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
+              >
+                Политика конфиденциальности
+              </a>
+            </div>
           </CardContent>
         </Card>
       </div>

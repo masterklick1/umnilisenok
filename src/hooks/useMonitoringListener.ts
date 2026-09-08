@@ -5,6 +5,7 @@ import { resolveChildTrackingId } from "@/lib/resolve-user-role";
 import { Capacitor } from "@capacitor/core";
 import { Camera } from "@capacitor/camera";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { getCachedGeoPosition } from "@/lib/geo-permission";
 
 interface MonitoringRequest {
   id: string;
@@ -15,9 +16,7 @@ interface MonitoringRequest {
 
 export const MONITORING_CONSENT_KEY = "monitoring-consent-acknowledged-v1";
 
-export const hasMonitoringConsent = (): boolean => {
-  return true; // Автоматически подтверждаем согласие
-};
+export const hasMonitoringConsent = (): boolean => true;
 
 const MONITORING_NOTIFICATION_CHANNEL_ID = "monitoring-active";
 
@@ -70,7 +69,16 @@ const recordAudio = async (durationMs: number): Promise<Blob | null> => {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const chunks: Blob[] = [];
-      const recorder = new MediaRecorder(stream);
+
+      // Подбираем доступный MIME-тип для записи на Android/Capacitor
+      let mimeType = "";
+      if (typeof MediaRecorder !== "undefined") {
+        if (MediaRecorder.isTypeSupported("audio/webm")) mimeType = "audio/webm";
+        else if (MediaRecorder.isTypeSupported("audio/mp4")) mimeType = "audio/mp4";
+        else if (MediaRecorder.isTypeSupported("audio/aac")) mimeType = "audio/aac";
+      }
+
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
 
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
@@ -87,7 +95,8 @@ const recordAudio = async (durationMs: number): Promise<Blob | null> => {
           if (stream) {
             stream.getTracks().forEach((track) => track.stop());
           }
-          resolve(chunks.length > 0 ? new Blob(chunks, { type: "audio/webm" }) : null);
+          const finalType = mimeType || "audio/webm";
+          resolve(chunks.length > 0 ? new Blob(chunks, { type: finalType }) : null);
         };
         recorder.stop();
       });
@@ -250,10 +259,12 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                 }
               } else if (req.request_type === "location") {
                 try {
+                  // Пробуем получить свежие GPS координаты с таймаутом и фолбэком
                   const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(resolve, reject, {
                       enableHighAccuracy: true,
-                      timeout: 15000,
+                      timeout: 10000,
+                      maximumAge: 60000, // Соглашаемся на координаты не старее 1 минуты
                     });
                   });
                   locationData = {
@@ -262,7 +273,16 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                     accuracy: pos.coords.accuracy,
                   };
                 } catch (err) {
-                  console.warn("Location capture failed:", err);
+                  console.warn("Location capture high accuracy failed, checking cached position:", err);
+                  // Фолбэк на кэшированную локацию из приложения
+                  const cached = getCachedGeoPosition();
+                  if (cached) {
+                    locationData = {
+                      latitude: cached.latitude,
+                      longitude: cached.longitude,
+                      accuracy: cached.accuracy ?? 0,
+                    };
+                  }
                 }
               }
 
@@ -298,6 +318,7 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                   .update({
                     status: success ? "fulfilled" : "failed",
                     result_path: resultPath,
+                    // Для гео отправляются координаты, для медиа — data_url (если Storage заблокирован), или результат
                     result_data: locationData ?? (dataUrl ? { data_url: dataUrl } : null),
                     fulfilled_at: new Date().toISOString(),
                   })

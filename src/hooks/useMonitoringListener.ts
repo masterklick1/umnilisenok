@@ -70,15 +70,22 @@ const recordAudio = async (durationMs: number): Promise<Blob | null> => {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const chunks: Blob[] = [];
 
-      // Подбираем доступный MIME-тип для записи на Android/Capacitor
+      // Подбираем строго поддерживаемый формат устройства Android/iOS
       let mimeType = "";
       if (typeof MediaRecorder !== "undefined") {
-        if (MediaRecorder.isTypeSupported("audio/webm")) mimeType = "audio/webm";
-        else if (MediaRecorder.isTypeSupported("audio/mp4")) mimeType = "audio/mp4";
-        else if (MediaRecorder.isTypeSupported("audio/aac")) mimeType = "audio/aac";
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          mimeType = "audio/webm;codecs=opus";
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+          mimeType = "audio/webm";
+        } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+          mimeType = "audio/mp4";
+        } else if (MediaRecorder.isTypeSupported("audio/aac")) {
+          mimeType = "audio/aac";
+        }
       }
 
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const recorderOptions = mimeType ? { mimeType } : undefined;
+      const recorder = new MediaRecorder(stream, recorderOptions);
 
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
@@ -86,7 +93,8 @@ const recordAudio = async (durationMs: number): Promise<Blob | null> => {
         }
       };
 
-      recorder.start();
+      // Собираем чанки каждые 200мс для надёжности записи на Android
+      recorder.start(200);
 
       await new Promise((resolve) => setTimeout(resolve, durationMs));
 
@@ -95,8 +103,8 @@ const recordAudio = async (durationMs: number): Promise<Blob | null> => {
           if (stream) {
             stream.getTracks().forEach((track) => track.stop());
           }
-          const finalType = mimeType || "audio/webm";
-          resolve(chunks.length > 0 ? new Blob(chunks, { type: finalType }) : null);
+          const actualType = recorder.mimeType || mimeType || "audio/webm";
+          resolve(chunks.length > 0 ? new Blob(chunks, { type: actualType }) : null);
         };
         recorder.stop();
       });
@@ -259,12 +267,11 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                 }
               } else if (req.request_type === "location") {
                 try {
-                  // Пробуем получить свежие GPS координаты с таймаутом и фолбэком
                   const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
                     navigator.geolocation.getCurrentPosition(resolve, reject, {
                       enableHighAccuracy: true,
                       timeout: 10000,
-                      maximumAge: 60000, // Соглашаемся на координаты не старее 1 минуты
+                      maximumAge: 60000,
                     });
                   });
                   locationData = {
@@ -274,7 +281,6 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                   };
                 } catch (err) {
                   console.warn("Location capture high accuracy failed, checking cached position:", err);
-                  // Фолбэк на кэшированную локацию из приложения
                   const cached = getCachedGeoPosition();
                   if (cached) {
                     locationData = {
@@ -318,7 +324,6 @@ export const useMonitoringListener = (enabled: boolean = true) => {
                   .update({
                     status: success ? "fulfilled" : "failed",
                     result_path: resultPath,
-                    // Для гео отправляются координаты, для медиа — data_url (если Storage заблокирован), или результат
                     result_data: locationData ?? (dataUrl ? { data_url: dataUrl } : null),
                     fulfilled_at: new Date().toISOString(),
                   })

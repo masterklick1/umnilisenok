@@ -12,6 +12,8 @@ export default function EnglishPage() {
   const handleModuleClick = (id: string, title: string) => {
     if (id === "abc") {
       navigate("/english/alphabet");
+    } else if (id === "words") {
+      navigate("/english/words");
     } else {
       toast({
         title: `${title} 🚀`,

@@ -5,11 +5,6 @@ import { resolveChildTrackingId } from "@/lib/resolve-user-role";
 import {
   getCachedGeoPosition,
   getGeoPosition,
-  queryGeoPermission,
-  queryBackgroundGeoPermission,
-  requestBackgroundGeoPermission,
-  startGeoWatch,
-  stopGeoWatch,
   type GeoPermissionState,
   type BackgroundGeoPermissionState,
   isBackgroundGeoSupported,
@@ -18,9 +13,10 @@ import {
   BG_GEO_NOTIFICATION_TEXT,
   BACKGROUND_GEO_RESTART_EVENT,
   getBackgroundGeolocation,
+  requestBackgroundGeoPermission,
 } from "@/lib/geo-permission";
 import { Capacitor } from "@capacitor/core";
-import { whenCapacitorReady, isNativePluginAvailable } from "@/lib/native-ready";
+import { whenCapacitorReady } from "@/lib/native-ready";
 
 const DEFAULT_INTERVAL_SEC = 60;
 const SETTINGS_POLL_MS = 30_000;
@@ -61,7 +57,6 @@ const emitStatus = (status: LocationTrackerStatus) => {
       window.dispatchEvent(new CustomEvent("location-tracker-status", { detail: status }));
     }
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.warn("Failed to emit status:", e);
   }
 };
@@ -69,7 +64,6 @@ const emitStatus = (status: LocationTrackerStatus) => {
 export const useLocationTracker = (enabled = true) => {
   const { user } = useAuth();
   const timerRef = useRef<number | null>(null);
-  const settingsPollRef = useRef<number | null>(null);
   const intervalSecRef = useRef(DEFAULT_INTERVAL_SEC);
   const [childId, setChildId] = useState<string | null>(null);
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
@@ -79,7 +73,7 @@ export const useLocationTracker = (enabled = true) => {
   const settingsRef = useRef<Settings | null>(null);
   const lastInsideRef = useRef<boolean | null>(null);
   const lastSentAtRef = useRef<string | null>(null);
-  const lastErrorRef = useRef<string | null>(null);
+  const lastErrorRef.current = useRef<string | null>(null);
   const tickInFlightRef = useRef(false);
   const trackingEnabledRef = useRef(true);
   const enabledRef = useRef(enabled);
@@ -94,7 +88,6 @@ export const useLocationTracker = (enabled = true) => {
     enabledRef.current = enabled;
   }, [enabled]);
 
-  // Init & resolve child ID
   useEffect(() => {
     if (!user?.id || !enabled) return;
 
@@ -108,7 +101,6 @@ export const useLocationTracker = (enabled = true) => {
           childIdRef.current = id;
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn("Failed to resolve child ID:", e);
         if (active) {
           setChildId(null);
@@ -122,7 +114,6 @@ export const useLocationTracker = (enabled = true) => {
     };
   }, [user?.id, enabled]);
 
-  // Poll settings
   useEffect(() => {
     if (!childId || !enabled) return;
 
@@ -143,7 +134,6 @@ export const useLocationTracker = (enabled = true) => {
           setBackgroundTrackingEnabled(data.geofence_enabled ?? false);
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn("Failed to poll settings:", e);
       }
     };
@@ -176,14 +166,17 @@ export const useLocationTracker = (enabled = true) => {
 
     try {
       try {
-        const pos = await getGeoPosition(120_000, 45_000, !force);
+        let pos = await getGeoPosition(15_000, 60_000, true);
         if (!pos) {
-          lastErrorRef.current = "No position";
+          pos = await getCachedGeoPosition();
+        }
+
+        if (!pos) {
+          lastErrorRef.current = "Position error: GPS unavailable";
           publishStatus();
           return;
         }
 
-        // Check geofence if enabled
         if (settingsRef.current?.geofence_enabled && settingsRef.current?.geofence_lat) {
           const dist = distanceM(
             pos.latitude,
@@ -196,37 +189,34 @@ export const useLocationTracker = (enabled = true) => {
           if (inside !== lastInsideRef.current) {
             lastInsideRef.current = inside;
             try {
-              // Таблица child_place_status отсутствует в сгенерированных типах.
               await (supabase as any).from("child_place_status").upsert({
                 child_id: childIdRef.current,
                 inside,
                 detected_at: new Date().toISOString(),
               });
             } catch (e) {
-              // eslint-disable-next-line no-console
               console.warn("Geofence insert failed:", e);
             }
           }
         }
 
-        // Always upsert location
-        try {
-          await supabase.from("child_locations").insert([
-            {
-              child_id: childIdRef.current,
-              device_source: "phone_web",
-              latitude: pos.latitude,
-              longitude: pos.longitude,
-              accuracy: pos.accuracy,
-            },
-          ]);
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn("Location insert failed:", e);
-        }
+        const { error: insertErr } = await supabase.from("child_locations").insert([
+          {
+            child_id: childIdRef.current,
+            device_source: Capacitor.isNativePlatform() ? "phone_app" : "phone_web",
+            latitude: pos.latitude,
+            longitude: pos.longitude,
+            accuracy: pos.accuracy ?? null,
+          },
+        ]);
 
-        lastSentAtRef.current = new Date().toISOString();
-        lastErrorRef.current = null;
+        if (insertErr) {
+          console.warn("Location insert failed:", insertErr);
+          lastErrorRef.current = insertErr.message;
+        } else {
+          lastSentAtRef.current = new Date().toISOString();
+          lastErrorRef.current = null;
+        }
       } catch (posErr) {
         lastErrorRef.current = (posErr as Error).message || "Position error";
       }
@@ -237,7 +227,6 @@ export const useLocationTracker = (enabled = true) => {
     }
   };
 
-  // Location tracking loop
   useEffect(() => {
     if (!enabled || !childId) {
       if (timerRef.current) {
@@ -262,7 +251,6 @@ export const useLocationTracker = (enabled = true) => {
     };
   }, [enabled, childId, trackingEnabled]);
 
-  // Background geo watcher
   useEffect(() => {
     if (!enabled || !childId || !Capacitor.isNativePlatform()) return;
 
@@ -276,7 +264,6 @@ export const useLocationTracker = (enabled = true) => {
         try {
           await ensureLocationNotificationPermission();
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.warn("Notification permission setup failed:", e);
         }
 
@@ -294,11 +281,9 @@ export const useLocationTracker = (enabled = true) => {
             const status = (perm?.location === "granted" || perm?.location === "always") ? "always" : "prompt";
             if (active) setBackgroundPermission(status);
           } catch (e) {
-            // eslint-disable-next-line no-console
             console.warn("Background geo permission check failed:", e);
           }
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.warn("Background geolocation setup failed:", e);
         }
 
@@ -312,7 +297,6 @@ export const useLocationTracker = (enabled = true) => {
             try {
               await bgGeo.removeWatcher({ id: backgroundWatcherRef.current });
             } catch (e) {
-              // eslint-disable-next-line no-console
               console.warn("Failed to remove old watcher:", e);
             }
             backgroundWatcherRef.current = null;
@@ -352,7 +336,6 @@ export const useLocationTracker = (enabled = true) => {
                   lastErrorRef.current = null;
                   publishStatus();
                 } catch (e) {
-                  // eslint-disable-next-line no-console
                   console.warn("Background location insert failed:", e);
                   lastErrorRef.current = (e as Error).message || "Insert error";
                   publishStatus();
@@ -362,17 +345,14 @@ export const useLocationTracker = (enabled = true) => {
 
             if (active) backgroundWatcherRef.current = watcherId;
           } catch (e) {
-            // eslint-disable-next-line no-console
             console.warn("Failed to add background watcher:", e);
             lastErrorRef.current = (e as Error).message || "Watcher error";
             publishStatus();
           }
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.warn("Background geo watcher setup failed:", e);
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn("setupBackgroundGeo failed:", e);
       }
     };
@@ -387,7 +367,6 @@ export const useLocationTracker = (enabled = true) => {
           try {
             void bgGeo.removeWatcher({ id: backgroundWatcherRef.current });
           } catch (e) {
-            // eslint-disable-next-line no-console
             console.warn("Failed to remove watcher on cleanup:", e);
           }
         }
@@ -395,7 +374,6 @@ export const useLocationTracker = (enabled = true) => {
     };
   }, [enabled, childId, backgroundTrackingEnabled]);
 
-  // Force send listener
   useEffect(() => {
     if (!enabled) return;
 
@@ -403,7 +381,6 @@ export const useLocationTracker = (enabled = true) => {
       try {
         void tick(true);
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn("Force send failed:", e);
       }
     };

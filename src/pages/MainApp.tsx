@@ -4,7 +4,7 @@ import { ScoreDisplay } from "@/components/ScoreDisplay";
 import { UserAvatar } from "@/components/UserAvatar";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calculator, BookOpen, Leaf, Palette, Brain, ArrowLeft } from "lucide-react";
+import { Calculator, BookOpen, Leaf, Palette, Brain, ArrowLeft, Globe } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ChildAccountBanner } from "@/components/child/ChildAccountBanner";
 import { useToast } from "@/hooks/use-toast";
@@ -104,7 +104,6 @@ export const MainApp = () => {
       supabase.removeChannel(channel);
     };
   }, [user?.id, toast, navigate]);
-
 
   const handleSubjectClick = (subject: string) => {
     toast({
@@ -243,6 +242,15 @@ export const MainApp = () => {
             onClick={() => navigate("/intellect")}
             bgColor="bg-gradient-to-br from-amber-100 to-yellow-100"
             decorativeElements="🧩"
+          />
+
+          <SubjectCard
+            icon={<Globe className="w-8 h-8 text-indigo-600" />}
+            title="English"
+            subtitle="Первые слова и алфавит"
+            onClick={() => navigate("/english")}
+            bgColor="bg-gradient-to-br from-indigo-100 to-sky-100"
+            decorativeElements="ABC"
           />
         </div>
       </div>

@@ -224,7 +224,7 @@ export default function AuthPage() {
                   <Label htmlFor="policy" className="text-xs leading-normal cursor-pointer text-muted-foreground">
                     Я принимаю{" "}
                     <a
-                      href="https://telegra.ph/Politika-konfidencialnosti-Umnyj-Lisjonok-08-25"
+                      href="https://telegra.ph/Politika-konfidencialnosti-Umnyj-Lisyonok-08-25"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary underline font-medium hover:opacity-80"

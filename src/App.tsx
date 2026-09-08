@@ -12,6 +12,9 @@ import AlphabetPage from "./pages/AlphabetPage";
 import EnglishPage from "./pages/EnglishPage";
 import EnglishAlphabetPage from "./pages/EnglishAlphabetPage";
 import EnglishWordsPage from "./pages/EnglishWordsPage";
+import EnglishQuizPage from "./pages/EnglishQuizPage";
+import EnglishVowelsPage from "./pages/EnglishVowelsPage";
+import EnglishMissingPage from "./pages/EnglishMissingPage";
 import WorldPage from "./pages/WorldPage";
 import CreativityPage from "./pages/CreativityPage";
 import VirtualHomePage from "./pages/VirtualHomePage";
@@ -194,6 +197,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <EnglishWordsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/english/quiz"
+              element={
+                <ProtectedRoute>
+                  <EnglishQuizPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/english/vowels"
+              element={
+                <ProtectedRoute>
+                  <EnglishVowelsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/english/missing"
+              element={
+                <ProtectedRoute>
+                  <EnglishMissingPage />
                 </ProtectedRoute>
               }
             />

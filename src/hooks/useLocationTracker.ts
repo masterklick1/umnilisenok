@@ -73,7 +73,7 @@ export const useLocationTracker = (enabled = true) => {
   const settingsRef = useRef<Settings | null>(null);
   const lastInsideRef = useRef<boolean | null>(null);
   const lastSentAtRef = useRef<string | null>(null);
-  const lastErrorRef.current = useRef<string | null>(null);
+  const lastErrorRef = useRef<string | null>(null); // ИСПРАВЛЕНО
   const tickInFlightRef = useRef(false);
   const trackingEnabledRef = useRef(true);
   const enabledRef = useRef(enabled);
@@ -166,7 +166,7 @@ export const useLocationTracker = (enabled = true) => {
 
     try {
       try {
-        let pos = await getGeoPosition(15_000, 60_000, true);
+        let pos = await getGeoPosition(10_000, 60_000, true);
         if (!pos) {
           pos = await getCachedGeoPosition();
         }

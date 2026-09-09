@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, BookOpen, Sparkles, Target, Circle, HelpCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, Sparkles, Target, Circle, HelpCircle, Puzzle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function EnglishPage() {
@@ -20,6 +20,8 @@ export default function EnglishPage() {
       navigate("/english/vowels");
     } else if (id === "missing") {
       navigate("/english/missing");
+    } else if (id === "builder") {
+      navigate("/english/builder");
     } else {
       toast({
         title: `${title} 🚀`,
@@ -44,6 +46,14 @@ export default function EnglishPage() {
       icon: <Sparkles className="w-10 h-10 text-amber-500" />,
       bgColor: "bg-gradient-to-br from-amber-100 to-yellow-100",
       borderColor: "border-amber-200",
+    },
+    {
+      id: "builder",
+      title: "Собери слово",
+      subtitle: "10 увлекательных уровней",
+      icon: <Puzzle className="w-10 h-10 text-orange-500" />,
+      bgColor: "bg-gradient-to-br from-orange-100 to-amber-100",
+      borderColor: "border-orange-200",
     },
     {
       id: "quiz",

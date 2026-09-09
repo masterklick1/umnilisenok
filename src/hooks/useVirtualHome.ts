@@ -60,9 +60,13 @@ export const useVirtualHome = () => {
   const [roomItems, setRoomItems] = useState<RoomItem[]>([]);
   const [userRoomItems, setUserRoomItems] = useState<UserRoomItem[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
-  const [userPet, setUserPet] = useState<UserPet | null>(null);
+  const [userPets, setUserPets] = useState<UserPet[]>([]);
+  const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Текущий активный питомец (по выбранному ID или первый из списка)
+  const userPet = userPets.find((p) => p.id === selectedPetId) || userPets[0] || null;
 
   const fetchData = async () => {
     if (!user) return;
@@ -81,7 +85,7 @@ export const useVirtualHome = () => {
         .from("user_room_items")
         .select("*, room_items(*)")
         .eq("user_id", user.id);
-      setUserRoomItems(userItems as UserRoomItem[] || []);
+      setUserRoomItems((userItems as UserRoomItem[]) || []);
 
       // Fetch all available pets
       const { data: allPets } = await supabase
@@ -90,13 +94,19 @@ export const useVirtualHome = () => {
         .order("price_stars", { ascending: true });
       setPets(allPets || []);
 
-      // Fetch user's pet
+      // Fetch user's pets (список всех питомцев пользователя)
       const { data: petData } = await supabase
         .from("user_pets")
         .select("*, pets(*)")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      setUserPet(petData as UserPet | null);
+        .eq("user_id", user.id);
+
+      const fetchedPets = (petData as UserPet[]) || [];
+      setUserPets(fetchedPets);
+
+      // Если выбранного питомца еще нет в state, ставим первого
+      if (fetchedPets.length > 0 && !selectedPetId) {
+        setSelectedPetId(fetchedPets[0].id);
+      }
 
       // Fetch gallery items
       const { data: gallery } = await supabase
@@ -113,6 +123,10 @@ export const useVirtualHome = () => {
     }
   };
 
+  const selectPet = (pet: UserPet) => {
+    setSelectedPetId(pet.id);
+  };
+
   const buyItem = async (item: RoomItem) => {
     if (!user || !progress) return false;
 
@@ -126,7 +140,6 @@ export const useVirtualHome = () => {
     }
 
     try {
-      // Deduct stars
       const { error: updateError } = await supabase
         .from("user_progress")
         .update({ stars: progress.stars - item.price_stars })
@@ -134,7 +147,6 @@ export const useVirtualHome = () => {
 
       if (updateError) throw updateError;
 
-      // Add item to user's inventory
       const { error: insertError } = await supabase
         .from("user_room_items")
         .insert({
@@ -198,15 +210,6 @@ export const useVirtualHome = () => {
   const adoptPet = async (pet: Pet, petName: string) => {
     if (!user || !progress) return false;
 
-    if (userPet) {
-      toast({
-        title: "У тебя уже есть питомец!",
-        description: "Ты можешь иметь только одного питомца",
-        variant: "destructive",
-      });
-      return false;
-    }
-
     if (progress.stars < pet.price_stars) {
       toast({
         title: "Недостаточно звёзд",
@@ -217,7 +220,6 @@ export const useVirtualHome = () => {
     }
 
     try {
-      // Deduct stars
       const { error: updateError } = await supabase
         .from("user_progress")
         .update({ stars: progress.stars - pet.price_stars })
@@ -225,16 +227,21 @@ export const useVirtualHome = () => {
 
       if (updateError) throw updateError;
 
-      // Add pet
-      const { error: insertError } = await supabase
+      const { data: newPetData, error: insertError } = await supabase
         .from("user_pets")
         .insert({
           user_id: user.id,
           pet_id: pet.id,
           pet_name: petName,
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      if (newPetData) {
+        setSelectedPetId(newPetData.id);
+      }
 
       toast({
         title: "Поздравляем! 🎉",
@@ -401,6 +408,8 @@ export const useVirtualHome = () => {
     userRoomItems,
     pets,
     userPet,
+    userPets,
+    selectPet,
     galleryItems,
     loading,
     buyItem,

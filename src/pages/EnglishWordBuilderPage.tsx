@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, RotateCcw, Volume2, Star, Lightbulb, Trophy } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface WordTask {
   id: number;
@@ -27,10 +30,13 @@ const WORDS_DATABASE: WordTask[] = [
 
 export default function EnglishWordBuilderPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [availableLetters, setAvailableLetters] = useState<{ id: string; letter: string }[]>([]);
   const [builtLetters, setBuiltLetters] = useState<{ id: string; letter: string }[]>([]);
-  const [stars, setStars] = useState(0);
+  const [earnedStars, setEarnedStars] = useState(0);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isGameFinished, setIsGameFinished] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -65,6 +71,42 @@ export default function EnglishWordBuilderPage() {
     loadWord(0);
   }, []);
 
+  // Сохранение звёзд в профиль
+  const addStarsToProfile = async (amount: number) => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error: fetchErr } = await supabase
+        .from("profiles")
+        .select("stars")
+        .eq("id", user.id)
+        .single();
+
+      if (fetchErr) {
+        console.error("Ошибка получения звёзд:", fetchErr);
+        return;
+      }
+
+      const currentTotalStars = (data?.stars || 0) + amount;
+
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update({ stars: currentTotalStars })
+        .eq("id", user.id);
+
+      if (updateErr) {
+        console.error("Ошибка обноления звёзд:", updateErr);
+      } else {
+        toast({
+          title: `+${amount} ⭐`,
+          description: "Звёзды добавлены на твой счёт для обустройства домика!",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handlePickLetter = (item: { id: string; letter: string }) => {
     if (isSuccess) return;
 
@@ -79,7 +121,9 @@ export default function EnglishWordBuilderPage() {
     const currentBuiltWord = newBuilt.map((l) => l.letter).join("");
     if (currentBuiltWord === currentTask.word) {
       setIsSuccess(true);
-      setStars((prev) => prev + 3);
+      const reward = 3;
+      setEarnedStars((prev) => prev + reward);
+      addStarsToProfile(reward);
       speak(currentTask.word);
 
       setTimeout(() => {
@@ -105,7 +149,7 @@ export default function EnglishWordBuilderPage() {
 
   const restartGame = () => {
     setCurrentIndex(0);
-    setStars(0);
+    setEarnedStars(0);
     setIsGameFinished(false);
     loadWord(0);
   };
@@ -129,7 +173,7 @@ export default function EnglishWordBuilderPage() {
             </div>
           </div>
           <div className="flex items-center gap-1 bg-white px-3 py-1.5 rounded-full shadow-sm font-black text-amber-500 border border-amber-200">
-            <Star className="w-4 h-4 fill-amber-400" /> {stars}
+            <Star className="w-4 h-4 fill-amber-400" /> +{earnedStars}
           </div>
         </div>
 
@@ -207,7 +251,7 @@ export default function EnglishWordBuilderPage() {
               <h2 className="text-2xl font-black text-slate-800">Ты просто супер! 🎉</h2>
               <p className="text-slate-600 mt-2">
                 Ты собрал все <span className="font-bold text-amber-600">{WORDS_DATABASE.length}</span> слов и заработал{" "}
-                <span className="font-bold text-amber-500">{stars} ⭐</span>!
+                <span className="font-bold text-amber-500">{earnedStars} ⭐</span>!
               </p>
             </div>
             <Button

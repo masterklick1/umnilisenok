@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, RotateCcw, Volume2, Star, Lightbulb, Trophy } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 interface WordTask {
   id: number;
@@ -30,8 +28,7 @@ const WORDS_DATABASE: WordTask[] = [
 
 export default function EnglishWordBuilderPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { logCorrectAnswer, logWrongAnswer, logClick } = useActivityTracker();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [availableLetters, setAvailableLetters] = useState<{ id: string; letter: string }[]>([]);
@@ -71,45 +68,10 @@ export default function EnglishWordBuilderPage() {
     loadWord(0);
   }, []);
 
-  // Сохранение звёзд в профиль
-  const addStarsToProfile = async (amount: number) => {
-    if (!user?.id) return;
-
-    try {
-      const { data, error: fetchErr } = await supabase
-        .from("profiles")
-        .select("stars")
-        .eq("id", user.id)
-        .single();
-
-      if (fetchErr) {
-        console.error("Ошибка получения звёзд:", fetchErr);
-        return;
-      }
-
-      const currentTotalStars = (data?.stars || 0) + amount;
-
-      const { error: updateErr } = await supabase
-        .from("profiles")
-        .update({ stars: currentTotalStars })
-        .eq("id", user.id);
-
-      if (updateErr) {
-        console.error("Ошибка обноления звёзд:", updateErr);
-      } else {
-        toast({
-          title: `+${amount} ⭐`,
-          description: "Звёзды добавлены на твой счёт для обустройства домика!",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handlePickLetter = (item: { id: string; letter: string }) => {
     if (isSuccess) return;
 
+    logClick(`letter_${item.letter}`);
     speak(item.letter);
 
     const newAvailable = availableLetters.filter((l) => l.id !== item.id);
@@ -119,11 +81,20 @@ export default function EnglishWordBuilderPage() {
     setBuiltLetters(newBuilt);
 
     const currentBuiltWord = newBuilt.map((l) => l.letter).join("");
+    
+    // Проверка совпадения слова
     if (currentBuiltWord === currentTask.word) {
       setIsSuccess(true);
-      const reward = 3;
-      setEarnedStars((prev) => prev + reward);
-      addStarsToProfile(reward);
+      setEarnedStars((prev) => prev + 3);
+
+      // Логируем правильный ответ в общую систему для подсчета звезд
+      logCorrectAnswer({
+        subject: "english",
+        activity: "word_builder",
+        word: currentTask.word,
+        reward_stars: 3,
+      });
+
       speak(currentTask.word);
 
       setTimeout(() => {
@@ -134,6 +105,14 @@ export default function EnglishWordBuilderPage() {
           setIsGameFinished(true);
         }
       }, 1500);
+    } else if (newBuilt.length === currentTask.word.length && currentBuiltWord !== currentTask.word) {
+      // Если слово собрано неверно
+      logWrongAnswer({
+        subject: "english",
+        activity: "word_builder",
+        word: currentTask.word,
+        userAttempt: currentBuiltWord,
+      });
     }
   };
 
@@ -233,7 +212,10 @@ export default function EnglishWordBuilderPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowHint(!showHint)}
+                  onClick={() => {
+                    logClick("hint_toggle");
+                    setShowHint(!showHint);
+                  }}
                   className="text-xs text-amber-600 gap-1"
                 >
                   <Lightbulb className="w-4 h-4" />

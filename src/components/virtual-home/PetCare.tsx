@@ -58,8 +58,11 @@ export const PetCare = () => {
     }
   };
 
-  // Обработчик кнопки "Играть"
-  const handleStartPlay = async () => {
+  // Функция открытия игровой комнаты с проверкой билета
+  const handleStartPlay = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (useGameTicket) {
       const hasTicket = await useGameTicket();
       if (hasTicket) {
@@ -158,6 +161,7 @@ export const PetCare = () => {
               </Button>
 
               <Button
+                type="button"
                 onClick={handleStartPlay}
                 variant="default"
                 className="h-20 flex flex-col gap-1 bg-indigo-600 hover:bg-indigo-700 text-white"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, ShoppingBag, Heart, Image } from "lucide-react";
+import { ArrowLeft, Home, ShoppingBag, Heart, Image, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoomView } from "@/components/virtual-home/RoomView";
@@ -17,6 +17,8 @@ const VirtualHomePage = () => {
   useActivityTracker();
   const [activeTab, setActiveTab] = useState("room");
 
+  const tickets = (progress as any)?.game_tickets || 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
@@ -30,8 +32,18 @@ const VirtualHomePage = () => {
             <ArrowLeft className="w-5 h-5" />
             Назад
           </Button>
+
           <h1 className="text-2xl font-bold text-foreground">Мой Домик</h1>
-          <ScoreDisplay score={progress?.stars || 0} />
+
+          <div className="flex items-center gap-3">
+            {/* Игровые билеты */}
+            <div className="flex items-center gap-1.5 bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full text-sm font-bold shadow-sm">
+              <Ticket className="w-4 h-4 text-amber-600 fill-amber-500" />
+              <span>{tickets} шт.</span>
+            </div>
+            
+            <ScoreDisplay score={progress?.stars || 0} />
+          </div>
         </div>
 
         {/* Tabs */}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useVirtualHome } from "@/hooks/useVirtualHome";
+import { useVirtualHome, Pet, RoomItem } from "@/hooks/useVirtualHome";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ export const ItemShop = () => {
   const { progress } = useUserProgress();
 
   // Состояния для модального окна приюта/покупки питомца
-  const [selectedPet, setSelectedPet] = useState<any | null>(null);
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [petName, setPetName] = useState("");
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,14 +25,14 @@ export const ItemShop = () => {
   };
 
   // Покупка предмета интерьера
-  const handleBuyItem = async (item: any) => {
+  const handleBuyItem = async (item: RoomItem) => {
     setIsSubmitting(true);
     await buyItem(item);
     setIsSubmitting(false);
   };
 
   // Открытие диалога для покупки питомца
-  const handleOpenPetModal = (pet: any) => {
+  const handleOpenPetModal = (pet: Pet) => {
     setSelectedPet(pet);
     setPetName("");
     setIsPetModalOpen(true);
@@ -85,7 +85,7 @@ export const ItemShop = () => {
         {/* Вкладка 1: Предметы интерьера */}
         <TabsContent value="items" className="mt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {roomItems.map((item) => {
+            {roomItems.map((item: RoomItem) => {
               const purchased = isItemPurchased(item.id);
               const canAfford = userStars >= item.price_stars;
 
@@ -129,7 +129,7 @@ export const ItemShop = () => {
         {/* Вкладка 2: Питомцы */}
         <TabsContent value="pets" className="mt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {pets.map((pet) => {
+            {pets.map((pet: Pet) => {
               const canAfford = userStars >= pet.price_stars;
               // Считаем сколько питомцев такого типа уже заведено
               const countOwned = userPets.filter((p) => p.pet_id === pet.id).length;
@@ -138,7 +138,7 @@ export const ItemShop = () => {
                 <Card key={pet.id} className="flex flex-col justify-between border-rose-100">
                   <CardHeader className="pb-2">
                     <div className="text-5xl text-center my-2">{pet.icon}</div>
-                    <CardTitle className="text-base text-center">{pet.species}</CardTitle>
+                    <CardTitle className="text-base text-center">{pet.species || pet.name}</CardTitle>
                     {countOwned > 0 && (
                       <CardDescription className="text-xs text-center text-rose-500 font-medium">
                         У вас уже есть ({countOwned})
@@ -174,7 +174,7 @@ export const ItemShop = () => {
               <span>{selectedPet?.icon}</span> Новый питомец!
             </DialogTitle>
             <DialogDescription>
-              Придумай имя для своего нового друга ({selectedPet?.species}).
+              Придумай имя для своего нового друга ({selectedPet?.species || selectedPet?.name}).
             </DialogDescription>
           </DialogHeader>
 

@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { useVirtualHome, Pet, UserPet } from "@/hooks/useVirtualHome";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, Utensils, Gamepad2, Moon, Star, Plus, Volume2, Sparkles, Ticket } from "lucide-react";
+import { Heart, Utensils, Gamepad2, Moon, Star, Plus, Volume2, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,

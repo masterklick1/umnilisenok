@@ -6,14 +6,16 @@ import { Progress } from "@/components/ui/progress";
 import { useVirtualHome, Pet, UserPet } from "@/hooks/useVirtualHome";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart, Utensils, Gamepad2, Moon, Star, Plus } from "lucide-react";
+import { Heart, Utensils, Gamepad2, Moon, Star, Plus, Volume2, Sparkles, Ticket } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { PetQuizGame } from "./PetQuizGame";
 
 export const PetCare = () => {
   const {
@@ -24,19 +26,26 @@ export const PetCare = () => {
     loading,
     adoptPet,
     feedPet,
-    playWithPet,
     restPet,
+    useGameTicket,
   } = useVirtualHome();
-  
+
   const { progress } = useUserProgress();
   const [petName, setPetName] = useState("");
   const [selectedPetToAdopt, setSelectedPetToAdopt] = useState<Pet | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showAdoptNew, setShowAdoptNew] = useState(false);
 
+  // Состояние игровой комнаты
+  const [isGameModalOpen, setIsGameModalOpen] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+
+  const tickets = (progress as any)?.game_tickets || 0;
+
   // Все питомцы пользователя
   const myPetsList = userPets.length > 0 ? userPets : (userPet ? [userPet] : []);
 
+  // Обработчик покупки питомца
   const handleAdopt = async () => {
     if (selectedPetToAdopt && petName.trim()) {
       const success = await adoptPet(selectedPetToAdopt, petName.trim());
@@ -46,6 +55,18 @@ export const PetCare = () => {
         setPetName("");
         setSelectedPetToAdopt(null);
       }
+    }
+  };
+
+  // Обработчик кнопки "Играть"
+  const handleStartPlay = async () => {
+    if (useGameTicket) {
+      const hasTicket = await useGameTicket();
+      if (hasTicket) {
+        setIsGameModalOpen(true);
+      }
+    } else {
+      setIsGameModalOpen(true);
     }
   };
 
@@ -137,14 +158,13 @@ export const PetCare = () => {
               </Button>
 
               <Button
-                onClick={playWithPet}
-                variant="outline"
-                className="h-20 flex flex-col gap-1"
-                disabled={userPet.energy < 15}
+                onClick={handleStartPlay}
+                variant="default"
+                className="h-20 flex flex-col gap-1 bg-indigo-600 hover:bg-indigo-700 text-white"
               >
-                <Gamepad2 className="w-6 h-6 text-indigo-500" />
+                <Gamepad2 className="w-6 h-6" />
                 <span className="font-medium">Играть</span>
-                <span className="text-xs text-green-600 font-semibold">(+1 ⭐)</span>
+                <span className="text-xs text-amber-200 font-semibold">(1 🎟️)</span>
               </Button>
 
               <Button
@@ -160,6 +180,53 @@ export const PetCare = () => {
             </div>
           </>
         )}
+
+        {/* Модальное окно игровой комнаты */}
+        <Dialog open={isGameModalOpen} onOpenChange={setIsGameModalOpen}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <Gamepad2 className="w-6 h-6 text-indigo-600" /> Игровая комната
+              </DialogTitle>
+              <DialogDescription>
+                Выберите мини-игру для питомца! (Осталось билетов: {tickets} 🎟️)
+              </DialogDescription>
+            </DialogHeader>
+
+            {!selectedGame ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-4">
+                <Card 
+                  onClick={() => setSelectedGame("quiz")}
+                  className="p-4 cursor-pointer hover:border-indigo-500 transition-all border-2 flex flex-col items-center text-center gap-2"
+                >
+                  <div className="p-3 bg-indigo-100 rounded-full text-indigo-600">
+                    <Volume2 className="w-8 h-8" />
+                  </div>
+                  <h3 className="font-bold text-lg">Учёный Питомец</h3>
+                  <p className="text-xs text-muted-foreground">Викторина с озвучкой вопросов по урокам!</p>
+                </Card>
+
+                <Card 
+                  onClick={() => setSelectedGame("quiz")}
+                  className="p-4 cursor-pointer hover:border-indigo-500 transition-all border-2 flex flex-col items-center text-center opacity-80"
+                >
+                  <div className="p-3 bg-purple-100 rounded-full text-purple-600">
+                    <Sparkles className="w-8 h-8" />
+                  </div>
+                  <h3 className="font-bold text-lg">Тренировка памяти</h3>
+                  <p className="text-xs text-muted-foreground">Мини-игра на запоминание картинок</p>
+                </Card>
+              </div>
+            ) : (
+              <div>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedGame(null)} className="mb-4">
+                  ← Назад к выбору игр
+                </Button>
+                {selectedGame === "quiz" && <PetQuizGame />}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

@@ -3,7 +3,7 @@ import { useVirtualHome } from "@/hooks/useVirtualHome";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Volume2, Star, Sparkles, Trophy, RotateCcw } from "lucide-react";
+import { Volume2, Star, Trophy, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Question {
@@ -13,7 +13,6 @@ interface Question {
   correctIndex: number;
 }
 
-// Набор лёгких обучающих вопросов для детей
 const QUESTIONS: Question[] = [
   {
     id: 1,
@@ -48,7 +47,7 @@ const QUESTIONS: Question[] = [
 ];
 
 export const PetQuizGame = () => {
-  const { userPet, playWithPet } = useVirtualHome();
+  const { userPet, playWithPet } = useVirtualHome() as any;
   const { refetch: refetchProgress } = useUserProgress();
   const { toast } = useToast();
 
@@ -60,26 +59,23 @@ export const PetQuizGame = () => {
 
   const currentQuestion = QUESTIONS[currentQuestionIndex];
 
-  // Озвучка текста голосом
   const speakText = (text: string) => {
     if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel(); // Остановить предыдущие озвучки
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "ru-RU";
-      utterance.rate = 0.9; // Чуть медленнее для четкости детского восприятия
-      utterance.pitch = 1.1; // Легкий высокий тон для дружелюбности
+      utterance.rate = 0.9;
+      utterance.pitch = 1.1;
       window.speechSynthesis.speak(utterance);
     }
   };
 
-  // Озвучиваем вопрос при изменении индекса
   useEffect(() => {
     if (currentQuestion && !isGameOver) {
       speakText(currentQuestion.text);
     }
   }, [currentQuestionIndex, isGameOver]);
 
-  // Выбор ответа
   const handleSelectOption = (index: number) => {
     if (isAnswered) return;
 
@@ -104,7 +100,6 @@ export const PetQuizGame = () => {
       });
     }
 
-    // Переход к следующему вопросу через 1.5 секунды
     setTimeout(() => {
       if (currentQuestionIndex + 1 < QUESTIONS.length) {
         setCurrentQuestionIndex((prev) => prev + 1);
@@ -116,21 +111,22 @@ export const PetQuizGame = () => {
     }, 1800);
   };
 
-  // Завершение игры и награждение питомца
   const finishGame = async (finalScore: number) => {
     setIsGameOver(true);
 
     if (finalScore > 0 && userPet) {
-      // Награждаем питомца за знания
-      await playWithPet();
-      await refetchProgress();
+      if (typeof playWithPet === "function") {
+        await playWithPet();
+      }
+      if (typeof refetchProgress === "function") {
+        await refetchProgress();
+      }
       speakText(`Ура! Вы ответили правильно на ${finalScore} вопросов! ${userPet.pet_name} очень рад!`);
     } else {
       speakText("Игра окончена. Попробуй ещё раз!");
     }
   };
 
-  // Начать заново
   const handleRestart = () => {
     setCurrentQuestionIndex(0);
     setScore(0);
@@ -173,7 +169,6 @@ export const PetQuizGame = () => {
       <CardContent className="p-6">
         {!isGameOver ? (
           <div className="space-y-6">
-            {/* Вопрос и кнопка повтора голоса */}
             <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex items-center justify-between gap-3">
               <p className="text-lg font-semibold text-gray-800 flex-1">
                 {currentQuestion.text}
@@ -189,7 +184,6 @@ export const PetQuizGame = () => {
               </Button>
             </div>
 
-            {/* Варианты ответов */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {currentQuestion.options.map((option, idx) => {
                 let btnStyle = "bg-white hover:bg-indigo-50 border-gray-200 text-gray-700";
@@ -216,7 +210,6 @@ export const PetQuizGame = () => {
             </div>
           </div>
         ) : (
-          /* Финал игры */
           <div className="text-center space-y-4 py-4">
             <div className="inline-flex p-4 bg-yellow-100 rounded-full text-amber-600 mb-2">
               <Trophy className="w-12 h-12" />

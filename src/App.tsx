@@ -15,6 +15,7 @@ import EnglishWordsPage from "./pages/EnglishWordsPage";
 import EnglishQuizPage from "./pages/EnglishQuizPage";
 import EnglishVowelsPage from "./pages/EnglishVowelsPage";
 import EnglishMissingPage from "./pages/EnglishMissingPage";
+import EnglishWordBuilderPage from "./pages/EnglishWordBuilderPage";
 import WorldPage from "./pages/WorldPage";
 import CreativityPage from "./pages/CreativityPage";
 import VirtualHomePage from "./pages/VirtualHomePage";
@@ -197,6 +198,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <EnglishWordsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/english/builder"
+              element={
+                <ProtectedRoute>
+                  <EnglishWordBuilderPage />
                 </ProtectedRoute>
               }
             />

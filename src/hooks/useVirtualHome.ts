@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useUserProgress } from "@/hooks/useUserProgress";
 
-interface RoomItem {
+export interface RoomItem {
   id: string;
   name: string;
   description: string | null;
@@ -15,7 +15,7 @@ interface RoomItem {
   height: number;
 }
 
-interface UserRoomItem {
+export interface UserRoomItem {
   id: string;
   item_id: string;
   position_x: number;
@@ -24,7 +24,7 @@ interface UserRoomItem {
   room_items: RoomItem;
 }
 
-interface Pet {
+export interface Pet {
   id: string;
   name: string;
   species: string;
@@ -32,7 +32,7 @@ interface Pet {
   price_stars: number;
 }
 
-interface UserPet {
+export interface UserPet {
   id: string;
   pet_id: string;
   pet_name: string;
@@ -44,7 +44,7 @@ interface UserPet {
   pets: Pet;
 }
 
-interface GalleryItem {
+export interface GalleryItem {
   id: string;
   title: string;
   image_data: string;
@@ -56,7 +56,7 @@ export const useVirtualHome = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { progress, refetch: refetchProgress } = useUserProgress();
-  
+
   const [roomItems, setRoomItems] = useState<RoomItem[]>([]);
   const [userRoomItems, setUserRoomItems] = useState<UserRoomItem[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
@@ -65,7 +65,7 @@ export const useVirtualHome = () => {
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Текущий активный питомец (по выбранному ID или первый из списка)
+  // Выбранный питомец или первый в списке
   const userPet = userPets.find((p) => p.id === selectedPetId) || userPets[0] || null;
 
   const fetchData = async () => {
@@ -73,28 +73,28 @@ export const useVirtualHome = () => {
     setLoading(true);
 
     try {
-      // Fetch all available room items
+      // Загрузка всех доступных предметов
       const { data: items } = await supabase
         .from("room_items")
         .select("*")
         .order("category", { ascending: true });
       setRoomItems(items || []);
 
-      // Fetch user's owned items
+      // Загрузка предметов пользователя
       const { data: userItems } = await supabase
         .from("user_room_items")
         .select("*, room_items(*)")
         .eq("user_id", user.id);
       setUserRoomItems((userItems as UserRoomItem[]) || []);
 
-      // Fetch all available pets
+      // Загрузка доступных видов питомцев
       const { data: allPets } = await supabase
         .from("pets")
         .select("*")
         .order("price_stars", { ascending: true });
       setPets(allPets || []);
 
-      // Fetch user's pets (список всех питомцев пользователя)
+      // Загрузка всех питомцев пользователя
       const { data: petData } = await supabase
         .from("user_pets")
         .select("*, pets(*)")
@@ -103,12 +103,12 @@ export const useVirtualHome = () => {
       const fetchedPets = (petData as UserPet[]) || [];
       setUserPets(fetchedPets);
 
-      // Если выбранного питомца еще нет в state, ставим первого
+      // Установка активного питомца
       if (fetchedPets.length > 0 && !selectedPetId) {
         setSelectedPetId(fetchedPets[0].id);
       }
 
-      // Fetch gallery items
+      // Загрузка предметов галереи
       const { data: gallery } = await supabase
         .from("gallery_items")
         .select("*")
@@ -262,12 +262,29 @@ export const useVirtualHome = () => {
     }
   };
 
+  // Покормить: стоит 1 ⭐, дает +25% сытости и +5% счастья
   const feedPet = async () => {
-    if (!user || !userPet) return;
+    if (!user || !userPet || !progress) return;
+
+    if (progress.stars < 1) {
+      toast({
+        title: "Недостаточно звёзд",
+        description: "Кормление стоит 1 ⭐",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const newHunger = Math.min(100, userPet.hunger + 20);
+      const newHunger = Math.min(100, userPet.hunger + 25);
       const newHappiness = Math.min(100, userPet.happiness + 5);
+
+      const { error: starError } = await supabase
+        .from("user_progress")
+        .update({ stars: progress.stars - 1 })
+        .eq("user_id", user.id);
+
+      if (starError) throw starError;
 
       const { error } = await supabase
         .from("user_pets")
@@ -281,28 +298,48 @@ export const useVirtualHome = () => {
       if (error) throw error;
 
       toast({
-        title: "Вкусняшка! 🍎",
+        title: "Вкусняшка! 🍎 (-1 ⭐)",
         description: `${userPet.pet_name} покушал и доволен!`,
       });
 
       await fetchData();
+      await refetchProgress();
     } catch (error) {
       console.error("Error feeding pet:", error);
     }
   };
 
+  // Играть: тратит 20% энергии, дает +20% счастья, снижает сытость на 10%, дает +1 ⭐ в награду
   const playWithPet = async () => {
-    if (!user || !userPet) return;
+    if (!user || !userPet || !progress) return;
+
+    if (userPet.energy < 15) {
+      toast({
+        title: "Питомец устал 😴",
+        description: `${userPet.pet_name} хочет отдохнуть!`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const newHappiness = Math.min(100, userPet.happiness + 15);
-      const newEnergy = Math.max(0, userPet.energy - 10);
+      const newHappiness = Math.min(100, userPet.happiness + 20);
+      const newEnergy = Math.max(0, userPet.energy - 20);
+      const newHunger = Math.max(0, userPet.hunger - 10);
+
+      const { error: starError } = await supabase
+        .from("user_progress")
+        .update({ stars: progress.stars + 1 })
+        .eq("user_id", user.id);
+
+      if (starError) throw starError;
 
       const { error } = await supabase
         .from("user_pets")
         .update({
           happiness: newHappiness,
           energy: newEnergy,
+          hunger: newHunger,
           last_played_at: new Date().toISOString(),
         })
         .eq("id", userPet.id);
@@ -310,32 +347,32 @@ export const useVirtualHome = () => {
       if (error) throw error;
 
       toast({
-        title: "Весело! 🎾",
-        description: `${userPet.pet_name} радостно играет!`,
+        title: "Весело! 🎾 (+1 ⭐)",
+        description: `Ты поиграл с ${userPet.pet_name}!`,
       });
 
       await fetchData();
+      await refetchProgress();
     } catch (error) {
       console.error("Error playing with pet:", error);
     }
   };
 
+  // Отдыхать: восстанавливает энергию до 100%
   const restPet = async () => {
     if (!user || !userPet) return;
 
     try {
-      const newEnergy = Math.min(100, userPet.energy + 25);
-
       const { error } = await supabase
         .from("user_pets")
-        .update({ energy: newEnergy })
+        .update({ energy: 100 })
         .eq("id", userPet.id);
 
       if (error) throw error;
 
       toast({
         title: "Отдых 😴",
-        description: `${userPet.pet_name} отдохнул и набрался сил!`,
+        description: `${userPet.pet_name} полон сил!`,
       });
 
       await fetchData();

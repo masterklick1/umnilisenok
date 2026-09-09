@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useVirtualHome } from "@/hooks/useVirtualHome";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, X, ZoomIn } from "lucide-react";
+import { Trash2, ZoomIn } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,8 +23,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Gallery = () => {
-  const { galleryItems, loading, deleteFromGallery } = useVirtualHome();
-  const [selectedImage, setSelectedImage] = useState<typeof galleryItems[0] | null>(null);
+  const { galleryItems = [], loading, deleteFromGallery } = useVirtualHome() as any;
+  const items = Array.isArray(galleryItems) ? galleryItems : [];
+  const [selectedImage, setSelectedImage] = useState<any>(null);
 
   if (loading) {
     return (
@@ -36,7 +37,7 @@ export const Gallery = () => {
     );
   }
 
-  if (galleryItems.length === 0) {
+  if (items.length === 0) {
     return (
       <Card className="p-8 text-center">
         <div className="text-6xl mb-4">🎨</div>
@@ -51,11 +52,11 @@ export const Gallery = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold">Мои работы ({galleryItems.length})</h3>
+        <h3 className="text-lg font-bold">Мои работы ({items.length})</h3>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {galleryItems.map((item) => (
+        {items.map((item: any) => (
           <Card
             key={item.id}
             className="group relative overflow-hidden cursor-pointer"
@@ -64,7 +65,7 @@ export const Gallery = () => {
             <div className="aspect-square">
               <img
                 src={item.image_data}
-                alt={item.title}
+                alt={item.title || "Работа"}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -94,7 +95,7 @@ export const Gallery = () => {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Отмена</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => deleteFromGallery(item.id)}
+                      onClick={() => deleteFromGallery && deleteFromGallery(item.id)}
                     >
                       Удалить
                     </AlertDialogAction>
@@ -105,7 +106,7 @@ export const Gallery = () => {
 
             {/* Title */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-              <p className="text-white text-sm truncate">{item.title}</p>
+              <p className="text-white text-sm truncate">{item.title || "Без названия"}</p>
               <p className="text-white/70 text-xs">
                 {item.category === "drawing" ? "🖌️ Рисунок" : "🎨 Раскраска"}
               </p>
@@ -118,22 +119,24 @@ export const Gallery = () => {
       <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{selectedImage?.title}</DialogTitle>
+            <DialogTitle>{selectedImage?.title || "Просмотр работы"}</DialogTitle>
           </DialogHeader>
           {selectedImage && (
             <div className="relative">
               <img
                 src={selectedImage.image_data}
-                alt={selectedImage.title}
+                alt={selectedImage.title || "Работа"}
                 className="w-full rounded-lg"
               />
-              <p className="text-center text-sm text-muted-foreground mt-2">
-                {new Date(selectedImage.created_at).toLocaleDateString("ru-RU", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
+              {selectedImage.created_at && (
+                <p className="text-center text-sm text-muted-foreground mt-2">
+                  {new Date(selectedImage.created_at).toLocaleDateString("ru-RU", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
             </div>
           )}
         </DialogContent>

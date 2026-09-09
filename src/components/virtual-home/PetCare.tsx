@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { useVirtualHome } from "@/hooks/useVirtualHome";
+import { useVirtualHome, Pet, UserPet } from "@/hooks/useVirtualHome";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, Utensils, Gamepad2, Moon, Star, Plus } from "lucide-react";
@@ -16,15 +16,26 @@ import {
 } from "@/components/ui/dialog";
 
 export const PetCare = () => {
-  const { pets, userPet, userPets = [], selectPet, loading, adoptPet, feedPet, playWithPet, restPet } = useVirtualHome() as any;
+  const {
+    pets,
+    userPet,
+    userPets,
+    selectPet,
+    loading,
+    adoptPet,
+    feedPet,
+    playWithPet,
+    restPet,
+  } = useVirtualHome();
+  
   const { progress } = useUserProgress();
   const [petName, setPetName] = useState("");
-  const [selectedPetToAdopt, setSelectedPetToAdopt] = useState<typeof pets[0] | null>(null);
+  const [selectedPetToAdopt, setSelectedPetToAdopt] = useState<Pet | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showAdoptNew, setShowAdoptNew] = useState(false);
 
-  // Список всех имеющихся у пользователя питомцев (если их несколько)
-  const myPetsList = userPets && userPets.length > 0 ? userPets : (userPet ? [userPet] : []);
+  // Все питомцы пользователя
+  const myPetsList = userPets.length > 0 ? userPets : (userPet ? [userPet] : []);
 
   const handleAdopt = async () => {
     if (selectedPetToAdopt && petName.trim()) {
@@ -42,29 +53,29 @@ export const PetCare = () => {
     return <Skeleton className="h-64 w-full" />;
   }
 
-  // Если у пользователя есть хоть один питомец и не нажата кнопка "Завести ещё"
+  // Если у пользователя есть хотя бы один питомец и не нажата кнопка "Ещё питомец"
   if (myPetsList.length > 0 && !showAdoptNew) {
     return (
       <div className="space-y-6">
-        {/* Список питомцев (если их несколько) */}
+        {/* Переключатель питомцев */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {myPetsList.map((item: any, idx: number) => {
+          {myPetsList.map((item: UserPet, idx: number) => {
             const isSelected = userPet?.id === item.id || (!userPet && idx === 0);
             return (
               <Button
                 key={item.id || idx}
                 variant={isSelected ? "default" : "outline"}
                 className="rounded-full flex items-center gap-2"
-                onClick={() => selectPet && selectPet(item)}
+                onClick={() => selectPet(item)}
               >
                 <span>{item.pets?.icon || "🐾"}</span>
                 <span>{item.pet_name}</span>
               </Button>
             );
           })}
-          
+
           <Button
-            variant="dashed"
+            variant="outline"
             className="rounded-full border-2 border-dashed border-primary/50 text-primary flex items-center gap-1"
             onClick={() => setShowAdoptNew(true)}
           >
@@ -73,13 +84,13 @@ export const PetCare = () => {
           </Button>
         </div>
 
-        {/* Активный питомец */}
+        {/* Экран активного питомца */}
         {userPet && (
           <>
             <Card className="p-6 text-center bg-gradient-to-br from-primary/5 to-accent/5">
               <div className="text-8xl mb-4 animate-bounce-gentle">{userPet.pets?.icon || "🐾"}</div>
-              <h2 className="text-2xl font-bold mb-2">{userPet.pet_name}</h2>
-              <p className="text-muted-foreground">{userPet.pets?.name}</p>
+              <h2 className="text-2xl font-bold mb-1">{userPet.pet_name}</h2>
+              <p className="text-muted-foreground text-sm">{userPet.pets?.species || userPet.pets?.name}</p>
             </Card>
 
             {/* Характеристики */}
@@ -88,7 +99,7 @@ export const PetCare = () => {
                 <div className="flex items-center gap-3 mb-2">
                   <Heart className="w-5 h-5 text-red-500" />
                   <span className="font-semibold">Счастье</span>
-                  <span className="ml-auto">{userPet.happiness}%</span>
+                  <span className="ml-auto font-bold">{userPet.happiness}%</span>
                 </div>
                 <Progress value={userPet.happiness} className="h-3" />
               </Card>
@@ -97,7 +108,7 @@ export const PetCare = () => {
                 <div className="flex items-center gap-3 mb-2">
                   <Utensils className="w-5 h-5 text-orange-500" />
                   <span className="font-semibold">Сытость</span>
-                  <span className="ml-auto">{userPet.hunger}%</span>
+                  <span className="ml-auto font-bold">{userPet.hunger}%</span>
                 </div>
                 <Progress value={userPet.hunger} className="h-3" />
               </Card>
@@ -106,7 +117,7 @@ export const PetCare = () => {
                 <div className="flex items-center gap-3 mb-2">
                   <Moon className="w-5 h-5 text-blue-500" />
                   <span className="font-semibold">Энергия</span>
-                  <span className="ml-auto">{userPet.energy}%</span>
+                  <span className="ml-auto font-bold">{userPet.energy}%</span>
                 </div>
                 <Progress value={userPet.energy} className="h-3" />
               </Card>
@@ -117,29 +128,34 @@ export const PetCare = () => {
               <Button
                 onClick={feedPet}
                 variant="outline"
-                className="h-20 flex flex-col gap-2"
-                disabled={userPet.hunger >= 100}
+                className="h-20 flex flex-col gap-1"
+                disabled={userPet.hunger >= 100 || (progress?.stars || 0) < 1}
               >
-                <Utensils className="w-6 h-6" />
-                <span>Покормить</span>
+                <Utensils className="w-6 h-6 text-orange-500" />
+                <span className="font-medium">Покормить</span>
+                <span className="text-xs text-muted-foreground">(1 ⭐)</span>
               </Button>
+
               <Button
                 onClick={playWithPet}
                 variant="outline"
-                className="h-20 flex flex-col gap-2"
-                disabled={userPet.energy < 10}
+                className="h-20 flex flex-col gap-1"
+                disabled={userPet.energy < 15}
               >
-                <Gamepad2 className="w-6 h-6" />
-                <span>Играть</span>
+                <Gamepad2 className="w-6 h-6 text-indigo-500" />
+                <span className="font-medium">Играть</span>
+                <span className="text-xs text-green-600 font-semibold">(+1 ⭐)</span>
               </Button>
+
               <Button
                 onClick={restPet}
                 variant="outline"
-                className="h-20 flex flex-col gap-2"
+                className="h-20 flex flex-col gap-1"
                 disabled={userPet.energy >= 100}
               >
-                <Moon className="w-6 h-6" />
-                <span>Отдыхать</span>
+                <Moon className="w-6 h-6 text-blue-500" />
+                <span className="font-medium">Отдыхать</span>
+                <span className="text-xs text-muted-foreground">(бесплатно)</span>
               </Button>
             </div>
           </>
@@ -148,21 +164,19 @@ export const PetCare = () => {
     );
   }
 
-  // Приют (выбор и покупка нового питомца)
+  // Экран приюта
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Card className="p-6 text-center bg-gradient-to-br from-primary/5 to-accent/5 w-full">
-          <h2 className="text-xl font-bold mb-2">🏠 Приют для питомцев</h2>
-          <p className="text-muted-foreground">
-            Выбери себе друга! Ухаживай за ним, и он будет радовать тебя каждый день.
-          </p>
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <Star className="w-5 h-5 text-accent fill-accent" />
-            <span className="font-bold">{progress?.stars || 0} звёзд</span>
-          </div>
-        </Card>
-      </div>
+      <Card className="p-6 text-center bg-gradient-to-br from-primary/5 to-accent/5 w-full">
+        <h2 className="text-xl font-bold mb-2">🏠 Приют для питомцев</h2>
+        <p className="text-muted-foreground text-sm">
+          Выбери себе друга! Ухаживай за ним, и он будет радовать тебя каждый день.
+        </p>
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+          <span className="font-bold">{progress?.stars || 0} звёзд</span>
+        </div>
+      </Card>
 
       {myPetsList.length > 0 && (
         <Button variant="ghost" onClick={() => setShowAdoptNew(false)}>
@@ -171,7 +185,7 @@ export const PetCare = () => {
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {pets.map((pet: any) => {
+        {pets.map((pet: Pet) => {
           const canAfford = (progress?.stars || 0) >= pet.price_stars;
 
           return (
@@ -197,9 +211,9 @@ export const PetCare = () => {
                   }}
                 >
                   <div className="text-5xl">{pet.icon}</div>
-                  <h4 className="font-semibold">{pet.name}</h4>
-                  <div className="flex items-center gap-1 text-sm">
-                    <Star className="w-4 h-4 text-accent fill-accent" />
+                  <h4 className="font-semibold">{pet.name || pet.species}</h4>
+                  <div className="flex items-center gap-1 text-sm font-bold text-amber-600">
+                    <Star className="w-4 h-4 fill-amber-500" />
                     <span>{pet.price_stars}</span>
                   </div>
                 </Card>
@@ -209,7 +223,7 @@ export const PetCare = () => {
                 <DialogHeader>
                   <DialogTitle className="text-center">
                     <span className="text-6xl block mb-4">{pet.icon}</span>
-                    Завести {pet.name.toLowerCase()}?
+                    Завести {(pet.name || pet.species).toLowerCase()}?
                   </DialogTitle>
                 </DialogHeader>
 
@@ -226,9 +240,9 @@ export const PetCare = () => {
 
                   <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <span>Стоимость:</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-5 h-5 text-accent fill-accent" />
-                      <span className="font-bold">{pet.price_stars}</span>
+                    <div className="flex items-center gap-1 font-bold text-amber-600">
+                      <Star className="w-5 h-5 fill-amber-500" />
+                      <span>{pet.price_stars}</span>
                     </div>
                   </div>
 

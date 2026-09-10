@@ -76,11 +76,12 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const [colorRound, setColorRound] = useState(0);
   const [bigRound, setBigRound] = useState(0);
 
+  // Начисление звезды и билета за правильный ответ
   const reward = (msg: string) => {
-    addStars(1, "math");
+    addStars(1, "math", true); // Передаем true для получения билета 🎟️
     setScore((s) => s + 1);
     speak("Правильно! Молодец!");
-    toast({ title: msg + " 🎉", description: "+1 ⭐" });
+    toast({ title: msg + " 🎉", description: "+1 ⭐ и +1 🎟️ билет" });
   };
 
   const wrong = (correct: string) => {
@@ -97,7 +98,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     { type: "bigsmall" as ExerciseType, title: "Большой-маленький", description: "Найди по размеру", emoji: "🔍" },
   ];
 
-  // Фигуры для выбора (зафиксированы через useMemo по `shapesRound`)
+  // Генерация вариантов выбора
   const allShapesOptions = useMemo(() => {
     return [...SHAPES_LIST, ...SHAPES_LIST].sort(() => Math.random() - 0.5);
   }, [shapesRound]);
@@ -141,7 +142,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     return { emoji, askBig, bigLeft };
   }, [bigRound]);
 
-  // ===== Меню =====
+  // ===== Главное меню выборов задач =====
   if (!currentExercise) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-background p-4">

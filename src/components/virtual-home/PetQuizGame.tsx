@@ -13,6 +13,10 @@ interface Question {
   correctIndex: number;
 }
 
+interface PetQuizGameProps {
+  onClose?: () => void;
+}
+
 const QUESTIONS: Question[] = [
   {
     id: 1,
@@ -46,7 +50,7 @@ const QUESTIONS: Question[] = [
   },
 ];
 
-export const PetQuizGame = () => {
+export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
   const { userPet, playWithPet } = useVirtualHome() as any;
   const { refetch: refetchProgress } = useUserProgress();
   const { toast } = useToast();
@@ -222,12 +226,19 @@ export const PetQuizGame = () => {
               {userPet.pet_name} стал счастливее и получил новые знания! ✨
             </p>
 
-            <Button
-              onClick={handleRestart}
-              className="mt-4 gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              <RotateCcw className="w-4 h-4" /> Играть ещё раз
-            </Button>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Button
+                onClick={handleRestart}
+                className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                <RotateCcw className="w-4 h-4" /> Играть ещё раз
+              </Button>
+              {onClose && (
+                <Button variant="outline" onClick={onClose}>
+                  Завершить
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

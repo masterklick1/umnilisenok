@@ -32,12 +32,14 @@ const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
       voicesReady = true;
       resolve(window.speechSynthesis.getVoices());
     };
+
     window.speechSynthesis.addEventListener?.("voiceschanged", finish, { once: true });
-    
+
     let tries = 0;
     const timer = setInterval(() => {
       tries += 1;
-      if (window.speechSynthesis.getVoices().length || tries > 20) {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length || tries > 20) {
         clearInterval(timer);
         finish();
       }
@@ -51,7 +53,7 @@ if (hasTTS()) {
 }
 
 const pickRussianVoice = (voices: SpeechSynthesisVoice[]) =>
-  voices.find((v) => v.lang?.toLowerCase().startsWith("ru")) ||
+  voices.find((v) => v.lang?.toLowerCase().replace('_', '-').startsWith("ru")) ||
   voices.find((v) => v.name?.toLowerCase().includes("russ")) ||
   null;
 
@@ -65,6 +67,9 @@ const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
 
   try {
     synth.cancel();
+    if (synth.paused) {
+      synth.resume();
+    }
   } catch {
     /* игнорируем */
   }
@@ -73,14 +78,9 @@ const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
   utterance.lang = "ru-RU";
   utterance.rate = 0.85;
   utterance.volume = 1;
+  
   const voice = pickRussianVoice(voices);
   if (voice) utterance.voice = voice;
-
-  try {
-    synth.resume();
-  } catch {
-    /* игнорируем */
-  }
 
   pendingTimeout = setTimeout(() => {
     try {
@@ -107,13 +107,13 @@ export const speak = async (text: string): Promise<void> => {
         volume: 1.0,
         category: 'ambient',
       });
+      return;
     } catch (error) {
-      console.error('Ошибка нативной речи Android:', error);
+      console.warn('Ошибка нативного TTS, переключаемся на Web TTS:', error);
     }
-    return;
   }
 
-  // Озвучка для Браузера (Web)
+  // Озвучка для Браузера (Web / Fallback)
   if (!hasTTS()) return;
 
   const currentVoices = window.speechSynthesis.getVoices();
@@ -121,7 +121,7 @@ export const speak = async (text: string): Promise<void> => {
     doSpeakWeb(text, currentVoices);
     return;
   }
-  
+
   loadVoices().then((voices) => doSpeakWeb(text, voices));
 };
 
@@ -130,11 +130,12 @@ export const stopSpeech = async (): Promise<void> => {
     clearTimeout(pendingTimeout);
     pendingTimeout = null;
   }
-  
+
   try {
     if (Capacitor.isNativePlatform()) {
       await TextToSpeech.stop();
-    } else if (hasTTS()) {
+    }
+    if (hasTTS()) {
       window.speechSynthesis.cancel();
     }
   } catch (error) {

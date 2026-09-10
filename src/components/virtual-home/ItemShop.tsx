@@ -53,12 +53,12 @@ export const ItemShop = () => {
     }
   };
 
-  const userStars = progress?.stars || 0;
+  const userStars = (progress as any)?.stars ?? 0;
 
   return (
     <div className="space-y-6">
       {/* Шапка магазина с балансом звёзд */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-amber-100 to-yellow-100 p-4 rounded-xl border border-yellow-200">
+      <div className="flex items-center justify-between bg-gradient-to-r from-amber-100 to-yellow-100 p-4 rounded-xl border border-yellow-200 shadow-sm">
         <div>
           <h2 className="text-xl font-bold text-amber-900">Магазин товаров</h2>
           <p className="text-sm text-amber-700">Украшай комнату и заводи новых питомцев</p>
@@ -131,7 +131,6 @@ export const ItemShop = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {pets.map((pet: Pet) => {
               const canAfford = userStars >= pet.price_stars;
-              // Считаем сколько питомцев такого типа уже заведено
               const countOwned = userPets.filter((p) => p.pet_id === pet.id).length;
 
               return (

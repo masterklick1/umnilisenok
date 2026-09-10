@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { demoProgress, isDemoUser } from "@/lib/demo-session";
 
 export interface UserProgress {
-  id: string;
+  id?: string;
   user_id: string;
   stars: number;
   level: number;
@@ -52,14 +52,29 @@ export const useUserProgress = () => {
         .from("user_progress")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching progress:", error);
+      }
 
-      setProgress({
-        ...data,
-        game_tickets: data.game_tickets ?? 0,
-      });
+      if (data) {
+        setProgress({
+          ...data,
+          game_tickets: data.game_tickets ?? 0,
+        });
+      } else {
+        // Дефолтный прогресс, если в базе ещё нет записи
+        setProgress({
+          user_id: user.id,
+          stars: 0,
+          level: 1,
+          experience: 0,
+          daily_streak: 0,
+          game_tickets: 0,
+          last_activity_date: null,
+        });
+      }
     } catch (e) {
       console.error("Error fetching progress:", e);
     } finally {
@@ -139,18 +154,26 @@ export const useUserProgress = () => {
       category: AchievementCategory | null = null,
       addTicket: boolean = false
     ) => {
-      if (!user || !progress) return;
+      if (!user) return;
 
       const ticketsToAdd = addTicket ? 1 : 0;
 
       if (isDemo) {
         setProgress((current) => {
-          if (!current) return current;
-          const experience = current.experience + amount;
+          const cur = current || {
+            user_id: user.id,
+            stars: 0,
+            level: 1,
+            experience: 0,
+            daily_streak: 0,
+            game_tickets: 0,
+            last_activity_date: null,
+          };
+          const experience = cur.experience + amount;
           return {
-            ...current,
-            stars: current.stars + amount,
-            game_tickets: (current.game_tickets || 0) + ticketsToAdd,
+            ...cur,
+            stars: cur.stars + amount,
+            game_tickets: (cur.game_tickets || 0) + ticketsToAdd,
             experience,
             level: Math.floor(experience / 100) + 1,
             last_activity_date: todayStr(),
@@ -168,33 +191,50 @@ export const useUserProgress = () => {
 
       try {
         const today = todayStr();
-        const last = progress.last_activity_date;
-        let newStreak = progress.daily_streak || 0;
+        const currentProgress = progress || {
+          user_id: user.id,
+          stars: 0,
+          level: 1,
+          experience: 0,
+          daily_streak: 0,
+          game_tickets: 0,
+          last_activity_date: null,
+        };
+
+        const last = currentProgress.last_activity_date;
+        let newStreak = currentProgress.daily_streak || 0;
         if (last !== today) {
           newStreak = last === yesterdayStr() ? newStreak + 1 : 1;
         }
 
-        const newStars = progress.stars + amount;
-        const newTickets = (progress.game_tickets || 0) + ticketsToAdd;
-        const newExperience = progress.experience + amount;
+        const newStars = (currentProgress.stars || 0) + amount;
+        const newTickets = (currentProgress.game_tickets || 0) + ticketsToAdd;
+        const newExperience = (currentProgress.experience || 0) + amount;
         const newLevel = Math.floor(newExperience / 100) + 1;
 
-        const { error } = await supabase
+        // Используем upsert: создать если нет, либо обновить существующий
+        const { data, error } = await supabase
           .from("user_progress")
-          .update({
-            stars: newStars,
-            game_tickets: newTickets,
-            experience: newExperience,
-            level: newLevel,
-            daily_streak: newStreak,
-            last_activity_date: today,
-          })
-          .eq("user_id", user.id);
+          .upsert(
+            {
+              user_id: user.id,
+              stars: newStars,
+              game_tickets: newTickets,
+              experience: newExperience,
+              level: newLevel,
+              daily_streak: newStreak,
+              last_activity_date: today,
+            },
+            { onConflict: "user_id" }
+          )
+          .select()
+          .single();
 
         if (error) throw error;
 
         let merged: UserProgress = {
-          ...progress,
+          ...currentProgress,
+          ...(data || {}),
           stars: newStars,
           game_tickets: newTickets,
           experience: newExperience,
@@ -203,10 +243,10 @@ export const useUserProgress = () => {
           last_activity_date: today,
         };
 
-        if (newLevel > progress.level) {
+        if (newLevel > (currentProgress.level || 1)) {
           toast({ title: "🎉 Новый уровень!", description: `Поздравляем! Ты достиг ${newLevel} уровня!` });
         }
-        if (newStreak > (progress.daily_streak || 0) && newStreak > 1) {
+        if (newStreak > (currentProgress.daily_streak || 0) && newStreak > 1) {
           toast({ title: `🔥 Серия ${newStreak} дней!`, description: "Ты занимаешься каждый день, молодец!" });
         }
         if (addTicket) {
@@ -218,10 +258,19 @@ export const useUserProgress = () => {
           const bonusStars = merged.stars + bonus;
           const bonusExp = merged.experience + bonus;
           const bonusLevel = Math.floor(bonusExp / 100) + 1;
+
           await supabase
             .from("user_progress")
-            .update({ stars: bonusStars, experience: bonusExp, level: bonusLevel })
-            .eq("user_id", user.id);
+            .upsert(
+              {
+                user_id: user.id,
+                stars: bonusStars,
+                experience: bonusExp,
+                level: bonusLevel,
+              },
+              { onConflict: "user_id" }
+            );
+
           merged = { ...merged, stars: bonusStars, experience: bonusExp, level: bonusLevel };
         }
 
@@ -237,7 +286,7 @@ export const useUserProgress = () => {
   // Прямое начисление билетов
   const addGameTickets = useCallback(
     async (amount: number = 1) => {
-      if (!user || !progress) return;
+      if (!user) return;
 
       if (isDemo) {
         setProgress((current) =>
@@ -248,15 +297,34 @@ export const useUserProgress = () => {
       }
 
       try {
-        const newTickets = (progress.game_tickets || 0) + amount;
+        const currentTickets = progress?.game_tickets || 0;
+        const newTickets = currentTickets + amount;
+
         const { error } = await supabase
           .from("user_progress")
-          .update({ game_tickets: newTickets })
-          .eq("user_id", user.id);
+          .upsert(
+            {
+              user_id: user.id,
+              game_tickets: newTickets,
+            },
+            { onConflict: "user_id" }
+          );
 
         if (error) throw error;
 
-        setProgress({ ...progress, game_tickets: newTickets });
+        setProgress((current) =>
+          current
+            ? { ...current, game_tickets: newTickets }
+            : {
+                user_id: user.id,
+                stars: 0,
+                level: 1,
+                experience: 0,
+                daily_streak: 0,
+                game_tickets: newTickets,
+                last_activity_date: null,
+              }
+        );
         toast({ title: `Начислено билетов: +${amount} 🎟️` });
       } catch (e) {
         console.error("Error adding tickets:", e);

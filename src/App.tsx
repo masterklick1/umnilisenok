@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import Index from "./pages/Index";
@@ -30,8 +30,33 @@ import DeleteAccountPage from "./pages/DeleteAccountPage";
 import { ChildPlaceStatusBadge } from "./components/child/ChildPlaceStatusBadge";
 import { GameInviteWatcher } from "./components/child/GameInviteWatcher";
 import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
 
 const queryClient = new QueryClient();
+
+// Перехват системной кнопки / жеста "Назад" на Android
+function AndroidBackButtonHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const listenerPromise = CapApp.addListener("backButton", () => {
+      if (location.pathname === "/" || location.pathname === "/auth") {
+        CapApp.minimizeApp();
+      } else {
+        navigate("/", { replace: true });
+      }
+    });
+
+    return () => {
+      listenerPromise.then((handler) => handler.remove());
+    };
+  }, [location.pathname, navigate]);
+
+  return null;
+}
 
 const ChildDeviceServices = lazy(async () => {
   try {
@@ -146,6 +171,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AndroidBackButtonHandler />
           {Capacitor.isNativePlatform() && <SafeDeviceServices />}
           <ChildPlaceStatusBadge />
           <GameInviteWatcher />

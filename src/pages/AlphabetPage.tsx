@@ -16,6 +16,17 @@ type Letter = {
 
 type Mode = "learn" | "quiz" | "syllables" | "vowels" | "missing" | null;
 
+// Помощник для четкого и разборчивого произношения букв через синтезатор речи
+const getPronounceableLetter = (letter: string) => {
+  const map: Record<string, string> = {
+    Б: "бэ", В: "вэ", Г: "гэ", Д: "дэ", Ж: "жэ", З: "зэ",
+    К: "ка", Л: "эль", М: "эм", Н: "эн", П: "пэ", Р: "эр",
+    С: "эс", Т: "тэ", Ф: "эф", Х: "ха", Ц: "цэ", Ч: "че",
+    Ш: "ша", Щ: "ща", Ъ: "твёрдый знак", Ь: "мягкий знак"
+  };
+  return map[letter] || letter;
+};
+
 const russianAlphabet: Letter[] = [
   { letter: "А", word: "Арбуз", emoji: "🍉" },
   { letter: "Б", word: "Белка", emoji: "🐿️" },
@@ -393,7 +404,7 @@ export default function AlphabetPage() {
               <Button
                 size="lg"
                 variant="secondary"
-                onClick={() => speak(`Буква ${currentLetter.letter}. Слово ${currentLetter.word}. Начинается с буквы ${currentLetter.letter}`)}
+                onClick={() => speak(`Буква ${getPronounceableLetter(currentLetter.letter)}. Слово ${currentLetter.word}. Начинается с буквы ${getPronounceableLetter(currentLetter.letter)}`)}
                 className="mb-8"
               >
                 <Volume2 className="mr-2 h-5 w-5" />

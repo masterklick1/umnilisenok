@@ -1,179 +1,86 @@
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useVirtualHome } from "@/hooks/useVirtualHome";
+import { useVirtualHome, UserRoomItem } from "@/hooks/useVirtualHome";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2 } from "lucide-react";
+import { Sparkles, Heart } from "lucide-react";
 
 export const RoomView = () => {
-  const { userRoomItems, loading, placeItem, removeItem, userPet } = useVirtualHome();
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
-  
-  const placedItems = userRoomItems.filter((item) => item.is_placed);
-  const inventoryItems = userRoomItems.filter((item) => !item.is_placed);
-
-  // Get wallpaper and floor
-  const wallpaper = placedItems.find((item) => item.room_items.category === "wallpaper");
-  const floor = placedItems.find((item) => item.room_items.category === "floor");
-  const decorations = placedItems.filter(
-    (item) => item.room_items.category !== "wallpaper" && item.room_items.category !== "floor"
-  );
-
-  const getWallpaperStyle = () => {
-    if (!wallpaper) return "bg-gradient-to-b from-sky-200 to-sky-100";
-    const icon = wallpaper.room_items.icon;
-    if (icon === "🔵") return "bg-gradient-to-b from-blue-200 to-blue-100";
-    if (icon === "🩷") return "bg-gradient-to-b from-pink-200 to-pink-100";
-    if (icon === "🟢") return "bg-gradient-to-b from-green-200 to-green-100";
-    if (icon === "🟡") return "bg-gradient-to-b from-yellow-200 to-yellow-100";
-    if (icon === "🟣") return "bg-gradient-to-b from-purple-200 to-purple-100";
-    if (icon === "🌌") return "bg-gradient-to-b from-indigo-900 via-purple-900 to-indigo-800";
-    return "bg-gradient-to-b from-sky-200 to-sky-100";
-  };
-
-  const getFloorStyle = () => {
-    if (!floor) return "bg-amber-200";
-    const icon = floor.room_items.icon;
-    if (icon === "🟫") return "bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700";
-    if (icon === "🟪") return "bg-gradient-to-r from-purple-300 via-purple-200 to-purple-300";
-    if (icon === "🟩") return "bg-gradient-to-r from-green-400 via-green-300 to-green-400";
-    if (icon === "⭐") return "bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-700";
-    return "bg-amber-200";
-  };
-
-  const handleCellClick = (x: number, y: number) => {
-    if (selectedItem) {
-      placeItem(selectedItem, x, y);
-      setSelectedItem(null);
-    }
-  };
+  const { userPet, userRoomItems, loading } = useVirtualHome();
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <Skeleton className="h-96 w-full rounded-2xl" />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Room Display */}
-      <Card className="overflow-hidden">
-        <div className={`relative h-80 ${getWallpaperStyle()} transition-colors duration-500`}>
-          {/* Stars for night wallpaper */}
-          {wallpaper?.room_items.icon === "🌌" && (
-            <div className="absolute inset-0 overflow-hidden">
-              {[...Array(20)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 60}%`,
-                    animationDelay: `${Math.random() * 2}s`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
+    <div className="relative w-full min-h-[420px] rounded-3xl p-6 bg-gradient-to-b from-sky-100 via-indigo-50 to-amber-50 border-4 border-indigo-100/80 shadow-inner flex flex-col justify-between overflow-hidden">
+      {/* Обои/Узоры на заднем фоне */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:16px_16px]" />
 
-          {/* Window */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-24 h-20 bg-sky-300 rounded-t-full border-4 border-amber-700 shadow-lg">
-            <div className="absolute inset-2 bg-sky-400 rounded-t-full">
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-full bg-amber-700" />
-              <div className="absolute top-1/2 left-0 right-0 h-px bg-amber-700" />
-            </div>
-          </div>
-
-          {/* Decorations Grid */}
-          <div className="absolute inset-0 grid grid-cols-6 grid-rows-4 p-4 pt-28">
-            {decorations.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-center text-4xl cursor-pointer hover:scale-110 transition-transform group relative"
-                style={{
-                  gridColumn: item.position_x + 1,
-                  gridRow: item.position_y + 1,
-                }}
-                onClick={() => removeItem(item.id)}
-              >
-                {item.room_items.icon}
-                <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </div>
+      {/* Верхняя панель: Статус питомца */}
+      <div className="relative z-10 flex items-center justify-between">
+        {userPet ? (
+          <div className="flex items-center gap-3 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border border-white shadow-sm">
+            <span className="text-2xl">{userPet.pets?.icon || "🐾"}</span>
+            <div>
+              <p className="font-bold text-xs sm:text-sm text-gray-800">{userPet.pet_name}</p>
+              <div className="flex items-center gap-1 text-[10px] text-rose-500 font-semibold">
+                <Heart className="w-3 h-3 fill-rose-500" />
+                <span>{userPet.happiness}% счастья</span>
               </div>
-            ))}
-          </div>
-
-          {/* Pet in room */}
-          {userPet && (
-            <div className="absolute bottom-16 right-8 text-5xl animate-bounce-gentle">
-              {userPet.pets.icon}
             </div>
-          )}
-
-          {/* Floor */}
-          <div className={`absolute bottom-0 left-0 right-0 h-12 ${getFloorStyle()}`}>
-            <div className="absolute inset-0 opacity-30 bg-gradient-to-t from-black/20 to-transparent" />
           </div>
-        </div>
-      </Card>
-
-      {/* Placement Grid when item selected */}
-      {selectedItem && (
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground mb-3">Выбери место для предмета:</p>
-          <div className="grid grid-cols-6 grid-rows-3 gap-2">
-            {[...Array(18)].map((_, i) => {
-              const x = i % 6;
-              const y = Math.floor(i / 6);
-              return (
-                <Button
-                  key={i}
-                  variant="outline"
-                  className="h-12 hover:bg-primary/20"
-                  onClick={() => handleCellClick(x, y)}
-                >
-                  {x + 1},{y + 1}
-                </Button>
-              );
-            })}
-          </div>
-          <Button
-            variant="ghost"
-            className="mt-2 w-full"
-            onClick={() => setSelectedItem(null)}
-          >
-            Отмена
-          </Button>
-        </Card>
-      )}
-
-      {/* Inventory */}
-      <Card className="p-4">
-        <h3 className="font-bold text-lg mb-4">📦 Мои вещи</h3>
-        {inventoryItems.length === 0 ? (
-          <p className="text-muted-foreground text-center py-4">
-            У тебя пока нет вещей. Загляни в магазин! 🛍️
-          </p>
         ) : (
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-            {inventoryItems.map((item) => (
-              <Button
-                key={item.id}
-                variant={selectedItem === item.id ? "default" : "outline"}
-                className="h-16 flex flex-col gap-1"
-                onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
-              >
-                <span className="text-2xl">{item.room_items.icon}</span>
-                <span className="text-xs truncate w-full">{item.room_items.name}</span>
-              </Button>
-            ))}
+          <div className="bg-amber-100/80 text-amber-800 text-xs font-medium px-3 py-1.5 rounded-full border border-amber-200">
+            Заведите питомца в магазине! 🐾
           </div>
         )}
-      </Card>
+
+        <div className="flex items-center gap-1 text-xs text-indigo-600 bg-indigo-100/80 px-3 py-1.5 rounded-full font-medium">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Предметов: {userRoomItems.length}</span>
+        </div>
+      </div>
+
+      {/* Центр комнаты: Питомец */}
+      <div className="relative z-10 flex flex-col items-center justify-center my-8">
+        {userPet ? (
+          <div className="group relative cursor-pointer">
+            <div className="text-8xl sm:text-9xl filter drop-shadow-xl transition-transform hover:scale-110 duration-300 animate-bounce-gentle">
+              {userPet.pets?.icon || "🐾"}
+            </div>
+            <div className="w-24 h-4 bg-black/10 rounded-full blur-sm mx-auto mt-2" />
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <p className="text-4xl mb-2">🏠</p>
+            <p className="text-gray-500 text-sm">Ваша комната пока пуста</p>
+          </div>
+        )}
+      </div>
+
+      {/* Нижняя часть комнаты: Мебель и предметы */}
+      <div className="relative z-10 border-t border-indigo-100/60 pt-4">
+        <p className="text-xs font-semibold text-gray-500 mb-2">Мебель в комнате:</p>
+        {userRoomItems.length > 0 ? (
+          <div className="flex items-center gap-3 overflow-x-auto pb-2">
+            {userRoomItems.map((item: UserRoomItem, idx: number) => (
+              <Card
+                key={item.id || idx}
+                className="p-3 min-w-[70px] flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm border-indigo-100 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <span className="text-3xl">{item.room_items?.icon || "📦"}</span>
+                <span className="text-[10px] font-medium text-gray-600 mt-1 truncate max-w-[60px]">
+                  {item.room_items?.name}
+                </span>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-gray-400 italic bg-white/40 p-3 rounded-xl border border-dashed border-gray-300 text-center">
+            Купите мебель в магазине, чтобы украсить комнату! ✨
+          </div>
+        )}
+      </div>
     </div>
   );
 };

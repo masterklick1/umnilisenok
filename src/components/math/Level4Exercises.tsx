@@ -13,6 +13,32 @@ interface Level4ExercisesProps {
   onBack: () => void;
 }
 
+const Wrapper = ({
+  children,
+  score,
+  total,
+  onBack,
+}: {
+  children: React.ReactNode;
+  score: number;
+  total: number;
+  onBack: () => void;
+}) => (
+  <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-background p-4">
+    <div className="container mx-auto max-w-4xl">
+      <div className="flex justify-between items-center mb-6">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Назад
+        </Button>
+        <div className="text-lg font-semibold">
+          Счёт: {score} / {total}
+        </div>
+      </div>
+      <Card className="p-8 text-center">{children}</Card>
+    </div>
+  </div>
+);
+
 export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   const { toast } = useToast();
   const { addStars } = useUserProgress();
@@ -23,19 +49,26 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   const [round, setRound] = useState(0);
 
   const reward = (msg: string) => {
-    addStars(1, "math");
+    addStars(1, "math", true);
     setScore((s) => s + 1);
     speak("Правильно!");
-    toast({ title: msg + " 🎉", description: "+1 ⭐" });
+    toast({ title: msg + " 🎉", description: "+1 ⭐ и 🎟️ билет!" });
   };
+
   const wrong = (correct: string) => {
     speak("Подумай ещё раз!");
     toast({ title: "Подумай ещё 💪", description: `Правильно: ${correct}`, variant: "destructive" });
   };
+
   const handle = (ok: boolean, correct: string, ex: string) => {
     setTotal((t) => t + 1);
-    if (ok) { reward("Отлично"); logCorrectAnswer({ section: "math", level: 4, exercise: ex }); }
-    else { wrong(correct); logWrongAnswer({ section: "math", level: 4, exercise: ex, correct }); }
+    if (ok) {
+      reward("Отлично");
+      logCorrectAnswer({ section: "math", level: 4, exercise: ex });
+    } else {
+      wrong(correct);
+      logWrongAnswer({ section: "math", level: 4, exercise: ex, correct });
+    }
     setTimeout(() => setRound((r) => r + 1), 1300);
   };
 
@@ -87,8 +120,8 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
 
   const divisionData = useMemo(() => {
     if (currentExercise !== "division") return null;
-    const a = Math.floor(Math.random() * 4) + 2; // 2..5
-    const b = Math.floor(Math.random() * 4) + 2; // 2..5
+    const a = Math.floor(Math.random() * 4) + 2;
+    const b = Math.floor(Math.random() * 4) + 2;
     const c = a * b;
     const ans = b;
     const opts = new Set<number>([ans]);
@@ -98,8 +131,8 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
 
   const addbigData = useMemo(() => {
     if (currentExercise !== "addbig") return null;
-    const a = (Math.floor(Math.random() * 8) + 1) * 10 + Math.floor(Math.random() * 10); // 10..89
-    const b = Math.floor(Math.random() * (99 - a)) + 1; // keep sum <= 99
+    const a = (Math.floor(Math.random() * 8) + 1) * 10 + Math.floor(Math.random() * 10);
+    const b = Math.floor(Math.random() * (99 - a)) + 1;
     const ans = a + b;
     const opts = new Set<number>([ans]);
     while (opts.size < 4) opts.add(Math.max(1, Math.min(100, ans + Math.floor(Math.random() * 11) - 5)));
@@ -144,10 +177,21 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
         <h2 className="text-xl font-semibold mb-3">Это число чётное или нечётное?</h2>
         <div className="text-8xl font-bold text-primary mb-8">{r.n}</div>
         <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-          <Button size="lg" className="h-20 text-2xl"
-            onClick={() => handle(r.even, r.even ? "чётное" : "нечётное", "count100")}>Чётное</Button>
-          <Button size="lg" variant="outline" className="h-20 text-2xl"
-            onClick={() => handle(!r.even, r.even ? "чётное" : "нечётное", "count100")}>Нечётное</Button>
+          <Button
+            size="lg"
+            className="h-20 text-2xl"
+            onClick={() => handle(r.even, r.even ? "чётное" : "нечётное", "count100")}
+          >
+            Чётное
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="h-20 text-2xl"
+            onClick={() => handle(!r.even, r.even ? "чётное" : "нечётное", "count100")}
+          >
+            Нечётное
+          </Button>
         </div>
       </Wrapper>
     );
@@ -158,18 +202,28 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     const r = multiplicationData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-xl font-semibold mb-4">{r.a} групп(ы) по {r.b} = ?</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          {r.a} групп(ы) по {r.b} = ?
+        </h2>
         <div className="flex flex-col items-center gap-2 mb-6">
           {[...Array(r.a)].map((_, i) => (
             <div key={i} className="flex gap-1 text-3xl">
-              {[...Array(r.b)].map((_, j) => <span key={j}>{r.emoji}</span>)}
+              {[...Array(r.b)].map((_, j) => (
+                <span key={j}>{r.emoji}</span>
+              ))}
             </div>
           ))}
         </div>
         <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
           {r.opts.map((o) => (
-            <Button key={o} size="lg" className="text-2xl h-16"
-              onClick={() => handle(o === r.ans, String(r.ans), "multiplication")}>{o}</Button>
+            <Button
+              key={o}
+              size="lg"
+              className="text-2xl h-16"
+              onClick={() => handle(o === r.ans, String(r.ans), "multiplication")}
+            >
+              {o}
+            </Button>
           ))}
         </div>
       </Wrapper>
@@ -183,13 +237,23 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-xl font-semibold mb-6">Какое число продолжит ряд?</h2>
         <div className="flex justify-center gap-3 mb-8 text-4xl font-bold">
-          {r.seq.map((n, i) => <span key={i} className="px-3 py-2 bg-primary/10 rounded-lg">{n}</span>)}
+          {r.seq.map((n, i) => (
+            <span key={i} className="px-3 py-2 bg-primary/10 rounded-lg">
+              {n}
+            </span>
+          ))}
           <span className="text-muted-foreground px-3 py-2">?</span>
         </div>
         <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
           {r.opts.map((o) => (
-            <Button key={o} size="lg" className="text-2xl h-16"
-              onClick={() => handle(o === r.next, String(r.next), "puzzles")}>{o}</Button>
+            <Button
+              key={o}
+              size="lg"
+              className="text-2xl h-16"
+              onClick={() => handle(o === r.next, String(r.next), "puzzles")}
+            >
+              {o}
+            </Button>
           ))}
         </div>
       </Wrapper>
@@ -210,8 +274,14 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
         <p className="text-muted-foreground mb-4">Найди фигуру, которую видишь в зеркале</p>
         <div className="grid grid-cols-4 gap-4 max-w-xl mx-auto">
           {r.opts.map((o, i) => (
-            <Button key={i} variant="outline" className="h-24 text-6xl"
-              onClick={() => handle(o === r.target, r.target, "spatial")}>{o}</Button>
+            <Button
+              key={i}
+              variant="outline"
+              className="h-24 text-6xl"
+              onClick={() => handle(o === r.target, r.target, "spatial")}
+            >
+              {o}
+            </Button>
           ))}
         </div>
       </Wrapper>
@@ -224,11 +294,19 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-xl font-semibold mb-4">Раздели поровну</h2>
-        <div className="text-6xl font-bold text-primary mb-8">{r.c} ÷ {r.a} = ?</div>
+        <div className="text-6xl font-bold text-primary mb-8">
+          {r.c} ÷ {r.a} = ?
+        </div>
         <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
           {r.opts.map((o) => (
-            <Button key={o} size="lg" className="text-2xl h-16"
-              onClick={() => handle(o === r.ans, String(r.ans), "division")}>{o}</Button>
+            <Button
+              key={o}
+              size="lg"
+              className="text-2xl h-16"
+              onClick={() => handle(o === r.ans, String(r.ans), "division")}
+            >
+              {o}
+            </Button>
           ))}
         </div>
       </Wrapper>
@@ -241,27 +319,24 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-xl font-semibold mb-4">Посчитай сумму</h2>
-        <div className="text-6xl font-bold text-primary mb-8">{r.a} + {r.b} = ?</div>
+        <div className="text-6xl font-bold text-primary mb-8">
+          {r.a} + {r.b} = ?
+        </div>
         <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
           {r.opts.map((o) => (
-            <Button key={o} size="lg" className="text-2xl h-16"
-              onClick={() => handle(o === r.ans, String(r.ans), "addbig")}>{o}</Button>
+            <Button
+              key={o}
+              size="lg"
+              className="text-2xl h-16"
+              onClick={() => handle(o === r.ans, String(r.ans), "addbig")}
+            >
+              {o}
+            </Button>
           ))}
         </div>
       </Wrapper>
     );
   }
+
   return null;
 };
-
-const Wrapper = ({ children, score, total, onBack }: { children: React.ReactNode; score: number; total: number; onBack: () => void }) => (
-  <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-background p-4">
-    <div className="container mx-auto max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <Button variant="ghost" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Назад</Button>
-        <div className="text-lg font-semibold">Счёт: {score} / {total}</div>
-      </div>
-      <Card className="p-8 text-center">{children}</Card>
-    </div>
-  </div>
-);

@@ -10,61 +10,51 @@ import { speak } from "@/lib/sound";
 
 type Letter = {
   letter: string;
-  sound: string;
   word: string;
   emoji: string;
 };
 
 type Mode = "learn" | "quiz" | "syllables" | "vowels" | "missing" | null;
 
-// Исправлены транскрипции sound на чистые звуки (бб, вв, гг вместо бэ, вэ, гэ)
 const russianAlphabet: Letter[] = [
-  { letter: "А", sound: "а", word: "Арбуз", emoji: "🍉" },
-  { letter: "Б", sound: "бб", word: "Белка", emoji: "🐿️" },
-  { letter: "В", sound: "вв", word: "Волк", emoji: "🐺" },
-  { letter: "Г", sound: "гг", word: "Гриб", emoji: "🍄" },
-  { letter: "Д", sound: "дд", word: "Дом", emoji: "🏠" },
-  { letter: "Е", sound: "е", word: "Ель", emoji: "🌲" },
-  { letter: "Ё", sound: "ё", word: "Ёжик", emoji: "🦔" },
-  { letter: "Ж", sound: "жж", word: "Жираф", emoji: "🦒" },
-  { letter: "З", sound: "зз", word: "Заяц", emoji: "🐰" },
-  { letter: "И", sound: "и", word: "Игрушка", emoji: "🧸" },
-  { letter: "Й", sound: "й", word: "Йогурт", emoji: "🥛" },
-  { letter: "К", sound: "кк", word: "Кот", emoji: "🐱" },
-  { letter: "Л", sound: "лл", word: "Лиса", emoji: "🦊" },
-  { letter: "М", sound: "мм", word: "Медведь", emoji: "🐻" },
-  { letter: "Н", sound: "нн", word: "Носорог", emoji: "🦏" },
-  { letter: "О", sound: "о", word: "Облако", emoji: "☁️" },
-  { letter: "П", sound: "пп", word: "Пингвин", emoji: "🐧" },
-  { letter: "Р", sound: "рр", word: "Рыба", emoji: "🐟" },
-  { letter: "С", sound: "сс", word: "Слон", emoji: "🐘" },
-  { letter: "Т", sound: "тт", word: "Тигр", emoji: "🐯" },
-  { letter: "У", sound: "у", word: "Утка", emoji: "🦆" },
-  { letter: "Ф", sound: "фф", word: "Фламинго", emoji: "🦩" },
-  { letter: "Х", sound: "хх", word: "Хомяк", emoji: "🐹" },
-  { letter: "Ц", sound: "цц", word: "Цветок", emoji: "🌸" },
-  { letter: "Ч", sound: "чч", word: "Черепаха", emoji: "🐢" },
-  { letter: "Ш", sound: "шш", word: "Шарик", emoji: "🎈" },
-  { letter: "Щ", sound: "щщ", word: "Щенок", emoji: "🐶" },
-  { letter: "Ъ", sound: "твёрдый знак", word: "Объект", emoji: "📦" },
-  { letter: "Ы", sound: "ы", word: "Сыр", emoji: "🧀" },
-  { letter: "Ь", sound: "мягкий знак", word: "Лось", emoji: "🦌" },
-  { letter: "Э", sound: "э", word: "Экскаватор", emoji: "🚜" },
-  { letter: "Ю", sound: "ю", word: "Юла", emoji: "🌀" },
-  { letter: "Я", sound: "я", word: "Яблоко", emoji: "🍎" },
+  { letter: "А", word: "Арбуз", emoji: "🍉" },
+  { letter: "Б", word: "Белка", emoji: "🐿️" },
+  { letter: "В", word: "Волк", emoji: "🐺" },
+  { letter: "Г", word: "Гриб", emoji: "🍄" },
+  { letter: "Д", word: "Дом", emoji: "🏠" },
+  { letter: "Е", word: "Ель", emoji: "🌲" },
+  { letter: "Ё", word: "Ёжик", emoji: "🦔" },
+  { letter: "Ж", word: "Жираф", emoji: "🦒" },
+  { letter: "З", word: "Заяц", emoji: "🐰" },
+  { letter: "И", word: "Игрушка", emoji: "🧸" },
+  { letter: "Й", word: "Йогурт", emoji: "🥛" },
+  { letter: "К", word: "Кот", emoji: "🐱" },
+  { letter: "Л", word: "Лиса", emoji: "🦊" },
+  { letter: "М", word: "Медведь", emoji: "🐻" },
+  { letter: "Н", word: "Носорог", emoji: "🦏" },
+  { letter: "О", word: "Облако", emoji: "☁️" },
+  { letter: "П", word: "Пингвин", emoji: "🐧" },
+  { letter: "Р", word: "Рыба", emoji: "🐟" },
+  { letter: "С", word: "Слон", emoji: "🐘" },
+  { letter: "Т", word: "Тигр", emoji: "🐯" },
+  { letter: "У", word: "Утка", emoji: "🦆" },
+  { letter: "Ф", word: "Фламинго", emoji: "🦩" },
+  { letter: "Х", word: "Хомяк", emoji: "🐹" },
+  { letter: "Ц", word: "Цветок", emoji: "🌸" },
+  { letter: "Ч", word: "Черепаха", emoji: "🐢" },
+  { letter: "Ш", word: "Шарик", emoji: "🎈" },
+  { letter: "Щ", word: "Щенок", emoji: "🐶" },
+  { letter: "Ъ", word: "Объект", emoji: "📦" },
+  { letter: "Ы", word: "Сыр", emoji: "🧀" },
+  { letter: "Ь", word: "Лось", emoji: "🦌" },
+  { letter: "Э", word: "Экскаватор", emoji: "🚜" },
+  { letter: "Ю", word: "Юла", emoji: "🌀" },
+  { letter: "Я", word: "Яблоко", emoji: "🍎" },
 ];
 
 const VOWELS = ["А", "Е", "Ё", "И", "О", "У", "Ы", "Э", "Ю", "Я"];
 const SYLLABLE_CONSONANTS = ["Б", "В", "Г", "Д", "Ж", "З", "К", "Л", "М", "Н", "П", "Р", "С", "Т", "Ф", "Х"];
 const SYLLABLE_VOWELS = ["А", "О", "У", "Ы", "И", "Э"];
-
-// Вспомогательная функция безопасного вызова синтеза речи с отменяемым предыдущим звуком
-const safeSpeak = (text: string) => {
-  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
-  }
-  speak(text);
-};
 
 const generateQuizOptions = (correctLetter: Letter): Letter[] => {
   const options = [correctLetter];
@@ -94,7 +84,7 @@ const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
   const handleNextSyllable = () => {
     const s = randomSyllable();
     setSyllable(s);
-    safeSpeak(s);
+    speak(s);
   };
 
   return (
@@ -105,7 +95,7 @@ const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
       </div>
       <Card className="p-12 text-center">
         <div className="text-8xl font-extrabold text-primary mb-8">{syllable}</div>
-        <Button size="lg" variant="secondary" className="mb-8" onClick={() => safeSpeak(syllable)}>
+        <Button size="lg" variant="secondary" className="mb-8" onClick={() => speak(syllable)}>
           <Volume2 className="mr-2 h-5 w-5" /> Послушать слог
         </Button>
         <p className="text-muted-foreground">Прочитай слог вслух, а потом проверь себя кнопкой</p>
@@ -249,11 +239,11 @@ export default function AlphabetPage() {
     if (ok) {
       addStars(1, "alphabet");
       logCorrectAnswer({ section: "alphabet", mode: modeName });
-      safeSpeak("Правильно! Молодец!");
+      speak("Правильно! Молодец!");
       toast({ title: "Правильно! 🎉", description: "+1 ⭐" });
     } else {
       logWrongAnswer({ section: "alphabet", mode: modeName });
-      safeSpeak("Попробуй ещё раз!");
+      speak("Попробуй ещё раз!");
       toast({ title: "Попробуй ещё! 💪", description: correct ? `Правильно: ${correct}` : "Попробуй ещё", variant: "destructive" });
     }
   };
@@ -305,14 +295,14 @@ export default function AlphabetPage() {
       setScore(score + 1);
       addStars(1, "alphabet");
       logCorrectAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter });
-      safeSpeak("Правильно! Молодец!");
+      speak("Правильно! Молодец!");
       toast({
         title: "Правильно! 🎉",
         description: "Отличная работа! +1 ⭐",
       });
     } else {
       logWrongAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter, selected: selected.letter });
-      safeSpeak("Не правильно. Ещё раз подумай!");
+      speak("Не правильно. Ещё раз подумай!");
       toast({
         title: "Попробуй ещё раз! 💪",
         description: `Правильный ответ: ${russianAlphabet[currentIndex].letter}`,
@@ -403,7 +393,7 @@ export default function AlphabetPage() {
               <Button
                 size="lg"
                 variant="secondary"
-                onClick={() => safeSpeak(`Звук ${currentLetter.sound}. Слово ${currentLetter.word}`)}
+                onClick={() => speak(`Буква ${currentLetter.letter}. Слово ${currentLetter.word}. Начинается с буквы ${currentLetter.letter}`)}
                 className="mb-8"
               >
                 <Volume2 className="mr-2 h-5 w-5" />

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -31,12 +31,17 @@ export const useUserProgress = () => {
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Храним актуальное состояние в ref для защиты от stale closures в асинхронных функциях
+  const progressRef = useRef<UserProgress | null>(null);
+  progressRef.current = progress;
+
   const fetchProgress = useCallback(async () => {
     if (isDemoUser(user)) {
-      setProgress({
+      const demoData = {
         ...demoProgress,
         game_tickets: (demoProgress as any).game_tickets ?? 5,
-      });
+      };
+      setProgress(demoData);
       setLoading(false);
       return;
     }
@@ -64,7 +69,6 @@ export const useUserProgress = () => {
           game_tickets: data.game_tickets ?? 0,
         });
       } else {
-        // Дефолтный прогресс, если в базе ещё нет записи
         setProgress({
           user_id: user.id,
           stars: 0,
@@ -191,7 +195,8 @@ export const useUserProgress = () => {
 
       try {
         const today = todayStr();
-        const currentProgress = progress || {
+        // Берем самое актуальное состояние из ref
+        const currentProgress = progressRef.current || {
           user_id: user.id,
           stars: 0,
           level: 1,
@@ -212,7 +217,6 @@ export const useUserProgress = () => {
         const newExperience = (currentProgress.experience || 0) + amount;
         const newLevel = Math.floor(newExperience / 100) + 1;
 
-        // Используем upsert: создать если нет, либо обновить существующий
         const { data, error } = await supabase
           .from("user_progress")
           .upsert(
@@ -280,7 +284,7 @@ export const useUserProgress = () => {
         toast({ title: "Ошибка", description: "Не удалось обновить прогресс", variant: "destructive" });
       }
     },
-    [user, progress, isDemo, toast, checkAchievements]
+    [user, isDemo, toast, checkAchievements]
   );
 
   // Прямое начисление билетов
@@ -297,7 +301,7 @@ export const useUserProgress = () => {
       }
 
       try {
-        const currentTickets = progress?.game_tickets || 0;
+        const currentTickets = progressRef.current?.game_tickets || 0;
         const newTickets = currentTickets + amount;
 
         const { error } = await supabase
@@ -330,7 +334,7 @@ export const useUserProgress = () => {
         console.error("Error adding tickets:", e);
       }
     },
-    [user, progress, isDemo, toast]
+    [user, isDemo, toast]
   );
 
   useEffect(() => {

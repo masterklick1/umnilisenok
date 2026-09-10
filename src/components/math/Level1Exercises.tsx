@@ -13,6 +13,33 @@ interface Level1ExercisesProps {
   onBack: () => void;
 }
 
+const Wrapper = ({
+  children,
+  score,
+  total,
+  onBack,
+}: {
+  children: React.ReactNode;
+  score: number;
+  total: number;
+  onBack: () => void;
+}) => (
+  <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-background p-4">
+    <div className="container mx-auto max-w-4xl">
+      <div className="flex justify-between items-center mb-6">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Назад
+        </Button>
+        <div className="text-lg font-semibold">
+          Счёт: {score} / {total}
+        </div>
+      </div>
+      <Card className="p-8 text-center">{children}</Card>
+    </div>
+  </div>
+);
+
 export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const { toast } = useToast();
   const { addStars } = useUserProgress();
@@ -75,7 +102,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     let b = Math.floor(Math.random() * 5) + 1;
     while (b === a) b = Math.floor(Math.random() * 5) + 1;
     const fruit = ["🍎", "🍐", "🍊", "🍇", "🍓"][Math.floor(Math.random() * 5)];
-    return { a, b, fruit, bigger: a > b ? "a" as const : "b" as const };
+    return { a, b, fruit, bigger: a > b ? ("a" as const) : ("b" as const) };
   }, [compareRound]);
 
   const colorData = useMemo(() => {
@@ -139,9 +166,13 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-4">Посчитай животных и покорми их! 🍎</h2>
         <div className="flex justify-center gap-3 mb-8 text-6xl flex-wrap">
-          {Array(feedingAnimals).fill(animal).map((a, i) => (
-            <span key={i} className="animate-bounce-gentle" style={{ animationDelay: `${i * 100}ms` }}>{a}</span>
-          ))}
+          {Array(feedingAnimals)
+            .fill(animal)
+            .map((a, i) => (
+              <span key={i} className="animate-bounce-gentle" style={{ animationDelay: `${i * 100}ms` }}>
+                {a}
+              </span>
+            ))}
         </div>
         <p className="text-xl mb-6">Сколько яблок нужно?</p>
         <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
@@ -286,7 +317,11 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
               className="p-6 rounded-2xl border-4 border-yellow-400/40 bg-yellow-50 hover:bg-yellow-100 transition-all"
             >
               <div className="text-4xl flex flex-wrap gap-1 justify-center">
-                {Array(round[side]).fill(round.fruit).map((f, i) => <span key={i}>{f}</span>)}
+                {Array(round[side])
+                  .fill(round.fruit)
+                  .map((f, i) => (
+                    <span key={i}>{f}</span>
+                  ))}
               </div>
               <div className="text-sm text-muted-foreground mt-3">Нажми, если здесь больше</div>
             </button>
@@ -301,7 +336,9 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     const r = colorData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-4">Найди цвет: <span className="text-primary">{r.target.name}</span></h2>
+        <h2 className="text-2xl font-bold mb-4">
+          Найди цвет: <span className="text-primary">{r.target.name}</span>
+        </h2>
         <div className="text-8xl mb-8">{r.target.emoji}</div>
         <div className="grid grid-cols-4 gap-4 max-w-md mx-auto">
           {r.opts.map((o, i) => (
@@ -368,18 +405,3 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
   return null;
 };
-
-const Wrapper = ({ children, score, total, onBack }: { children: React.ReactNode; score: number; total: number; onBack: () => void }) => (
-  <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-background p-4">
-    <div className="container mx-auto max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <Button variant="ghost" onClick={onBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Назад
-        </Button>
-        <div className="text-lg font-semibold">Счёт: {score} / {total}</div>
-      </div>
-      <Card className="p-8 text-center">{children}</Card>
-    </div>
-  </div>
-);

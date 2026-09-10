@@ -40,10 +40,11 @@ export const PetCare = () => {
   const [isGameModalOpen, setIsGameModalOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
-  const tickets = (progress as any)?.game_tickets || 0;
+  const tickets = (progress as any)?.game_tickets ?? 0;
+  const userStars = (progress as any)?.stars ?? 0;
 
   // Все питомцы пользователя
-  const myPetsList = userPets.length > 0 ? userPets : (userPet ? [userPet] : []);
+  const myPetsList = userPets.length > 0 ? userPets : userPet ? [userPet] : [];
 
   // Обработчик покупки питомца
   const handleAdopt = async () => {
@@ -74,10 +75,10 @@ export const PetCare = () => {
   };
 
   if (loading) {
-    return <Skeleton className="h-64 w-full" />;
+    return <Skeleton className="h-64 w-full rounded-2xl" />;
   }
 
-  // Если у пользователя есть хотя бы один питомец и не нажата кнопка "Ещё питомец"
+  // Если у пользователя есть питомцы
   if (myPetsList.length > 0 && !showAdoptNew) {
     return (
       <div className="space-y-6">
@@ -111,39 +112,39 @@ export const PetCare = () => {
         {/* Экран активного питомца */}
         {userPet && (
           <>
-            <Card className="p-6 text-center bg-gradient-to-br from-primary/5 to-accent/5">
+            <Card className="p-6 text-center bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border-2 border-indigo-100 shadow-sm">
               <div className="text-8xl mb-4 animate-bounce-gentle">{userPet.pets?.icon || "🐾"}</div>
-              <h2 className="text-2xl font-bold mb-1">{userPet.pet_name}</h2>
+              <h2 className="text-2xl font-bold text-indigo-950 mb-1">{userPet.pet_name}</h2>
               <p className="text-muted-foreground text-sm">{userPet.pets?.species || userPet.pets?.name}</p>
             </Card>
 
             {/* Характеристики */}
-            <div className="grid gap-4">
-              <Card className="p-4">
+            <div className="grid gap-3">
+              <Card className="p-4 shadow-sm border-rose-100">
                 <div className="flex items-center gap-3 mb-2">
-                  <Heart className="w-5 h-5 text-red-500" />
-                  <span className="font-semibold">Счастье</span>
-                  <span className="ml-auto font-bold">{userPet.happiness}%</span>
+                  <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
+                  <span className="font-semibold text-sm">Счастье</span>
+                  <span className="ml-auto font-bold text-rose-600">{userPet.happiness}%</span>
                 </div>
-                <Progress value={userPet.happiness} className="h-3" />
+                <Progress value={userPet.happiness} className="h-2.5 bg-rose-100" />
               </Card>
 
-              <Card className="p-4">
+              <Card className="p-4 shadow-sm border-amber-100">
                 <div className="flex items-center gap-3 mb-2">
-                  <Utensils className="w-5 h-5 text-orange-500" />
-                  <span className="font-semibold">Сытость</span>
-                  <span className="ml-auto font-bold">{userPet.hunger}%</span>
+                  <Utensils className="w-5 h-5 text-amber-500" />
+                  <span className="font-semibold text-sm">Сытость</span>
+                  <span className="ml-auto font-bold text-amber-600">{userPet.hunger}%</span>
                 </div>
-                <Progress value={userPet.hunger} className="h-3" />
+                <Progress value={userPet.hunger} className="h-2.5 bg-amber-100" />
               </Card>
 
-              <Card className="p-4">
+              <Card className="p-4 shadow-sm border-blue-100">
                 <div className="flex items-center gap-3 mb-2">
                   <Moon className="w-5 h-5 text-blue-500" />
-                  <span className="font-semibold">Энергия</span>
-                  <span className="ml-auto font-bold">{userPet.energy}%</span>
+                  <span className="font-semibold text-sm">Энергия</span>
+                  <span className="ml-auto font-bold text-blue-600">{userPet.energy}%</span>
                 </div>
-                <Progress value={userPet.energy} className="h-3" />
+                <Progress value={userPet.energy} className="h-2.5 bg-blue-100" />
               </Card>
             </div>
 
@@ -152,34 +153,34 @@ export const PetCare = () => {
               <Button
                 onClick={feedPet}
                 variant="outline"
-                className="h-20 flex flex-col gap-1"
-                disabled={userPet.hunger >= 100 || (progress?.stars || 0) < 1}
+                className="h-20 flex flex-col gap-1 border-amber-200 hover:bg-amber-50"
+                disabled={userPet.hunger >= 100 || userStars < 1}
               >
-                <Utensils className="w-6 h-6 text-orange-500" />
-                <span className="font-medium">Покормить</span>
-                <span className="text-xs text-muted-foreground">(1 ⭐)</span>
+                <Utensils className="w-6 h-6 text-amber-500" />
+                <span className="font-medium text-xs sm:text-sm">Покормить</span>
+                <span className="text-[10px] text-amber-600 font-bold">(1 ⭐)</span>
               </Button>
 
               <Button
                 type="button"
                 onClick={handleStartPlay}
                 variant="default"
-                className="h-20 flex flex-col gap-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="h-20 flex flex-col gap-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
               >
                 <Gamepad2 className="w-6 h-6" />
-                <span className="font-medium">Играть</span>
-                <span className="text-xs text-amber-200 font-semibold">(1 🎟️)</span>
+                <span className="font-medium text-xs sm:text-sm">Играть</span>
+                <span className="text-[10px] text-amber-200 font-bold">(1 🎟️)</span>
               </Button>
 
               <Button
                 onClick={restPet}
                 variant="outline"
-                className="h-20 flex flex-col gap-1"
+                className="h-20 flex flex-col gap-1 border-blue-200 hover:bg-blue-50"
                 disabled={userPet.energy >= 100}
               >
                 <Moon className="w-6 h-6 text-blue-500" />
-                <span className="font-medium">Отдыхать</span>
-                <span className="text-xs text-muted-foreground">(бесплатно)</span>
+                <span className="font-medium text-xs sm:text-sm">Отдыхать</span>
+                <span className="text-[10px] text-gray-400">(бесплатно)</span>
               </Button>
             </div>
           </>
@@ -199,7 +200,7 @@ export const PetCare = () => {
 
             {!selectedGame ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-4">
-                <Card 
+                <Card
                   onClick={() => setSelectedGame("quiz")}
                   className="p-4 cursor-pointer hover:border-indigo-500 transition-all border-2 flex flex-col items-center text-center gap-2"
                 >
@@ -210,7 +211,7 @@ export const PetCare = () => {
                   <p className="text-xs text-muted-foreground">Викторина с озвучкой вопросов по урокам!</p>
                 </Card>
 
-                <Card 
+                <Card
                   onClick={() => setSelectedGame("quiz")}
                   className="p-4 cursor-pointer hover:border-indigo-500 transition-all border-2 flex flex-col items-center text-center opacity-80"
                 >
@@ -226,7 +227,9 @@ export const PetCare = () => {
                 <Button variant="ghost" size="sm" onClick={() => setSelectedGame(null)} className="mb-4">
                   ← Назад к выбору игр
                 </Button>
-                {selectedGame === "quiz" && <PetQuizGame />}
+                {selectedGame === "quiz" && (
+                  <PetQuizGame onClose={() => setIsGameModalOpen(false)} />
+                )}
               </div>
             )}
           </DialogContent>
@@ -235,17 +238,17 @@ export const PetCare = () => {
     );
   }
 
-  // Экран приюта
+  // Экран приюта (выбор питомца)
   return (
     <div className="space-y-6">
-      <Card className="p-6 text-center bg-gradient-to-br from-primary/5 to-accent/5 w-full">
-        <h2 className="text-xl font-bold mb-2">🏠 Приют для питомцев</h2>
+      <Card className="p-6 text-center bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-100">
+        <h2 className="text-xl font-bold text-indigo-950 mb-2">🏠 Приют для питомцев</h2>
         <p className="text-muted-foreground text-sm">
           Выбери себе друга! Ухаживай за ним, и он будет радовать тебя каждый день.
         </p>
-        <div className="flex items-center justify-center gap-2 mt-4">
+        <div className="flex items-center justify-center gap-2 mt-4 bg-white/80 w-fit mx-auto px-4 py-1.5 rounded-full border border-amber-200">
           <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-          <span className="font-bold">{progress?.stars || 0} звёзд</span>
+          <span className="font-bold text-amber-900">{userStars} звёзд</span>
         </div>
       </Card>
 
@@ -257,7 +260,7 @@ export const PetCare = () => {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {pets.map((pet: Pet) => {
-          const canAfford = (progress?.stars || 0) >= pet.price_stars;
+          const canAfford = userStars >= pet.price_stars;
 
           return (
             <Dialog
@@ -282,7 +285,7 @@ export const PetCare = () => {
                   }}
                 >
                   <div className="text-5xl">{pet.icon}</div>
-                  <h4 className="font-semibold">{pet.name || pet.species}</h4>
+                  <h4 className="font-semibold text-sm">{pet.name || pet.species}</h4>
                   <div className="flex items-center gap-1 text-sm font-bold text-amber-600">
                     <Star className="w-4 h-4 fill-amber-500" />
                     <span>{pet.price_stars}</span>
@@ -294,7 +297,7 @@ export const PetCare = () => {
                 <DialogHeader>
                   <DialogTitle className="text-center">
                     <span className="text-6xl block mb-4">{pet.icon}</span>
-                    Завести {(pet.name || pet.species).toLowerCase()}?
+                    Завести {(pet.name || pet.species)?.toLowerCase()}?
                   </DialogTitle>
                 </DialogHeader>
 

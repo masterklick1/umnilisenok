@@ -13,7 +13,7 @@ const hasTTS = () =>
 
 let voicesReady = false;
 let voicesPromise: Promise<SpeechSynthesisVoice[]> | null = null;
-let pendingTimeout: ReturnType<typeof setTimeout> | null = null; // Флаг отмены таймера
+let pendingTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
   if (!hasTTS()) return Promise.resolve([]);
@@ -58,13 +58,11 @@ const pickRussianVoice = (voices: SpeechSynthesisVoice[]) =>
 const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
   const synth = window.speechSynthesis;
 
-  // Отменяем запущенный ранее таймер, если он еще не успел сработать
   if (pendingTimeout !== null) {
     clearTimeout(pendingTimeout);
     pendingTimeout = null;
   }
 
-  // Сразу отменяем текущую речь
   try {
     synth.cancel();
   } catch {
@@ -84,7 +82,6 @@ const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
     /* игнорируем */
   }
 
-  // Небольшая задержка для корректного сброса очереди в Chromium/Safari
   pendingTimeout = setTimeout(() => {
     try {
       synth.speak(utterance);
@@ -98,7 +95,7 @@ const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
 export const speak = async (text: string): Promise<void> => {
   if (!text || !isSoundEnabled()) return;
 
-  // Нативная озвучка для Android / iOS (Capacitor)
+  // Нативная озвучка для Android / iOS через Capacitor
   if (Capacitor.isNativePlatform()) {
     try {
       await TextToSpeech.stop();
@@ -119,8 +116,9 @@ export const speak = async (text: string): Promise<void> => {
   // Озвучка для Браузера (Web)
   if (!hasTTS()) return;
 
-  if (voicesReady) {
-    doSpeakWeb(text, window.speechSynthesis.getVoices());
+  const currentVoices = window.speechSynthesis.getVoices();
+  if (voicesReady || currentVoices.length > 0) {
+    doSpeakWeb(text, currentVoices);
     return;
   }
   

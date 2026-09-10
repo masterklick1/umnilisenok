@@ -31,7 +31,6 @@ export const useUserProgress = () => {
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Храним актуальное состояние в ref для защиты от stale closures в асинхронных функциях
   const progressRef = useRef<UserProgress | null>(null);
   progressRef.current = progress;
 
@@ -129,10 +128,14 @@ export const useUserProgress = () => {
               ? currentStreak
               : counts?.[a.category] ?? 0;
           if (value >= a.requirement_value) {
-            const { error: insErr } = await supabase.from("user_achievements").insert({
-              user_id: user.id,
-              achievement_id: a.id,
-            });
+            // Upsert для исключения ошибок уникальности
+            const { error: insErr } = await supabase
+              .from("user_achievements")
+              .upsert(
+                { user_id: user.id, achievement_id: a.id },
+                { onConflict: "user_id,achievement_id" }
+              );
+
             if (!insErr) {
               totalReward += a.reward_stars || 0;
               toast({
@@ -151,7 +154,7 @@ export const useUserProgress = () => {
     [user, isDemo, toast]
   );
 
-  // Добавление звёзд и билетов
+  // Начисление звёзд
   const addStars = useCallback(
     async (
       amount: number,
@@ -163,16 +166,8 @@ export const useUserProgress = () => {
       const ticketsToAdd = addTicket ? 1 : 0;
 
       if (isDemo) {
-        setProgress((current) => {
-          const cur = current || {
-            user_id: user.id,
-            stars: 0,
-            level: 1,
-            experience: 0,
-            daily_streak: 0,
-            game_tickets: 0,
-            last_activity_date: null,
-          };
+        setProgress((cur) => {
+          if (!cur) return null;
           const experience = cur.experience + amount;
           return {
             ...cur,
@@ -195,7 +190,6 @@ export const useUserProgress = () => {
 
       try {
         const today = todayStr();
-        // Берем самое актуальное состояние из ref
         const currentProgress = progressRef.current || {
           user_id: user.id,
           stars: 0,
@@ -217,28 +211,9 @@ export const useUserProgress = () => {
         const newExperience = (currentProgress.experience || 0) + amount;
         const newLevel = Math.floor(newExperience / 100) + 1;
 
-        const { data, error } = await supabase
-          .from("user_progress")
-          .upsert(
-            {
-              user_id: user.id,
-              stars: newStars,
-              game_tickets: newTickets,
-              experience: newExperience,
-              level: newLevel,
-              daily_streak: newStreak,
-              last_activity_date: today,
-            },
-            { onConflict: "user_id" }
-          )
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        let merged: UserProgress = {
-          ...currentProgress,
-          ...(data || {}),
+        // Формируем полный объект payload со всеми атрибутами
+        const payload = {
+          user_id: user.id,
           stars: newStars,
           game_tickets: newTickets,
           experience: newExperience,
@@ -246,6 +221,15 @@ export const useUserProgress = () => {
           daily_streak: newStreak,
           last_activity_date: today,
         };
+
+        // Оптимистичное обновление UI
+        setProgress((prev) => ({ ...(prev || currentProgress), ...payload }));
+
+        const { error } = await supabase
+          .from("user_progress")
+          .upsert(payload, { onConflict: "user_id" });
+
+        if (error) throw error;
 
         if (newLevel > (currentProgress.level || 1)) {
           toast({ title: "🎉 Новый уровень!", description: `Поздравляем! Ты достиг ${newLevel} уровня!` });
@@ -259,35 +243,39 @@ export const useUserProgress = () => {
 
         const bonus = await checkAchievements(category, newStreak);
         if (bonus > 0) {
-          const bonusStars = merged.stars + bonus;
-          const bonusExp = merged.experience + bonus;
+          const bonusStars = newStars + bonus;
+          const bonusExp = newExperience + bonus;
           const bonusLevel = Math.floor(bonusExp / 100) + 1;
+
+          const bonusPayload = {
+            user_id: user.id,
+            stars: bonusStars,
+            game_tickets: newTickets,
+            experience: bonusExp,
+            level: bonusLevel,
+            daily_streak: newStreak,
+            last_activity_date: today,
+          };
 
           await supabase
             .from("user_progress")
-            .upsert(
-              {
-                user_id: user.id,
-                stars: bonusStars,
-                experience: bonusExp,
-                level: bonusLevel,
-              },
-              { onConflict: "user_id" }
-            );
+            .upsert(bonusPayload, { onConflict: "user_id" });
 
-          merged = { ...merged, stars: bonusStars, experience: bonusExp, level: bonusLevel };
+          setProgress((prev) => (prev ? { ...prev, ...bonusPayload } : null));
         }
-
-        setProgress(merged);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Error adding stars:", e);
-        toast({ title: "Ошибка", description: "Не удалось обновить прогресс", variant: "destructive" });
+        toast({
+          title: "Ошибка обновления",
+          description: e?.message || e?.details || "Не удалось сохранить прогресс в сети",
+          variant: "destructive",
+        });
       }
     },
     [user, isDemo, toast, checkAchievements]
   );
 
-  // Прямое начисление билетов
+  // Начисление билетов
   const addGameTickets = useCallback(
     async (amount: number = 1) => {
       if (!user) return;
@@ -301,37 +289,41 @@ export const useUserProgress = () => {
       }
 
       try {
-        const currentTickets = progressRef.current?.game_tickets || 0;
-        const newTickets = currentTickets + amount;
+        const currentProgress = progressRef.current || {
+          user_id: user.id,
+          stars: 0,
+          level: 1,
+          experience: 0,
+          daily_streak: 0,
+          game_tickets: 0,
+          last_activity_date: null,
+        };
+
+        const newTickets = (currentProgress.game_tickets || 0) + amount;
+
+        // Передаем весь объект, а не только game_tickets
+        const payload = {
+          ...currentProgress,
+          user_id: user.id,
+          game_tickets: newTickets,
+        };
+
+        setProgress(payload);
 
         const { error } = await supabase
           .from("user_progress")
-          .upsert(
-            {
-              user_id: user.id,
-              game_tickets: newTickets,
-            },
-            { onConflict: "user_id" }
-          );
+          .upsert(payload, { onConflict: "user_id" });
 
         if (error) throw error;
 
-        setProgress((current) =>
-          current
-            ? { ...current, game_tickets: newTickets }
-            : {
-                user_id: user.id,
-                stars: 0,
-                level: 1,
-                experience: 0,
-                daily_streak: 0,
-                game_tickets: newTickets,
-                last_activity_date: null,
-              }
-        );
         toast({ title: `Начислено билетов: +${amount} 🎟️` });
-      } catch (e) {
+      } catch (e: any) {
         console.error("Error adding tickets:", e);
+        toast({
+          title: "Ошибка",
+          description: e?.message || "Не удалось добавить билеты",
+          variant: "destructive",
+        });
       }
     },
     [user, isDemo, toast]

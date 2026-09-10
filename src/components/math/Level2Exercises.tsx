@@ -13,6 +13,33 @@ interface Level2ExercisesProps {
   onBack: () => void;
 }
 
+const Wrapper = ({
+  children,
+  score,
+  total,
+  onBack,
+}: {
+  children: React.ReactNode;
+  score: number;
+  total: number;
+  onBack: () => void;
+}) => (
+  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-background p-4">
+    <div className="container mx-auto max-w-4xl">
+      <div className="flex justify-between items-center mb-6">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Назад
+        </Button>
+        <div className="text-lg font-semibold">
+          Счёт: {score} / {total}
+        </div>
+      </div>
+      <Card className="p-8 text-center">{children}</Card>
+    </div>
+  </div>
+);
+
 export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   const { toast } = useToast();
   const { addStars } = useUserProgress();
@@ -33,7 +60,8 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     const n2 = Math.floor(Math.random() * 5) + 1;
     const add = Math.random() > 0.5;
     if (add) return { question: `${n1} + ${n2}`, answer: n1 + n2 };
-    const lg = Math.max(n1, n2), sm = Math.min(n1, n2);
+    const lg = Math.max(n1, n2),
+      sm = Math.min(n1, n2);
     return { question: `${lg} - ${sm}`, answer: lg - sm };
   }
 
@@ -99,7 +127,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     const a = Math.floor(Math.random() * 10) + 1;
     let b = Math.floor(Math.random() * 10) + 1;
     while (b === a) b = Math.floor(Math.random() * 10) + 1;
-    return { a, b, bigger: a > b ? "a" as const : "b" as const };
+    return { a, b, bigger: a > b ? ("a" as const) : ("b" as const) };
   }, [compareNumRound]);
 
   if (!currentExercise) {
@@ -138,7 +166,9 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-6">Посчитай шарики на абаке!</h2>
         <div className="flex justify-center gap-1 mb-8 text-4xl flex-wrap max-w-md mx-auto">
-          {[...Array(abacusNumber)].map((_, i) => <span key={i}>🟠</span>)}
+          {[...Array(abacusNumber)].map((_, i) => (
+            <span key={i}>🟠</span>
+          ))}
         </div>
         <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
           {[...Array(10)].map((_, i) => (
@@ -188,7 +218,9 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
 
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Найди фигуру: <span className="text-primary">{shapes3dData.target.name}</span></h2>
+        <h2 className="text-2xl font-bold mb-6">
+          Найди фигуру: <span className="text-primary">{shapes3dData.target.name}</span>
+        </h2>
         <Button size="sm" variant="outline" onClick={() => speak(`Найди ${shapes3dData.target.name}`)} className="mb-6">
           🔊 Повторить
         </Button>
@@ -205,7 +237,13 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
                   logCorrectAnswer({ section: "math", level: 2, exercise: "3dshapes", shape: s.name });
                 } else {
                   wrong(shapes3dData.target.name);
-                  logWrongAnswer({ section: "math", level: 2, exercise: "3dshapes", shape: s.name, correct: shapes3dData.target.name });
+                  logWrongAnswer({
+                    section: "math",
+                    level: 2,
+                    exercise: "3dshapes",
+                    shape: s.name,
+                    correct: shapes3dData.target.name,
+                  });
                 }
                 setTimeout(() => setShape3dRound((r) => r + 1), 1200);
               }}
@@ -225,7 +263,9 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-6">Что дальше в узоре?</h2>
         <div className="flex justify-center gap-2 mb-8 text-5xl">
-          {patternData.seq.map((c, i) => <span key={i}>{c}</span>)}
+          {patternData.seq.map((c, i) => (
+            <span key={i}>{c}</span>
+          ))}
           <span className="text-muted-foreground">?</span>
         </div>
         <div className="grid grid-cols-4 gap-4 max-w-md mx-auto">
@@ -312,18 +352,3 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
 
   return null;
 };
-
-const Wrapper = ({ children, score, total, onBack }: { children: React.ReactNode; score: number; total: number; onBack: () => void }) => (
-  <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-background p-4">
-    <div className="container mx-auto max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <Button variant="ghost" onClick={onBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Назад
-        </Button>
-        <div className="text-lg font-semibold">Счёт: {score} / {total}</div>
-      </div>
-      <Card className="p-8 text-center">{children}</Card>
-    </div>
-  </div>
-);

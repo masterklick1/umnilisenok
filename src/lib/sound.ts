@@ -13,6 +13,7 @@ const hasTTS = () =>
 
 let voicesReady = false;
 let voicesPromise: Promise<SpeechSynthesisVoice[]> | null = null;
+let pendingTimeout: ReturnType<typeof setTimeout> | null = null; // Флаг отмены таймера
 
 const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
   if (!hasTTS()) return Promise.resolve([]);
@@ -56,6 +57,20 @@ const pickRussianVoice = (voices: SpeechSynthesisVoice[]) =>
 
 const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
   const synth = window.speechSynthesis;
+
+  // Отменяем запущенный ранее таймер, если он еще не успел сработать
+  if (pendingTimeout !== null) {
+    clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+  }
+
+  // Сразу отменяем текущую речь
+  try {
+    synth.cancel();
+  } catch {
+    /* игнорируем */
+  }
+
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "ru-RU";
   utterance.rate = 0.85;
@@ -64,28 +79,26 @@ const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
   if (voice) utterance.voice = voice;
 
   try {
-    synth.cancel();
-  } catch {
-    /* игнорируем */
-  }
-  try {
     synth.resume();
   } catch {
     /* игнорируем */
   }
-  setTimeout(() => {
+
+  // Небольшая задержка для корректного сброса очереди в Chromium/Safari
+  pendingTimeout = setTimeout(() => {
     try {
       synth.speak(utterance);
     } catch {
       /* игнорируем */
     }
-  }, 60);
+    pendingTimeout = null;
+  }, 50);
 };
 
 export const speak = async (text: string): Promise<void> => {
   if (!text || !isSoundEnabled()) return;
 
-  // Нативная озвучка для Android / iOS
+  // Нативная озвучка для Android / iOS (Capacitor)
   if (Capacitor.isNativePlatform()) {
     try {
       await TextToSpeech.stop();
@@ -115,6 +128,11 @@ export const speak = async (text: string): Promise<void> => {
 };
 
 export const stopSpeech = async (): Promise<void> => {
+  if (pendingTimeout !== null) {
+    clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+  }
+  
   try {
     if (Capacitor.isNativePlatform()) {
       await TextToSpeech.stop();

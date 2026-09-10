@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -104,7 +104,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-4xl">🦊</div>
+        <div className="text-4xl animate-bounce">🦊</div>
       </div>
     );
   }
@@ -123,7 +123,7 @@ const ParentOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   if (authLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-4xl">🦊</div>
+        <div className="text-4xl animate-bounce">🦊</div>
       </div>
     );
   }
@@ -150,9 +150,12 @@ const App = () => (
           <ChildPlaceStatusBadge />
           <GameInviteWatcher />
           <Routes>
+            {/* Публичные роуты */}
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/join" element={<JoinPage />} />
             <Route path="/delete-account" element={<DeleteAccountPage />} />
+
+            {/* Защищенные роуты (для детей и родителей) */}
             <Route
               path="/"
               element={
@@ -266,14 +269,6 @@ const App = () => (
               }
             />
             <Route
-              path="/parent"
-              element={
-                <ParentOnlyRoute>
-                  <ParentDashboard />
-                </ParentOnlyRoute>
-              }
-            />
-            <Route
               path="/games/:id"
               element={
                 <ProtectedRoute>
@@ -289,6 +284,18 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+
+            {/* Только для родителей */}
+            <Route
+              path="/parent"
+              element={
+                <ParentOnlyRoute>
+                  <ParentDashboard />
+                </ParentOnlyRoute>
+              }
+            />
+
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

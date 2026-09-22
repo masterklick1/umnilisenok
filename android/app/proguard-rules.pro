@@ -1,21 +1,21 @@
 # Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Сохраняем классы и плагины Capacitor
+-keep class com.getcapacitor.** { *; }
+-keep class * extends com.getcapacitor.Plugin
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Сохраняем Google Maps и сервисы геолокации
+-keep class com.google.android.gms.maps.** { *; }
+-keep class com.google.android.gms.location.** { *; }
+-keep class com.equimaps.capacitor_background_geolocation.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Сохраняем работы с WebView и JavaScript interfaces
+-keepattributes *Annotation*,Signature,InnerClasses,SourceFile,LineNumberTable
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Сохраняем модели и сущности
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}

@@ -14,7 +14,7 @@ const VirtualHomePage = () => {
         <div className="flex items-center justify-between mb-2">
           <Button variant="ghost" size="sm" onClick={() => navigate("/app")}>
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Назад
+            Назаl
           </Button>
           <h1 className="text-lg font-bold">Мой домик</h1>
           <span className="w-16" />

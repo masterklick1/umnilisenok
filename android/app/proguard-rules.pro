@@ -1,21 +1,37 @@
 # Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# 1. Отключаем тяжелую оптимизацию R8 (ускоряет запуск приложения)
+-dontoptimize
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# 2. Сохраняем классы и плагины Capacitor
+-keep class com.getcapacitor.** { *; }
+-keep class * extends com.getcapacitor.Plugin
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 3. Сохраняем Google Maps и сервисы геолокации
+-keep class com.google.android.gms.maps.** { *; }
+-keep class com.google.android.gms.location.** { *; }
+-keep class com.equimaps.capacitor_background_geolocation.** { *; }
+
+# 4. Полная защита сетевого стека, WebView и Supabase (убирает Failed to fetch)
+-keepattributes Signature, InnerClasses, EnclosingMethod, *Annotation*, SourceFile, LineNumberTable
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Сетевые библиотеки OkHttp, Retrofit и Apache HTTP
+-keep class okhttp3.** { *; }
+-keep class retrofit2.** { *; }
+-keep class org.apache.http.** { *; }
+-dontwarn okhttp3.**
+-dontwarn retrofit2.**
+-dontwarn javax.annotation.**
+
+# Защита Supabase / Kotlin Coroutines / Serialization (если используются в нативном коде)
+-keep class io.supabase.** { *; }
+-keep class kotlinx.serialization.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+
+# 5. Сохраняем модели и сущности JSON
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}

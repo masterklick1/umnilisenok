@@ -10,47 +10,57 @@ import { speak } from "@/lib/sound";
 
 type Letter = {
   letter: string;
-  sound: string;
   word: string;
   emoji: string;
 };
 
 type Mode = "learn" | "quiz" | "syllables" | "vowels" | "missing" | null;
 
+// Помощник для четкого и разборчивого произношения букв через синтезатор речи
+const getPronounceableLetter = (letter: string) => {
+  const map: Record<string, string> = {
+    Б: "бэ", В: "вэ", Г: "гэ", Д: "дэ", Ж: "жэ", З: "зэ",
+    К: "ка", Л: "эль", М: "эм", Н: "эн", П: "пэ", Р: "эр",
+    С: "эс", Т: "тэ", Ф: "эф", Х: "ха", Ц: "цэ", Ч: "че",
+    Ш: "ша", Щ: "ща", Ъ: "твёрдый знак", Ь: "мягкий знак"
+  };
+  return map[letter] || letter;
+};
+
 const russianAlphabet: Letter[] = [
-  { letter: "А", sound: "а", word: "Арбуз", emoji: "🍉" },
-  { letter: "Б", sound: "бэ", word: "Белка", emoji: "🐿️" },
-  { letter: "В", sound: "вэ", word: "Волк", emoji: "🐺" },
-  { letter: "Г", sound: "гэ", word: "Гриб", emoji: "🍄" },
-  { letter: "Д", sound: "дэ", word: "Дом", emoji: "🏠" },
-  { letter: "Е", sound: "е", word: "Ель", emoji: "🌲" },
-  { letter: "Ё", sound: "ё", word: "Ёжик", emoji: "🦔" },
-  { letter: "Ж", sound: "жэ", word: "Жираф", emoji: "🦒" },
-  { letter: "З", sound: "зэ", word: "Заяц", emoji: "🐰" },
-  { letter: "И", sound: "и", word: "Игрушка", emoji: "🧸" },
-  { letter: "Й", sound: "и краткое", word: "Йогурт", emoji: "🥛" },
-  { letter: "К", sound: "ка", word: "Кот", emoji: "🐱" },
-  { letter: "Л", sound: "эль", word: "Лиса", emoji: "🦊" },
-  { letter: "М", sound: "эм", word: "Медведь", emoji: "🐻" },
-  { letter: "Н", sound: "эн", word: "Носорог", emoji: "🦏" },
-  { letter: "О", sound: "о", word: "Облако", emoji: "☁️" },
-  { letter: "П", sound: "пэ", word: "Пингвин", emoji: "🐧" },
-  { letter: "Р", sound: "эр", word: "Рыба", emoji: "🐟" },
-  { letter: "С", sound: "эс", word: "Слон", emoji: "🐘" },
-  { letter: "Т", sound: "тэ", word: "Тигр", emoji: "🐯" },
-  { letter: "У", sound: "у", word: "Утка", emoji: "🦆" },
-  { letter: "Ф", sound: "эф", word: "Фламинго", emoji: "🦩" },
-  { letter: "Х", sound: "ха", word: "Хомяк", emoji: "🐹" },
-  { letter: "Ц", sound: "цэ", word: "Цветок", emoji: "🌸" },
-  { letter: "Ч", sound: "че", word: "Черепаха", emoji: "🐢" },
-  { letter: "Ш", sound: "ша", word: "Шарик", emoji: "🎈" },
-  { letter: "Щ", sound: "ща", word: "Щенок", emoji: "🐶" },
-  { letter: "Ъ", sound: "твёрдый знак", word: "Объект", emoji: "📦" },
-  { letter: "Ы", sound: "ы", word: "Сыр", emoji: "🧀" },
-  { letter: "Ь", sound: "мягкий знак", word: "Лось", emoji: "🦌" },
-  { letter: "Э", sound: "э", word: "Экскаватор", emoji: "🚜" },
-  { letter: "Ю", sound: "ю", word: "Юла", emoji: "🌀" },
-  { letter: "Я", sound: "я", word: "Яблоко", emoji: "🍎" },
+  { letter: "А", word: "Арбуз", emoji: "🍉" },
+  { letter: "Б", word: "Белка", emoji: "🐿️" },
+  { letter: "В", word: "Волк", emoji: "🐺" },
+  { letter: "Г", word: "Гриб", emoji: "🍄" },
+  { letter: "Д", word: "Дом", emoji: "🏠" },
+  { letter: "Е", word: "Ель", emoji: "🌲" },
+  { letter: "Ё", word: "Ёжик", emoji: "🦔" },
+  { letter: "Ж", word: "Жираф", emoji: "🦒" },
+  { letter: "З", word: "Заяц", emoji: "🐰" },
+  { letter: "И", word: "Игрушка", emoji: "🧸" },
+  { letter: "Й", word: "Йогурт", emoji: "🥛" },
+  { letter: "К", word: "Кот", emoji: "🐱" },
+  { letter: "Л", word: "Лиса", emoji: "🦊" },
+  { letter: "М", word: "Медведь", emoji: "🐻" },
+  { letter: "Н", word: "Носорог", emoji: "🦏" },
+  { letter: "О", word: "Облако", emoji: "☁️" },
+  { letter: "П", word: "Пингвин", emoji: "🐧" },
+  { letter: "Р", word: "Рыба", emoji: "🐟" },
+  { letter: "С", word: "Слон", emoji: "🐘" },
+  { letter: "Т", word: "Тигр", emoji: "🐯" },
+  { letter: "У", word: "Утка", emoji: "🦆" },
+  { letter: "Ф", word: "Фламинго", emoji: "🦩" },
+  { letter: "Х", word: "Хомяк", emoji: "🐹" },
+  { letter: "Ц", word: "Цветок", emoji: "🌸" },
+  { letter: "Ч", word: "Черепаха", emoji: "🐢" },
+  { letter: "Ш", word: "Шарик", emoji: "🎈" },
+  { letter: "Щ", word: "Щенок", emoji: "🐶" },
+  { letter: "Ъ", word: "Объект", emoji: "📦" },
+  { letter: "Ы", word: "Сыр", emoji: "🧀" },
+  { letter: "Ь", word: "Лось", emoji: "🦌" },
+  { letter: "Э", word: "Экскаватор", emoji: "🚜" },
+  { letter: "Ю", word: "Юла", emoji: "🌀" },
+  { letter: "Я", word: "Яблоко", emoji: "🍎" },
 ];
 
 const VOWELS = ["А", "Е", "Ё", "И", "О", "У", "Ы", "Э", "Ю", "Я"];
@@ -82,6 +92,12 @@ const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
   };
   const [syllable, setSyllable] = useState(() => randomSyllable());
 
+  const handleNextSyllable = () => {
+    const s = randomSyllable();
+    setSyllable(s);
+    speak(s);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -96,7 +112,7 @@ const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
         <p className="text-muted-foreground">Прочитай слог вслух, а потом проверь себя кнопкой</p>
       </Card>
       <div className="flex justify-center">
-        <Button size="lg" onClick={() => { const s = randomSyllable(); setSyllable(s); speak(s); }}>
+        <Button size="lg" onClick={handleNextSyllable}>
           Следующий слог →
         </Button>
       </div>
@@ -388,7 +404,7 @@ export default function AlphabetPage() {
               <Button
                 size="lg"
                 variant="secondary"
-                onClick={() => speak(`Буква ${currentLetter.letter}. ${currentLetter.sound}. ${currentLetter.word}`)}
+                onClick={() => speak(`Буква ${getPronounceableLetter(currentLetter.letter)}. Слово ${currentLetter.word}. Начинается с буквы ${getPronounceableLetter(currentLetter.letter)}`)}
                 className="mb-8"
               >
                 <Volume2 className="mr-2 h-5 w-5" />

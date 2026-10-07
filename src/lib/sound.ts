@@ -13,6 +13,7 @@ const hasTTS = () =>
 
 let voicesReady = false;
 let voicesPromise: Promise<SpeechSynthesisVoice[]> | null = null;
+let pendingTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
   if (!hasTTS()) return Promise.resolve([]);
@@ -31,12 +32,14 @@ const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
       voicesReady = true;
       resolve(window.speechSynthesis.getVoices());
     };
+
     window.speechSynthesis.addEventListener?.("voiceschanged", finish, { once: true });
-    
+
     let tries = 0;
     const timer = setInterval(() => {
       tries += 1;
-      if (window.speechSynthesis.getVoices().length || tries > 20) {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length || tries > 20) {
         clearInterval(timer);
         finish();
       }
@@ -50,42 +53,49 @@ if (hasTTS()) {
 }
 
 const pickRussianVoice = (voices: SpeechSynthesisVoice[]) =>
-  voices.find((v) => v.lang?.toLowerCase().startsWith("ru")) ||
+  voices.find((v) => v.lang?.toLowerCase().replace('_', '-').startsWith("ru")) ||
   voices.find((v) => v.name?.toLowerCase().includes("russ")) ||
   null;
 
 const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
   const synth = window.speechSynthesis;
+
+  if (pendingTimeout !== null) {
+    clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+  }
+
+  try {
+    synth.cancel();
+    if (synth.paused) {
+      synth.resume();
+    }
+  } catch {
+    /* игнорируем */
+  }
+
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "ru-RU";
   utterance.rate = 0.85;
   utterance.volume = 1;
+  
   const voice = pickRussianVoice(voices);
   if (voice) utterance.voice = voice;
 
-  try {
-    synth.cancel();
-  } catch {
-    /* игнорируем */
-  }
-  try {
-    synth.resume();
-  } catch {
-    /* игнорируем */
-  }
-  setTimeout(() => {
+  pendingTimeout = setTimeout(() => {
     try {
       synth.speak(utterance);
     } catch {
       /* игнорируем */
     }
-  }, 60);
+    pendingTimeout = null;
+  }, 50);
 };
 
 export const speak = async (text: string): Promise<void> => {
   if (!text || !isSoundEnabled()) return;
 
-  // Нативная озвучка для Android / iOS
+  // Нативная озвучка для Android / iOS через Capacitor
   if (Capacitor.isNativePlatform()) {
     try {
       await TextToSpeech.stop();
@@ -97,28 +107,35 @@ export const speak = async (text: string): Promise<void> => {
         volume: 1.0,
         category: 'ambient',
       });
+      return;
     } catch (error) {
-      console.error('Ошибка нативной речи Android:', error);
+      console.warn('Ошибка нативного TTS, переключаемся на Web TTS:', error);
     }
-    return;
   }
 
-  // Озвучка для Браузера (Web)
+  // Озвучка для Браузера (Web / Fallback)
   if (!hasTTS()) return;
 
-  if (voicesReady) {
-    doSpeakWeb(text, window.speechSynthesis.getVoices());
+  const currentVoices = window.speechSynthesis.getVoices();
+  if (voicesReady || currentVoices.length > 0) {
+    doSpeakWeb(text, currentVoices);
     return;
   }
-  
+
   loadVoices().then((voices) => doSpeakWeb(text, voices));
 };
 
 export const stopSpeech = async (): Promise<void> => {
+  if (pendingTimeout !== null) {
+    clearTimeout(pendingTimeout);
+    pendingTimeout = null;
+  }
+
   try {
     if (Capacitor.isNativePlatform()) {
       await TextToSpeech.stop();
-    } else if (hasTTS()) {
+    }
+    if (hasTTS()) {
       window.speechSynthesis.cancel();
     }
   } catch (error) {

@@ -13,6 +13,14 @@ interface Level1ExercisesProps {
   onBack: () => void;
 }
 
+const SHAPES_LIST = ["circle", "square", "triangle", "star"];
+const EMOJI_MAP: Record<string, string> = { 
+  circle: "🔵", 
+  square: "🟦", 
+  triangle: "🔺", 
+  star: "⭐" 
+};
+
 const Wrapper = ({
   children,
   score,
@@ -44,17 +52,18 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const { toast } = useToast();
   const { addStars } = useUserProgress();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
+  
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);
 
   // Кормление
-  const [feedingAnimals, setFeedingAnimals] = useState<number>(Math.floor(Math.random() * 5) + 1);
+  const [feedingAnimals, setFeedingAnimals] = useState<number>(() => Math.floor(Math.random() * 5) + 1);
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
 
   // Фигуры
-  const shapes = ["circle", "square", "triangle", "star"];
-  const [currentShape, setCurrentShape] = useState(shapes[Math.floor(Math.random() * shapes.length)]);
+  const [currentShape, setCurrentShape] = useState(() => SHAPES_LIST[Math.floor(Math.random() * SHAPES_LIST.length)]);
+  const [shapesRound, setShapesRound] = useState(0);
 
   // Сортировка
   const [sortRound, setSortRound] = useState(0);
@@ -67,11 +76,12 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const [colorRound, setColorRound] = useState(0);
   const [bigRound, setBigRound] = useState(0);
 
+  // Начисление звезды и билета за правильный ответ
   const reward = (msg: string) => {
-    addStars(1, "math");
+    addStars(1, "math", true); // Передаем true для получения билета 🎟️
     setScore((s) => s + 1);
     speak("Правильно! Молодец!");
-    toast({ title: msg + " 🎉", description: "+1 ⭐" });
+    toast({ title: msg + " 🎉", description: "+1 ⭐ и +1 🎟️ билет" });
   };
 
   const wrong = (correct: string) => {
@@ -87,6 +97,11 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     { type: "colors" as ExerciseType, title: "Цвета", description: "Найди такой же цвет", emoji: "🎨" },
     { type: "bigsmall" as ExerciseType, title: "Большой-маленький", description: "Найди по размеру", emoji: "🔍" },
   ];
+
+  // Генерация вариантов выбора
+  const allShapesOptions = useMemo(() => {
+    return [...SHAPES_LIST, ...SHAPES_LIST].sort(() => Math.random() - 0.5);
+  }, [shapesRound]);
 
   const sortSizes = useMemo(() => {
     const arr = [
@@ -127,7 +142,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     return { emoji, askBig, bigLeft };
   }, [bigRound]);
 
-  // ===== Меню =====
+  // ===== Главное меню выборов задач =====
   if (!currentExercise) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-background p-4">
@@ -210,14 +225,12 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
   // ===== Фигуры =====
   if (currentExercise === "shapes") {
-    const emojiMap: Record<string, string> = { circle: "🔵", square: "🟦", triangle: "🔺", star: "⭐" };
-    const allShapes = [...shapes, ...shapes].sort(() => Math.random() - 0.5);
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-6">Найди такую же фигуру</h2>
-        <div className="text-8xl mb-8">{emojiMap[currentShape]}</div>
+        <div className="text-8xl mb-8">{EMOJI_MAP[currentShape]}</div>
         <div className="grid grid-cols-4 gap-4 max-w-2xl mx-auto">
-          {allShapes.map((s, i) => (
+          {allShapesOptions.map((s, i) => (
             <Button
               key={i}
               size="lg"
@@ -228,13 +241,16 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                   reward("Правильно");
                   logCorrectAnswer({ section: "math", level: 1, exercise: "shapes", shape: s });
                 } else {
-                  wrong(emojiMap[currentShape]);
+                  wrong(EMOJI_MAP[currentShape]);
                   logWrongAnswer({ section: "math", level: 1, exercise: "shapes", shape: s, correct: currentShape });
                 }
-                setTimeout(() => setCurrentShape(shapes[Math.floor(Math.random() * shapes.length)]), 1000);
+                setTimeout(() => {
+                  setCurrentShape(SHAPES_LIST[Math.floor(Math.random() * SHAPES_LIST.length)]);
+                  setShapesRound((r) => r + 1);
+                }, 1000);
               }}
             >
-              {emojiMap[s]}
+              {EMOJI_MAP[s]}
             </Button>
           ))}
         </div>
@@ -244,7 +260,6 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
   // ===== Сортировка =====
   if (currentExercise === "sort") {
-    const sizes = sortSizes;
     const nextNeeded = sortClicked.length + 1;
 
     return (
@@ -252,7 +267,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
         <h2 className="text-2xl font-bold mb-2">Разложи от маленького к большому</h2>
         <p className="text-muted-foreground mb-6">Нажми сначала на самый маленький</p>
         <div className="flex justify-center gap-6 items-end mb-6 min-h-[160px]">
-          {sizes.map((s, idx) => {
+          {sortSizes.map((s, idx) => {
             const clickedIdx = sortClicked.indexOf(s.size);
             return (
               <button

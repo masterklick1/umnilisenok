@@ -281,6 +281,9 @@ export type Database = {
           geofence_radius_m: number
           location_enabled: boolean
           location_interval_seconds: number
+          school_end: string
+          school_mode_enabled: boolean
+          school_start: string
           updated_at: string
           updated_by: string | null
         }
@@ -292,6 +295,9 @@ export type Database = {
           geofence_radius_m?: number
           location_enabled?: boolean
           location_interval_seconds?: number
+          school_end?: string
+          school_mode_enabled?: boolean
+          school_start?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -303,6 +309,9 @@ export type Database = {
           geofence_radius_m?: number
           location_enabled?: boolean
           location_interval_seconds?: number
+          school_end?: string
+          school_mode_enabled?: boolean
+          school_start?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -404,6 +413,76 @@ export type Database = {
           },
         ]
       }
+      garden_harvests: {
+        Row: {
+          harvested_at: string
+          id: string
+          planted_at: string
+          seed: string
+          stars: number
+          user_id: string
+        }
+        Insert: {
+          harvested_at?: string
+          id?: string
+          planted_at: string
+          seed: string
+          stars: number
+          user_id: string
+        }
+        Update: {
+          harvested_at?: string
+          id?: string
+          planted_at?: string
+          seed?: string
+          stars?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garden_harvests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      garden_plots: {
+        Row: {
+          id: string
+          last_watered_at: string | null
+          planted_at: string
+          seed: string
+          slot: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_watered_at?: string | null
+          planted_at?: string
+          seed: string
+          slot: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_watered_at?: string | null
+          planted_at?: string
+          seed?: string
+          slot?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garden_plots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geofence_events: {
         Row: {
           child_id: string
@@ -433,6 +512,44 @@ export type Database = {
           longitude?: number
         }
         Relationships: []
+      }
+      learning_progress: {
+        Row: {
+          child_id: string
+          first_learned_at: string
+          id: string
+          item: string
+          subject: string
+          times_correct: number
+          updated_at: string
+        }
+        Insert: {
+          child_id: string
+          first_learned_at?: string
+          id?: string
+          item: string
+          subject: string
+          times_correct?: number
+          updated_at?: string
+        }
+        Update: {
+          child_id?: string
+          first_learned_at?: string
+          id?: string
+          item?: string
+          subject?: string
+          times_correct?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_progress_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       monitoring_requests: {
         Row: {
@@ -506,6 +623,92 @@ export type Database = {
           },
         ]
       }
+      parent_feedback: {
+        Row: {
+          app_version: string | null
+          category: string
+          contact_email: string | null
+          created_at: string
+          id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          category?: string
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          category?: string
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_gifts: {
+        Row: {
+          child_id: string
+          created_at: string
+          id: string
+          item_ids: string[]
+          message: string | null
+          opened_at: string | null
+          parent_id: string
+          title: string
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          id?: string
+          item_ids: string[]
+          message?: string | null
+          opened_at?: string | null
+          parent_id: string
+          title: string
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          id?: string
+          item_ids?: string[]
+          message?: string | null
+          opened_at?: string | null
+          parent_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_gifts_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_gifts_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parent_pins: {
         Row: {
           created_at: string
@@ -535,6 +738,7 @@ export type Database = {
           name: string
           price_stars: number
           species: string
+          unlock_achievement_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -543,6 +747,7 @@ export type Database = {
           name: string
           price_stars?: number
           species: string
+          unlock_achievement_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -551,8 +756,17 @@ export type Database = {
           name?: string
           price_stars?: number
           species?: string
+          unlock_achievement_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pets_unlock_achievement_id_fkey"
+            columns: ["unlock_achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -669,6 +883,8 @@ export type Database = {
           name: string
           price_stars: number
           unlock_achievement_id: string | null
+          unlock_count: number | null
+          unlock_subject: string | null
           width: number
         }
         Insert: {
@@ -681,6 +897,8 @@ export type Database = {
           name: string
           price_stars?: number
           unlock_achievement_id?: string | null
+          unlock_count?: number | null
+          unlock_subject?: string | null
           width?: number
         }
         Update: {
@@ -693,6 +911,8 @@ export type Database = {
           name?: string
           price_stars?: number
           unlock_achievement_id?: string | null
+          unlock_count?: number | null
+          unlock_subject?: string | null
           width?: number
         }
         Relationships: [
@@ -740,6 +960,41 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      streak_bonuses: {
+        Row: {
+          bonus_day: string
+          child_id: string
+          created_at: string
+          id: string
+          stars: number
+          streak: number
+        }
+        Insert: {
+          bonus_day?: string
+          child_id: string
+          created_at?: string
+          id?: string
+          stars: number
+          streak: number
+        }
+        Update: {
+          bonus_day?: string
+          child_id?: string
+          created_at?: string
+          id?: string
+          stars?: number
+          streak?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streak_bonuses_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_achievements: {
         Row: {
@@ -836,6 +1091,7 @@ export type Database = {
           created_at: string | null
           daily_streak: number
           experience: number
+          game_tickets: number | null
           id: string
           last_activity_date: string | null
           level: number
@@ -847,6 +1103,7 @@ export type Database = {
           created_at?: string | null
           daily_streak?: number
           experience?: number
+          game_tickets?: number | null
           id?: string
           last_activity_date?: string | null
           level?: number
@@ -858,6 +1115,7 @@ export type Database = {
           created_at?: string | null
           daily_streak?: number
           experience?: number
+          game_tickets?: number | null
           id?: string
           last_activity_date?: string | null
           level?: number
@@ -925,7 +1183,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_reward_item: { Args: { _item_id: string }; Returns: boolean }
+      claim_reward_pet: {
+        Args: { _name: string; _pet_id: string }
+        Returns: boolean
+      }
+      claim_streak_bonus: {
+        Args: { _child_id: string }
+        Returns: {
+          bonus: number
+          claimed: boolean
+          streak: number
+        }[]
+      }
       clear_parent_pin: { Args: never; Returns: undefined }
+      garden_harvest: { Args: { _slot: number }; Returns: number }
+      garden_plant: { Args: { _seed: string; _slot: number }; Returns: boolean }
+      garden_seed_info: {
+        Args: { _seed: string }
+        Returns: Record<string, unknown>
+      }
+      garden_water: { Args: { _slot: number }; Returns: boolean }
       get_children_with_progress: {
         Args: { p_parent_id: string }
         Returns: {
@@ -947,13 +1225,32 @@ export type Database = {
         }[]
       }
       has_parent_pin: { Args: never; Returns: boolean }
+      learned_count: { Args: { _subject: string }; Returns: number }
       link_parent_child: {
         Args: { p_child_id: string; p_parent_id: string }
         Returns: undefined
       }
+      mark_learned: {
+        Args: { _item: string; _subject: string }
+        Returns: undefined
+      }
+      mark_learned_for: {
+        Args: { _child_id: string; _item: string; _subject: string }
+        Returns: undefined
+      }
+      open_parent_gift: { Args: { _gift_id: string }; Returns: boolean }
       redeem_child_invite: {
         Args: { p_child_id: string; p_code: string }
         Returns: undefined
+      }
+      send_parent_gift: {
+        Args: {
+          _child_id: string
+          _item_ids: string[]
+          _message: string
+          _title: string
+        }
+        Returns: boolean
       }
       set_parent_pin: { Args: { p_hash: string }; Returns: undefined }
       verify_parent_pin: { Args: { p_hash: string }; Returns: boolean }

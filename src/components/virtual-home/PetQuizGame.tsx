@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Volume2, Star, Trophy, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { speak } from "@/lib/sound";
 
 interface Question {
   id: number;
@@ -64,14 +65,7 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
   const currentQuestion = QUESTIONS[currentQuestionIndex];
 
   const speakText = (text: string) => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "ru-RU";
-      utterance.rate = 0.9;
-      utterance.pitch = 1.1;
-      window.speechSynthesis.speak(utterance);
-    }
+    void speak(text);
   };
 
   useEffect(() => {

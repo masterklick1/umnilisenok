@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { speakEnglish } from "@/lib/sound";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Volume2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
@@ -58,12 +59,7 @@ export default function EnglishQuizPage() {
   const q = QUESTIONS[currentIndex];
 
   const speak = (text: string) => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-US";
-      window.speechSynthesis.speak(utterance);
-    }
+    void speakEnglish(text, 0.8);
   };
 
   const handleOptionClick = (option: string) => {

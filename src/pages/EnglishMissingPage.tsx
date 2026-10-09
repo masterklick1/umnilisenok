@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { speakEnglish } from "@/lib/sound";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, RotateCcw } from "lucide-react";
@@ -63,12 +64,7 @@ export default function EnglishMissingPage() {
   const t = TASKS[index];
 
   const speak = (text: string) => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-US";
-      window.speechSynthesis.speak(utterance);
-    }
+    void speakEnglish(text, 0.8);
   };
 
   const handleSelect = (letter: string) => {

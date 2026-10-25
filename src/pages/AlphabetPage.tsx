@@ -1,3 +1,4 @@
+import { StreakBonusBanner } from "@/components/StreakBonusBanner";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { speak } from "@/lib/sound";
+import { recordLearned } from "@/lib/learning-progress";
 
 type Letter = {
   letter: string;
@@ -249,6 +251,7 @@ export default function AlphabetPage() {
   const handleResult = (modeName: string): ResultFn => (ok, correct) => {
     if (ok) {
       addStars(1, "alphabet");
+      void recordLearned("alphabet", correct ?? "");
       logCorrectAnswer({ section: "alphabet", mode: modeName });
       speak("Правильно! Молодец!");
       toast({ title: "Правильно! 🎉", description: "+1 ⭐" });
@@ -305,6 +308,7 @@ export default function AlphabetPage() {
     if (correct) {
       setScore(score + 1);
       addStars(1, "alphabet");
+      void recordLearned("alphabet", russianAlphabet[currentIndex].letter);
       logCorrectAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter });
       speak("Правильно! Молодец!");
       toast({
@@ -348,6 +352,7 @@ export default function AlphabetPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-primary/5 p-4">
       <div className="container mx-auto max-w-4xl">
+      <StreakBonusBanner />
         <Button
           variant="ghost"
           onClick={() => navigate("/")}

@@ -8,6 +8,7 @@ export interface Pet {
   species?: string;
   icon: string;
   price_stars: number;
+  unlock_achievement_id?: string | null;
 }
 
 export interface UserPet {
@@ -18,6 +19,7 @@ export interface UserPet {
   happiness: number;
   hunger: number;
   energy: number;
+  adopted_at?: string | null;
   pets?: Pet;
 }
 
@@ -28,6 +30,9 @@ export interface RoomItem {
   price_stars: number;
   description?: string;
   category?: string;
+  unlock_subject?: string | null;
+  unlock_count?: number | null;
+  unlock_achievement_id?: string | null;
 }
 
 export interface UserRoomItem {
@@ -107,7 +112,7 @@ export const useVirtualHome = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
-      const { data: progress } = await supabase
+      const { data: progress } = await (supabase as any)
         .from("user_progress")
         .select("game_tickets")
         .eq("user_id", user.id)
@@ -125,7 +130,7 @@ export const useVirtualHome = () => {
       }
 
       // Списываем 1 билет
-      await supabase
+      await (supabase as any)
         .from("user_progress")
         .update({ game_tickets: currentTickets - 1 })
         .eq("user_id", user.id);
@@ -326,6 +331,22 @@ export const useVirtualHome = () => {
     }
   };
 
+  // Получение награды за учёбу (проверка на сервере)
+  const claimReward = async (item: RoomItem): Promise<boolean> => {
+    const { data, error } = await supabase.rpc("claim_reward_item", { _item_id: item.id });
+    if (error || !data) {
+      toast({
+        title: "Пока рано 🦊",
+        description: "Позанимайся ещё немного, и награда откроется!",
+        variant: "destructive",
+      });
+      return false;
+    }
+    toast({ title: "Награда получена! 🎉", description: `${item.name} теперь в твоей комнате!` });
+    await fetchData();
+    return true;
+  };
+
   // Игра с питомцем (повышение счастья)
   const playWithPet = async () => {
     if (!userPet) return;
@@ -354,6 +375,7 @@ export const useVirtualHome = () => {
     feedPet,
     restPet,
     buyItem,
+    claimReward,
     useGameTicket,
     playWithPet,
     refetch: fetchData,

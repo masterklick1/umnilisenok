@@ -1,3 +1,4 @@
+import { recordLearned } from "@/lib/learning-progress";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { speakEnglish } from "@/lib/sound";
@@ -25,6 +26,18 @@ const WORDS_DATABASE: WordTask[] = [
   { id: 8, word: "BANANA", translation: "Банан", emoji: "🍌", category: "Еда" },
   { id: 9, word: "MONKEY", translation: "Обезьяна", emoji: "🐒", category: "Животные" },
   { id: 10, word: "DOLPHIN", translation: "Дельфин", emoji: "🐬", category: "Животные" },
+  { id: 11, word: "BUS", translation: "Автобус", emoji: "🚌", category: "Транспорт" },
+  { id: 12, word: "CAR", translation: "Машина", emoji: "🚗", category: "Транспорт" },
+  { id: 13, word: "MOON", translation: "Луна", emoji: "🌙", category: "Природа" },
+  { id: 14, word: "STAR", translation: "Звезда", emoji: "⭐", category: "Природа" },
+  { id: 15, word: "TREE", translation: "Дерево", emoji: "🌳", category: "Природа" },
+  { id: 16, word: "HAT", translation: "Шапка", emoji: "🧢", category: "Одежда" },
+  { id: 17, word: "CAKE", translation: "Торт", emoji: "🎂", category: "Еда" },
+  { id: 18, word: "MILK", translation: "Молоко", emoji: "🥛", category: "Еда" },
+  { id: 19, word: "FROG", translation: "Лягушка", emoji: "🐸", category: "Животные" },
+  { id: 20, word: "LION", translation: "Лев", emoji: "🦁", category: "Животные" },
+  { id: 21, word: "BALL", translation: "Мяч", emoji: "⚽", category: "Игрушки" },
+  { id: 22, word: "BOOK", translation: "Книга", emoji: "📚", category: "Школа" },
 ];
 
 export default function EnglishWordBuilderPage() {
@@ -82,6 +95,7 @@ export default function EnglishWordBuilderPage() {
     if (currentBuiltWord === currentTask.word) {
       setIsSuccess(true);
       setEarnedStars((prev) => prev + 3);
+      void recordLearned("english", currentTask.word);
 
       // Логируем правильный ответ в общую систему для подсчета звезд
       logCorrectAnswer({

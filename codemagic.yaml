@@ -68,7 +68,10 @@ workflows:
                   "android.permission.FOREGROUND_SERVICE_LOCATION",
                   "android.permission.POST_NOTIFICATIONS",
                   "android.permission.CAMERA",
-                  "android.permission.RECORD_AUDIO"
+                  "android.permission.RECORD_AUDIO",
+                  "android.permission.RECEIVE_BOOT_COMPLETED",
+                  "android.permission.SYSTEM_ALERT_WINDOW",
+                  "android.permission.USE_FULL_SCREEN_INTENT"
               ]
               
               existing_permissions = [p.get('{http://schemas.android.com/apk/res/android}name') for p in root.findall('uses-permission')]
@@ -213,7 +216,10 @@ workflows:
                   "android.permission.FOREGROUND_SERVICE_LOCATION",
                   "android.permission.POST_NOTIFICATIONS",
                   "android.permission.CAMERA",
-                  "android.permission.RECORD_AUDIO"
+                  "android.permission.RECORD_AUDIO",
+                  "android.permission.RECEIVE_BOOT_COMPLETED",
+                  "android.permission.SYSTEM_ALERT_WINDOW",
+                  "android.permission.USE_FULL_SCREEN_INTENT"
               ]
               
               existing_permissions = [p.get('{http://schemas.android.com/apk/res/android}name') for p in root.findall('uses-permission')]
@@ -350,7 +356,10 @@ workflows:
                   "android.permission.FOREGROUND_SERVICE_LOCATION",
                   "android.permission.POST_NOTIFICATIONS",
                   "android.permission.CAMERA",
-                  "android.permission.RECORD_AUDIO"
+                  "android.permission.RECORD_AUDIO",
+                  "android.permission.RECEIVE_BOOT_COMPLETED",
+                  "android.permission.SYSTEM_ALERT_WINDOW",
+                  "android.permission.USE_FULL_SCREEN_INTENT"
               ]
               
               existing_permissions = [p.get('{http://schemas.android.com/apk/res/android}name') for p in root.findall('uses-permission')]

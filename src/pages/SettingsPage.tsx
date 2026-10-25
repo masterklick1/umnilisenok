@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SOUND_KEY } from "@/lib/sound";
 import { clearParentPin, hasParentPin, purgeLegacyPin, setParentPin } from "@/lib/parent-pin";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ScreenTimeSettings } from "@/components/ScreenTimeSettings";
+import { WatchModeSettings } from "@/components/WatchModeSettings";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
 import { queryBackgroundGeoPermission, requestBackgroundGeoPermission, type BackgroundGeoPermissionState } from "@/lib/geo-permission";
@@ -207,7 +209,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 pb-24">
       <div className="container mx-auto px-4 py-6 max-w-2xl">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+        <Button variant="ghost" onClick={() => navigate("/")} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Назад
         </Button>
@@ -247,6 +249,10 @@ export default function SettingsPage() {
             Голосовые подсказки и весёлые звуки за правильные ответы
           </p>
         </Card>
+
+        <ScreenTimeSettings />
+
+        <WatchModeSettings />
 
         {/* Родительский PIN — только для родителей на своём телефоне */}
         {!isChild && (

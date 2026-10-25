@@ -4,7 +4,7 @@ import { ScoreDisplay } from "@/components/ScoreDisplay";
 import { UserAvatar } from "@/components/UserAvatar";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calculator, BookOpen, Leaf, Palette, Brain, ArrowLeft, Globe } from "lucide-react";
+import { Calculator, BookOpen, BookOpenText, Leaf, Palette, Brain, ArrowLeft, Globe } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ChildAccountBanner } from "@/components/child/ChildAccountBanner";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ToastAction } from "@/components/ui/toast";
 import { SOSButton } from "@/components/SOSButton";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
+import { useIsWatch } from "@/hooks/useIsWatch";
+import { WatchHome } from "@/components/child/WatchHome";
+import { SchoolModeGuard } from "@/components/child/SchoolModeGuard";
 
 export const MainApp = () => {
   const { toast } = useToast();
@@ -25,6 +28,7 @@ export const MainApp = () => {
   const { isChild, isParent, loading: roleLoading } = useUserRole();
   const [childName, setChildName] = useState<string>("");
   const [parentPlayMode, setParentPlayMode] = useState(false);
+  const isWatch = useIsWatch();
 
   useActivityTracker();
 
@@ -131,6 +135,12 @@ export const MainApp = () => {
     );
   }
 
+  // Детские Android-часы: крошечный экран — показываем только защиту (SOS + геолокация).
+  // Геолокация и геозоны продолжают работать в фоне через ChildDeviceServices.
+  if (isWatch && isChild && !isDemo) {
+    return <WatchHome childName={childName} />;
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-background via-primary/5 to-accent/5 pb-32">
       {/* Decorative background blobs */}
@@ -197,7 +207,8 @@ export const MainApp = () => {
           </div>
         </div>
 
-        {/* Subject Cards - Vertical List */}
+        {/* Subject Cards - Vertical List (закрываются в школьные часы) */}
+        <SchoolModeGuard>
         <div className="space-y-4">
           <SubjectCard
             icon={<Calculator className="w-8 h-8 text-blue-600" />}
@@ -216,6 +227,25 @@ export const MainApp = () => {
             bgColor="bg-gradient-to-br from-rose-100 to-orange-100"
             decorativeElements="АБВ"
           />
+
+          <SubjectCard
+            icon={<BookOpenText className="w-8 h-8 text-teal-600" />}
+            title="Чтение"
+            subtitle="Читаем по слогам"
+            onClick={() => navigate("/reading")}
+            bgColor="bg-gradient-to-br from-teal-100 to-emerald-100"
+            decorativeElements="МА-МА"
+          />
+
+          <SubjectCard
+            icon={<BookOpenText className="w-8 h-8 text-amber-600" />}
+            title="Сказки"
+            subtitle="Слушаем и отвечаем"
+            onClick={() => navigate("/tales")}
+            bgColor="bg-gradient-to-br from-amber-100 to-yellow-100"
+            decorativeElements="📖"
+          />
+
           
           <SubjectCard
             icon={<Leaf className="w-8 h-8 text-green-600" />}
@@ -253,6 +283,7 @@ export const MainApp = () => {
             decorativeElements="ABC"
           />
         </div>
+        </SchoolModeGuard>
       </div>
 
       {isChild && !isDemo && <ChildAccountBanner />}

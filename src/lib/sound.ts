@@ -57,7 +57,7 @@ const pickRussianVoice = (voices: SpeechSynthesisVoice[]) =>
   voices.find((v) => v.name?.toLowerCase().includes("russ")) ||
   null;
 
-const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
+const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[], lang = "ru-RU") => {
   const synth = window.speechSynthesis;
 
   if (pendingTimeout !== null) {
@@ -75,11 +75,12 @@ const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
   }
 
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "ru-RU";
-  utterance.rate = 0.85;
+  utterance.lang = lang;
+  utterance.rate = lang.startsWith("en") ? 0.8 : 0.85;
   utterance.volume = 1;
   
-  const voice = pickRussianVoice(voices);
+  const pre = lang.slice(0, 2).toLowerCase();
+  const voice = pre === "ru" ? pickRussianVoice(voices) : voices.find((v) => v.lang?.toLowerCase().replace('_', '-').startsWith(pre)) || null;
   if (voice) utterance.voice = voice;
 
   pendingTimeout = setTimeout(() => {
@@ -92,7 +93,7 @@ const doSpeakWeb = (text: string, voices: SpeechSynthesisVoice[]) => {
   }, 50);
 };
 
-export const speak = async (text: string): Promise<void> => {
+export const speak = async (text: string, lang: string = "ru-RU"): Promise<void> => {
   if (!text || !isSoundEnabled()) return;
 
   // Нативная озвучка для Android / iOS через Capacitor
@@ -101,8 +102,8 @@ export const speak = async (text: string): Promise<void> => {
       await TextToSpeech.stop();
       await TextToSpeech.speak({
         text,
-        lang: 'ru-RU',
-        rate: 0.9,
+        lang,
+        rate: lang.startsWith('en') ? 0.85 : 0.9,
         pitch: 1.0,
         volume: 1.0,
         category: 'ambient',
@@ -118,11 +119,11 @@ export const speak = async (text: string): Promise<void> => {
 
   const currentVoices = window.speechSynthesis.getVoices();
   if (voicesReady || currentVoices.length > 0) {
-    doSpeakWeb(text, currentVoices);
+    doSpeakWeb(text, currentVoices, lang);
     return;
   }
 
-  loadVoices().then((voices) => doSpeakWeb(text, voices));
+  loadVoices().then((voices) => doSpeakWeb(text, voices, lang));
 };
 
 const pickEnglishVoice = (voices: SpeechSynthesisVoice[]) =>

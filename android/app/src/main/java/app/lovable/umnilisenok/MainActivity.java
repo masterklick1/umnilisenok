@@ -12,10 +12,16 @@ import com.getcapacitor.BridgeWebViewClient;
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "UmniLisenok";
+    public static final String EXTRA_AUTOSTART = "autostart";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Запущено автоматически после перезагрузки — через 8 с уводим в фон, защита стартует из JS.
+        if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_AUTOSTART, false)) {
+            getWindow().getDecorView().postDelayed(() -> moveTaskToBack(true), 8000);
+        }
 
         // Любое необработанное исключение пишем в logcat перед смертью процесса,
         // чтобы причина закрытия приложения была видна в `adb logcat`.
@@ -45,5 +51,14 @@ public class MainActivity extends BridgeActivity {
                 }
             });
         }
+    }
+
+    // Смахнули из «недавних» или система убила задачу — планируем перезапуск через минуту.
+    @Override
+    public void onDestroy() {
+        if (!isChangingConfigurations()) {
+            try { BootReceiver.scheduleRestart(getApplicationContext()); } catch (Throwable t) { Log.e(TAG, "scheduleRestart", t); }
+        }
+        super.onDestroy();
     }
 }

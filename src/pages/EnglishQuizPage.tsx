@@ -1,3 +1,4 @@
+import { recordLearned } from "@/lib/learning-progress";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { speakEnglish } from "@/lib/sound";
@@ -69,6 +70,7 @@ export default function EnglishQuizPage() {
 
     if (option === q.correct) {
       setScore((prev) => prev + 1);
+      void recordLearned("english", q.correct);
     }
 
     setTimeout(() => {

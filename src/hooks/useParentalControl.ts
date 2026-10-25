@@ -376,6 +376,14 @@ export const useParentalControl = () => {
     if (!user?.id) return { error: new Error("Not authenticated") };
 
     try {
+      // Закрываем прежние незавершённые игры с этим ребёнком, чтобы не было ложных приглашений
+      await supabase
+        .from("game_sessions")
+        .update({ status: "finished" })
+        .eq("parent_id", user.id)
+        .eq("child_id", childId)
+        .in("status", ["active", "waiting"]);
+
       const { data, error } = await supabase
         .from("game_sessions")
         .insert([{

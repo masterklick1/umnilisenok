@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { speakEnglish } from "@/lib/sound";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Volume2, Dog, Palette, Hash, Utensils } from "lucide-react";
+import { ArrowLeft, Volume2, Dog, Palette, Hash, Utensils, Car, Users, Shirt, TreePine, Hand, Smile, Home, Sun, Apple } from "lucide-react";
 
 interface WordItem {
   word: string;
@@ -69,6 +69,105 @@ const CATEGORIES: Category[] = [
       { word: "Ice Cream", translation: "Мороженое", emoji: "🍦" },
       { word: "Cake", translation: "Торт", emoji: "🎂" },
       { word: "Cookie", translation: "Печенье", emoji: "🍪" },
+    ],
+  },
+  {
+    id: "transport", name: "Транспорт", icon: <Car className="w-5 h-5" />,
+    items: [
+      { word: "Car", translation: "Машина", emoji: "🚗" },
+      { word: "Bus", translation: "Автобус", emoji: "🚌" },
+      { word: "Train", translation: "Поезд", emoji: "🚂" },
+      { word: "Plane", translation: "Самолёт", emoji: "✈️" },
+      { word: "Boat", translation: "Лодка", emoji: "⛵" },
+      { word: "Bike", translation: "Велосипед", emoji: "🚲" },
+    ],
+  },
+  {
+    id: "family", name: "Семья", icon: <Users className="w-5 h-5" />,
+    items: [
+      { word: "Mom", translation: "Мама", emoji: "👩" },
+      { word: "Dad", translation: "Папа", emoji: "👨" },
+      { word: "Baby", translation: "Малыш", emoji: "👶" },
+      { word: "Sister", translation: "Сестра", emoji: "👧" },
+      { word: "Brother", translation: "Брат", emoji: "👦" },
+      { word: "Grandma", translation: "Бабушка", emoji: "👵" },
+    ],
+  },
+  {
+    id: "clothes", name: "Одежда", icon: <Shirt className="w-5 h-5" />,
+    items: [
+      { word: "Hat", translation: "Шапка", emoji: "🧢" },
+      { word: "Shirt", translation: "Рубашка", emoji: "👕" },
+      { word: "Dress", translation: "Платье", emoji: "👗" },
+      { word: "Shoes", translation: "Обувь", emoji: "👟" },
+      { word: "Socks", translation: "Носки", emoji: "🧦" },
+      { word: "Coat", translation: "Пальто", emoji: "🧥" },
+    ],
+  },
+  {
+    id: "nature", name: "Природа", icon: <TreePine className="w-5 h-5" />,
+    items: [
+      { word: "Sun", translation: "Солнце", emoji: "☀️" },
+      { word: "Moon", translation: "Луна", emoji: "🌙" },
+      { word: "Tree", translation: "Дерево", emoji: "🌳" },
+      { word: "Flower", translation: "Цветок", emoji: "🌸" },
+      { word: "Rain", translation: "Дождь", emoji: "🌧️" },
+      { word: "Star", translation: "Звезда", emoji: "⭐" },
+    ],
+  },
+  {
+    id: "body", name: "Тело", icon: <Hand className="w-5 h-5" />,
+    items: [
+      { word: "Eyes", translation: "Глаза", emoji: "👀" },
+      { word: "Nose", translation: "Нос", emoji: "👃" },
+      { word: "Ear", translation: "Ухо", emoji: "👂" },
+      { word: "Mouth", translation: "Рот", emoji: "👄" },
+      { word: "Hand", translation: "Рука", emoji: "✋" },
+      { word: "Foot", translation: "Нога", emoji: "🦶" },
+    ],
+  },
+  {
+    id: "emotions", name: "Эмоции", icon: <Smile className="w-5 h-5" />,
+    items: [
+      { word: "Happy", translation: "Радостный", emoji: "😊" },
+      { word: "Sad", translation: "Грустный", emoji: "😢" },
+      { word: "Angry", translation: "Сердитый", emoji: "😠" },
+      { word: "Scared", translation: "Испуганный", emoji: "😨" },
+      { word: "Surprised", translation: "Удивлённый", emoji: "😮" },
+      { word: "Sleepy", translation: "Сонный", emoji: "😴" },
+    ],
+  },
+  {
+    id: "home", name: "Дом", icon: <Home className="w-5 h-5" />,
+    items: [
+      { word: "House", translation: "Дом", emoji: "🏠" },
+      { word: "Bed", translation: "Кровать", emoji: "🛏️" },
+      { word: "Chair", translation: "Стул", emoji: "🪑" },
+      { word: "Door", translation: "Дверь", emoji: "🚪" },
+      { word: "Window", translation: "Окно", emoji: "🪟" },
+      { word: "Lamp", translation: "Лампа", emoji: "💡" },
+    ],
+  },
+  {
+    id: "weather", name: "Погода", icon: <Sun className="w-5 h-5" />,
+    items: [
+      { word: "Sun", translation: "Солнце", emoji: "☀️" },
+      { word: "Rain", translation: "Дождь", emoji: "🌧️" },
+      { word: "Snow", translation: "Снег", emoji: "❄️" },
+      { word: "Wind", translation: "Ветер", emoji: "💨" },
+      { word: "Cloud", translation: "Облако", emoji: "☁️" },
+      { word: "Rainbow", translation: "Радуга", emoji: "🌈" },
+    ],
+  },
+  {
+    id: "fruits", name: "Фрукты", icon: <Apple className="w-5 h-5" />,
+    items: [
+      { word: "Banana", translation: "Банан", emoji: "🍌" },
+      { word: "Orange", translation: "Апельсин", emoji: "🍊" },
+      { word: "Grapes", translation: "Виноград", emoji: "🍇" },
+      { word: "Pear", translation: "Груша", emoji: "🍐" },
+      { word: "Cherry", translation: "Вишня", emoji: "🍒" },
+      { word: "Lemon", translation: "Лимон", emoji: "🍋" },
     ],
   },
 ];

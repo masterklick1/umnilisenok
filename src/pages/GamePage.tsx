@@ -10,6 +10,7 @@ import { ArrowLeft, RotateCcw } from "lucide-react";
 import { TicTacToe } from "@/components/games/TicTacToe";
 import { Checkers } from "@/components/games/Checkers";
 import { Chess, type ChessPiece } from "@/components/games/Chess";
+import { LineGame, lineInitialState, type LineGameType } from "@/components/games/LineGame";
 import type { Json } from "@/integrations/supabase/types";
 
 interface GameSession {
@@ -95,7 +96,7 @@ export default function GamePage() {
     };
   }, [id, fetchSession]);
 
-  const updateGame = async (newState: Record<string, unknown>, winnerId?: string) => {
+  const updateGame = async (newState: Record<string, unknown>, winnerId?: string, draw?: boolean) => {
     if (!session || !user) return;
 
     const nextTurn = session.current_turn === session.parent_id 
@@ -110,12 +111,20 @@ export default function GamePage() {
     if (winnerId) {
       updates.status = "finished";
       updates.winner_id = winnerId;
+    } else if (draw) {
+      updates.status = "finished";
     }
 
     await supabase
       .from("game_sessions")
       .update(updates)
       .eq("id", session.id);
+  };
+
+  const endGame = async () => {
+    if (!session) return;
+    await supabase.from("game_sessions").update({ status: "finished" }).eq("id", session.id);
+    navigate(homePath);
   };
 
   const resetGame = async () => {
@@ -145,7 +154,7 @@ export default function GamePage() {
     return null;
   }
 
-  const isMyTurn = session.current_turn === user?.id;
+  const isMyTurn = session.current_turn === user?.id && session.status !== "finished";
   const amIParent = session.parent_id === user?.id;
 
   return (
@@ -159,8 +168,12 @@ export default function GamePage() {
             {session.game_type === "tic_tac_toe" && "Крестики-нолики"}
             {session.game_type === "checkers" && "Шашки"}
             {session.game_type === "chess" && "Шахматы"}
+            {session.game_type === "connect_four" && "4 в ряд"}
+            {session.game_type === "gomoku" && "5 в ряд"}
           </h1>
-          {session.status === "finished" && (
+          {session.status !== "finished" ? (
+            <Button variant="outline" size="sm" onClick={endGame}>Завершить</Button>
+          ) : (
             <Button variant="outline" size="sm" onClick={resetGame}>
               <RotateCcw className="w-4 h-4 mr-2" />
               Ещё раз
@@ -178,7 +191,7 @@ export default function GamePage() {
               <div className="text-right">
                 {session.status === "finished" ? (
                   <p className="font-bold text-lg">
-                    {session.winner_id === user?.id ? "🎉 Победа!" : "😢 Поражение"}
+                    {!session.winner_id ? "🤝 Ничья!" : session.winner_id === user?.id ? "🎉 Победа!" : "😢 Поражение"}
                   </p>
                 ) : (
                   <p className={`font-medium ${isMyTurn ? "text-green-600" : "text-muted-foreground"}`}>
@@ -212,6 +225,16 @@ export default function GamePage() {
                 opponentId={amIParent ? session.child_id : session.parent_id}
               />
             )}
+            {(session.game_type === "connect_four" || session.game_type === "gomoku") && (
+              <LineGame
+                type={session.game_type as LineGameType}
+                gameState={session.game_state as unknown as { board: (string | null)[] }}
+                isMyTurn={isMyTurn && session.status !== "finished"}
+                mySymbol={amIParent ? "A" : "B"}
+                onMove={updateGame}
+                myId={user?.id || ""}
+              />
+            )}
             {session.game_type === "chess" && (
               <Chess
                 gameState={session.game_state as unknown as { board: (ChessPiece | null)[][]; currentPlayer: string }}
@@ -230,6 +253,7 @@ export default function GamePage() {
 }
 
 function getInitialState(gameType: string): Record<string, unknown> {
+  if (gameType === "connect_four" || gameType === "gomoku") return lineInitialState(gameType);
   switch (gameType) {
     case "tic_tac_toe":
       return { board: Array(9).fill(null), isXNext: true };

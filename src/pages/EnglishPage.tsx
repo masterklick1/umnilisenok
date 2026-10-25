@@ -1,3 +1,4 @@
+import { StreakBonusBanner } from "@/components/StreakBonusBanner";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,7 @@ export default function EnglishPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 p-4 pb-20">
+      <StreakBonusBanner />
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Шапка */}
         <div className="flex items-center gap-4">

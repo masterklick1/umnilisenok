@@ -19,7 +19,7 @@ import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 
-export const SOSButton = () => {
+export const SOSButton = ({ big = false }: { big?: boolean }) => {
   const { user, isDemo } = useAuth();
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
@@ -103,10 +103,15 @@ export const SOSButton = () => {
         <Button
           variant="destructive"
           size="lg"
-          className="fixed bottom-24 right-4 z-50 rounded-full h-16 w-16 p-0 shadow-2xl animate-pulse"
+          className={
+            big
+              ? "rounded-full h-32 w-32 p-0 shadow-2xl animate-pulse flex flex-col items-center justify-center gap-1"
+              : "fixed bottom-24 right-4 z-50 rounded-full h-16 w-16 p-0 shadow-2xl animate-pulse"
+          }
           aria-label="SOS"
         >
-          <AlertOctagon className="h-8 w-8" />
+          <AlertOctagon className={big ? "h-12 w-12" : "h-8 w-8"} />
+          {big && <span className="text-sm font-bold">SOS</span>}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

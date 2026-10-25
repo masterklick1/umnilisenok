@@ -16,7 +16,9 @@ import {
   requestBackgroundGeoPermission,
 } from "@/lib/geo-permission";
 import { Capacitor } from "@capacitor/core";
+import { Device } from "@capacitor/device";
 import { whenCapacitorReady } from "@/lib/native-ready";
+import { maybeNotifyLowBattery } from "@/lib/child-notifications";
 
 const DEFAULT_INTERVAL_SEC = 60;
 const SETTINGS_POLL_MS = 30_000;
@@ -79,6 +81,27 @@ export const useLocationTracker = (enabled = true) => {
   const enabledRef = useRef(enabled);
   const childIdRef = useRef<string | null>(null);
   const backgroundWatcherRef = useRef<string | null>(null);
+  const batteryLevelRef = useRef<number | null>(null);
+  const batteryReadAtRef = useRef(0);
+
+  const readBatteryLevel = async (): Promise<number | null> => {
+    // Кэшируем на 5 минут — заряд меняется медленно
+    if (batteryLevelRef.current !== null && Date.now() - batteryReadAtRef.current < 5 * 60_000) {
+      return batteryLevelRef.current;
+    }
+    try {
+      const info = await Device.getBatteryInfo();
+      if (typeof info.batteryLevel === "number" && info.batteryLevel >= 0) {
+        batteryLevelRef.current = Math.round(info.batteryLevel * 100);
+        batteryReadAtRef.current = Date.now();
+        void maybeNotifyLowBattery(batteryLevelRef.current, info.isCharging);
+        return batteryLevelRef.current;
+      }
+    } catch {
+      // батарея недоступна (редкие устройства) — просто не шлём
+    }
+    return batteryLevelRef.current;
+  };
 
   useEffect(() => {
     intervalSecRef.current = intervalSec;
@@ -200,6 +223,7 @@ export const useLocationTracker = (enabled = true) => {
           }
         }
 
+        const batteryLevel = await readBatteryLevel();
         const { error: insertErr } = await supabase.from("child_locations").insert([
           {
             child_id: childIdRef.current,
@@ -207,6 +231,7 @@ export const useLocationTracker = (enabled = true) => {
             latitude: pos.latitude,
             longitude: pos.longitude,
             accuracy: pos.accuracy ?? null,
+            battery_level: batteryLevel,
           },
         ]);
 
@@ -323,6 +348,7 @@ export const useLocationTracker = (enabled = true) => {
                 if (!location) return;
 
                 try {
+                  const batteryLevel = await readBatteryLevel();
                   await supabase.from("child_locations").insert([
                     {
                       child_id: childIdRef.current,
@@ -330,6 +356,7 @@ export const useLocationTracker = (enabled = true) => {
                       latitude: location.latitude,
                       longitude: location.longitude,
                       accuracy: location.accuracy ?? null,
+                      battery_level: batteryLevel,
                     },
                   ]);
                   lastSentAtRef.current = new Date().toISOString();

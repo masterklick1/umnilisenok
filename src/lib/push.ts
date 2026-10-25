@@ -121,6 +121,66 @@ export interface PushStatus {
   matchesCurrentUser: boolean;
 }
 
+export type PushSubscribeResult =
+  | { ok: true }
+  | { ok: false; reason: "unsupported" | "blocked" | "service-worker" | "subscription" | "save" };
+
+export const subscribeToPushDetailed = async (userId: string): Promise<PushSubscribeResult> => {
+  if (!isPushSupported()) return { ok: false, reason: "unsupported" };
+
+  let permission: NotificationPermission;
+  try {
+    permission = Notification.permission;
+    if (permission === "default") permission = await Notification.requestPermission();
+  } catch (e) {
+    console.warn("Notification permission error:", e);
+    return { ok: false, reason: "unsupported" };
+  }
+
+  if (permission !== "granted") return { ok: false, reason: "blocked" };
+
+  const reg = await ensureServiceWorker();
+  if (!reg) return { ok: false, reason: "service-worker" };
+
+  let sub: PushSubscription | null;
+  try {
+    sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+  } catch (e) {
+    console.warn("Push subscription error:", e);
+    return { ok: false, reason: "subscription" };
+  }
+
+  const json = sub.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
+    return { ok: false, reason: "subscription" };
+  }
+
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    {
+      user_id: userId,
+      endpoint: json.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+      user_agent: navigator.userAgent,
+      last_synced_at: new Date().toISOString(),
+    },
+    { onConflict: "endpoint" },
+  );
+
+  if (error) {
+    console.warn("Push subscription save error:", error.message);
+    return { ok: false, reason: "save" };
+  }
+
+  return { ok: true };
+};
+
 export const getPushStatus = async (userId?: string): Promise<PushStatus> => {
   try {
     if (!isPushSupported()) {

@@ -7,7 +7,7 @@ interface TicTacToeProps {
   };
   isMyTurn: boolean;
   mySymbol: "X" | "O";
-  onMove: (newState: Record<string, unknown>, winnerId?: string) => void;
+  onMove: (newState: Record<string, unknown>, winnerId?: string, draw?: boolean) => void;
   myId: string;
   opponentId: string;
 }
@@ -54,7 +54,7 @@ export const TicTacToe = ({
       if (winner) {
         onMove(newState, winner === mySymbol ? myId : opponentId);
       } else if (isBoardFull(newBoard)) {
-        onMove(newState);
+        onMove(newState, undefined, true);
       } else {
         onMove(newState);
       }

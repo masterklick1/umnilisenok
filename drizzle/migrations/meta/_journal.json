@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790533680764,
+      "tag": "0000_reading_progress_realtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790533791748,
+      "tag": "0001_learning_progress",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790533805910,
+      "tag": "0002_mark_learned_child",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790534428846,
+      "tag": "0003_streak_bonuses",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790534900644,
+      "tag": "0004_reward_room_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790535230723,
+      "tag": "0005_garden_plots",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790535451347,
+      "tag": "0006_gifts_harvests_achievement_rewards",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790535798691,
+      "tag": "0007_game_sessions_updated_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790540884069,
+      "tag": "0008_create_parent_feedback",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790579557106,
+      "tag": "0009_tighten_catalog_select_policies",
+      "breakpoints": true
+    }
+  ]
+}

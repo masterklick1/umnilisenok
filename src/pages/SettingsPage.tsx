@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Volume2, VolumeX, LogOut, User, Lock, Trash2, Battery, MapPin } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, LogOut, LogIn, User, Lock, Trash2, Battery, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -286,7 +286,7 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {isChild && (
+        {user && isChild && (
           <Card className="p-5 mb-4 border-primary/20 bg-primary/5">
             <p className="text-sm text-muted-foreground">
               📱 Это аккаунт ребёнка. Родители управляют и следят со своего телефона в родительском
@@ -344,28 +344,37 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* Выход */}
-        <Button variant="destructive" className="w-full" onClick={handleSignOut}>
-          <LogOut className="w-4 h-4 mr-2" /> Выйти из аккаунта
-        </Button>
-
-        {/* Удаление аккаунта */}
-        <Card className="p-5 mt-4 border-destructive/40">
-          <div className="font-semibold mb-1">Удаление аккаунта</div>
-          <p className="text-sm text-muted-foreground mb-3">
-            Аккаунт и все связанные данные (прогресс, геолокация, фото, привязки) будут удалены
-            безвозвратно.
-          </p>
-          <Button
-            variant="destructive"
-            className="w-full"
-            disabled={deleting}
-            onClick={handleDeleteAccount}
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            {deleting ? "Удаляем..." : "Удалить аккаунт"}
+        {!user ? (
+          <Button className="w-full" onClick={() => navigate("/auth")}>
+            <LogIn className="w-4 h-4 mr-2" /> Войти в аккаунт
           </Button>
-        </Card>
+        ) : (
+          <>
+            {/* Выход */}
+            <Button variant="destructive" className="w-full" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" /> Выйти из аккаунта
+            </Button>
+
+            {/* Удаление аккаунта */}
+            <Card className="p-5 mt-4 border-destructive/40">
+              <div className="font-semibold mb-1">Удаление аккаунта</div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Аккаунт и все связанные данные (прогресс, геолокация, фото, привязки) будут удалены
+                безвозвратно.
+              </p>
+              <Button
+                variant="destructive"
+                className="w-full"
+                disabled={deleting}
+                onClick={handleDeleteAccount}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {deleting ? "Удаляем..." : "Удалить аккаунт"}
+              </Button>
+            </Card>
+          </>
+        )}
+
 
 
         {/* Prominent Disclosure Modal */}

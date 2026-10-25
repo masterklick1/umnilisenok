@@ -1,4 +1,3 @@
-import { speak as speakTTS } from "@/lib/sound";
 import { recordLearned } from "@/lib/learning-progress";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -56,7 +55,7 @@ export default function EnglishWordBuilderPage() {
   const currentTask = WORDS_DATABASE[currentIndex];
 
   const speak = (text: string) => {
-    void speakTTS(text, "en-US");
+    void speakEnglish(text, 0.8);
   };
 
   const loadWord = (index: number) => {

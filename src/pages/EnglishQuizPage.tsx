@@ -1,4 +1,3 @@
-import { speak as speakTTS } from "@/lib/sound";
 import { recordLearned } from "@/lib/learning-progress";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -61,7 +60,7 @@ export default function EnglishQuizPage() {
   const q = QUESTIONS[currentIndex];
 
   const speak = (text: string) => {
-    void speakTTS(text, "en-US");
+    void speakEnglish(text, 0.8);
   };
 
   const handleOptionClick = (option: string) => {

@@ -1,4 +1,3 @@
-import { speak as speakTTS } from "@/lib/sound";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { speakEnglish } from "@/lib/sound";
@@ -178,7 +177,7 @@ export default function EnglishWordsPage() {
   const [activeCategory, setActiveCategory] = useState<Category>(CATEGORIES[0]);
 
   const speak = (text: string) => {
-    void speakTTS(text, "en-US");
+    void speakEnglish(text, 0.8);
   };
 
   return (

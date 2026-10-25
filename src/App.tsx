@@ -9,6 +9,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import Index from "./pages/Index";
 import MathPage from "./pages/MathPage";
 import AlphabetPage from "./pages/AlphabetPage";
+import ReadingPage from "./pages/ReadingPage";
+import FairyTalesPage from "./pages/FairyTalesPage";
 import EnglishPage from "./pages/EnglishPage";
 import EnglishAlphabetPage from "./pages/EnglishAlphabetPage";
 import EnglishWordsPage from "./pages/EnglishWordsPage";
@@ -27,8 +29,10 @@ import AuthPage from "./pages/AuthPage";
 import JoinPage from "./pages/JoinPage";
 import SettingsPage from "./pages/SettingsPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ChildPlaceStatusBadge } from "./components/child/ChildPlaceStatusBadge";
 import { GameInviteWatcher } from "./components/child/GameInviteWatcher";
+import { ScreenTimeGuard } from "./components/child/ScreenTimeGuard";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 
@@ -93,6 +97,7 @@ function SafeDeviceServices() {
   const isAuthRoute =
     location.pathname.startsWith("/auth") ||
     location.pathname.startsWith("/join") ||
+    location.pathname.startsWith("/reset-password") ||
     location.pathname.startsWith("/delete-account");
 
   const shouldMount = !authLoading && !roleLoading && !!user?.id && !isDemo && !isAuthRoute;
@@ -175,11 +180,17 @@ const App = () => (
           {Capacitor.isNativePlatform() && <SafeDeviceServices />}
           <ChildPlaceStatusBadge />
           <GameInviteWatcher />
+          <ScreenTimeGuard />
           <Routes>
             {/* Публичные роуты */}
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/join" element={<JoinPage />} />
             <Route path="/delete-account" element={<DeleteAccountPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+            {/* Страховка от 404: старые ссылки ведут на главную */}
+            <Route path="/app" element={<Navigate to="/" replace />} />
+            <Route path="/index" element={<Navigate to="/" replace />} />
 
             {/* Защищенные роуты (для детей и родителей) */}
             <Route
@@ -203,6 +214,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AlphabetPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reading"
+              element={
+                <ProtectedRoute>
+                  <ReadingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tales"
+              element={
+                <ProtectedRoute>
+                  <FairyTalesPage />
                 </ProtectedRoute>
               }
             />

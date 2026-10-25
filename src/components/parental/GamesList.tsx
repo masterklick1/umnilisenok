@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Gamepad2, Plus, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { lineInitialState } from "@/components/games/LineGame";
 
 interface GameSession {
   id: string;
@@ -34,9 +35,12 @@ const GAMES = [
   { id: "tic_tac_toe", name: "Крестики-нолики", icon: "⭕", description: "Классическая игра 3x3" },
   { id: "checkers", name: "Шашки", icon: "🔴", description: "Русские шашки 8x8" },
   { id: "chess", name: "Шахматы", icon: "♟️", description: "Классические шахматы" },
+  { id: "connect_four", name: "4 в ряд", icon: "🔴", description: "Бросай фишки, собери 4 в ряд" },
+  { id: "gomoku", name: "5 в ряд", icon: "🟡", description: "Поле 9×9, собери 5 в ряд" },
 ];
 
 const getInitialState = (gameType: string): Record<string, unknown> => {
+  if (gameType === "connect_four" || gameType === "gomoku") return lineInitialState(gameType);
   switch (gameType) {
     case "tic_tac_toe":
       return { board: Array(9).fill(null), isXNext: true };

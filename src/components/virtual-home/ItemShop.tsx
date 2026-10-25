@@ -7,11 +7,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Star, ShoppingBag, Heart, Check } from "lucide-react";
+import { Star, ShoppingBag, Heart, Check, Trophy } from "lucide-react";
+import { RewardItems } from "./RewardItems";
+import { AchievementRewards } from "./AchievementRewards";
 
 export const ItemShop = () => {
-  const { roomItems, pets, userRoomItems, userPets, buyItem, adoptPet } = useVirtualHome();
+  const { roomItems, pets, userRoomItems, userPets, buyItem, adoptPet, claimReward, refetch } = useVirtualHome();
   const { progress } = useUserProgress();
+  const rewardItems = roomItems.filter((i) => i.unlock_subject);
+  const achievementItems = roomItems.filter((i) => i.unlock_achievement_id);
+  const achievementPets = pets.filter((p) => p.unlock_achievement_id);
+  const shopItems = roomItems.filter((i) => !i.unlock_subject && !i.unlock_achievement_id);
+  const shopPets = pets.filter((p) => !p.unlock_achievement_id);
 
   // Состояния для модального окна приюта/покупки питомца
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
@@ -71,21 +78,31 @@ export const ItemShop = () => {
 
       {/* Вкладки: Предметы / Питомцы */}
       <Tabs defaultValue="items" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="items" className="flex items-center gap-2">
             <ShoppingBag className="w-4 h-4" />
-            Мебель и декор
+            Мебель
           </TabsTrigger>
           <TabsTrigger value="pets" className="flex items-center gap-2">
             <Heart className="w-4 h-4 text-rose-500" />
             Питомцы
           </TabsTrigger>
+          <TabsTrigger value="rewards" className="flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            Награды
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="rewards" className="mt-4">
+          <AchievementRewards items={achievementItems} pets={achievementPets} owned={userRoomItems} ownedPets={userPets} onClaim={claimReward} onPetClaimed={refetch} />
+          <div className="h-6" />
+          <RewardItems items={rewardItems} owned={userRoomItems} onClaim={claimReward} />
+        </TabsContent>
 
         {/* Вкладка 1: Предметы интерьера */}
         <TabsContent value="items" className="mt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {roomItems.map((item: RoomItem) => {
+            {shopItems.map((item: RoomItem) => {
               const purchased = isItemPurchased(item.id);
               const canAfford = userStars >= item.price_stars;
 
@@ -129,7 +146,7 @@ export const ItemShop = () => {
         {/* Вкладка 2: Питомцы */}
         <TabsContent value="pets" className="mt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {pets.map((pet: Pet) => {
+            {shopPets.map((pet: Pet) => {
               const canAfford = userStars >= pet.price_stars;
               const countOwned = userPets.filter((p) => p.pet_id === pet.id).length;
 

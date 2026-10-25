@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer, Shield, ShieldAlert, Crosshair, BookmarkPlus, Trash2, Route, Car, Footprints, ExternalLink } from "lucide-react";
+import { MapPin, AlertOctagon, Camera, Mic, Navigation, CheckCircle, Loader2, Timer, Shield, ShieldAlert, Crosshair, BookmarkPlus, Trash2, Route, Car, Footprints, ExternalLink, Battery, School } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,6 +56,13 @@ interface Location {
   longitude: number;
   accuracy: number | null;
   device_source?: "phone" | "watch" | string;
+  battery_level?: number | null;
+  created_at: string;
+}
+
+interface TrailPoint {
+  latitude: number;
+  longitude: number;
   created_at: string;
 }
 
@@ -93,6 +100,9 @@ interface Settings {
   geofence_lat: number | null;
   geofence_lng: number | null;
   geofence_radius_m: number;
+  school_mode_enabled: boolean;
+  school_start: string;
+  school_end: string;
 }
 
 interface GeofenceEvent {
@@ -113,6 +123,9 @@ const DEFAULT_SETTINGS: Settings = {
   geofence_lat: null,
   geofence_lng: null,
   geofence_radius_m: 300,
+  school_mode_enabled: false,
+  school_start: "08:00",
+  school_end: "14:00",
 };
 
 export const SafetyPanel = ({ childId, childName }: Props) => {
@@ -132,6 +145,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const [activeZoneLabel, setActiveZoneLabel] = useState<string | null>(null);
   const [customPlaceName, setCustomPlaceName] = useState("");
   const [movementPath, setMovementPath] = useState<LatLng[]>([]);
+  const [trailPoints, setTrailPoints] = useState<TrailPoint[]>([]);
   const [showRoute, setShowRoute] = useState(false);
   const [routeMode, setRouteMode] = useState<TravelMode>("driving");
   const [showTrail, setShowTrail] = useState(true);
@@ -155,7 +169,7 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
   const loadSettings = useCallback(async () => {
     const { data } = await supabase
       .from("child_settings")
-      .select("location_enabled, location_interval_seconds, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m")
+      .select("location_enabled, location_interval_seconds, geofence_enabled, geofence_lat, geofence_lng, geofence_radius_m, school_mode_enabled, school_start, school_end")
       .eq("child_id", childId)
       .maybeSingle();
     setSettings({ ...DEFAULT_SETTINGS, ...(data ?? {}) });
@@ -177,6 +191,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
           geofence_lat: next.geofence_lat,
           geofence_lng: next.geofence_lng,
           geofence_radius_m: next.geofence_radius_m,
+          school_mode_enabled: next.school_mode_enabled,
+          school_start: next.school_start,
+          school_end: next.school_end,
           updated_by: user.id,
           updated_at: new Date().toISOString(),
         },
@@ -225,12 +242,9 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
     ]);
     if (loc.data) setLocation(loc.data as Location);
     if (history.data) {
-      setMovementPath(
-        (history.data as { latitude: number; longitude: number }[]).map((p) => ({
-          lat: p.latitude,
-          lng: p.longitude,
-        })),
-      );
+      const rows = history.data as TrailPoint[];
+      setTrailPoints(rows);
+      setMovementPath(rows.map((p) => ({ lat: p.latitude, lng: p.longitude })));
     }
     if (sos.data) setAlerts(sos.data as SosAlert[]);
     if (req.data) setRequests(req.data as MonitoringReq[]);
@@ -777,6 +791,17 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                   ? `Автоотправка каждые ${formatInterval(settings.location_interval_seconds)} · только пока приложение ребёнка открыто`
                   : "Автоотправка выключена — включите ниже"}
               </p>
+              {location?.battery_level != null && (
+                <p
+                  className={`text-xs mt-1 flex items-center gap-1 ${
+                    location.battery_level <= 20 ? "text-destructive font-medium" : "text-muted-foreground"
+                  }`}
+                >
+                  <Battery className="w-3.5 h-3.5" />
+                  Батарея устройства: {location.battery_level}%
+                  {location.battery_level <= 20 && " — скоро связь может пропасть!"}
+                </p>
+              )}
             </div>
             <Button
               variant="outline"
@@ -1092,6 +1117,36 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
                   </Button>
                 </a>
               </div>
+
+              {/* Маршрут дня — хронология точек */}
+              {trailPoints.length > 1 && (
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <Route className="w-4 h-4 text-primary" /> Маршрут за последние 6 часов
+                  </p>
+                  <ScrollArea className="h-40">
+                    <ol className="space-y-1.5">
+                      {[...trailPoints].reverse().slice(0, 30).map((p, i) => (
+                        <li key={i} className="flex items-center gap-2 text-xs">
+                          <span className="font-mono text-muted-foreground w-12 shrink-0">
+                            {new Date(p.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${i === 0 ? "bg-green-500" : "bg-primary/40"}`} />
+                          <a
+                            className="font-mono underline decoration-dotted"
+                            href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {p.latitude.toFixed(5)}, {p.longitude.toFixed(5)}
+                          </a>
+                          {i === 0 && <Badge variant="secondary" className="text-[10px] px-1 py-0">сейчас</Badge>}
+                        </li>
+                      ))}
+                    </ol>
+                  </ScrollArea>
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-2">
@@ -1178,6 +1233,61 @@ export const SafetyPanel = ({ childId, childName }: Props) => {
             Интервал применится на телефоне ребёнка. В браузере GPS не работает в «спячке» —
             попросите включить «Не гасить экран» или нажимайте «Где сейчас?» (придёт уведомление).
           </p>
+        </CardContent>
+      </Card>
+
+      {/* School mode */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <School className="w-5 h-5" /> Школьный режим
+          </CardTitle>
+          <CardDescription>
+            В указанные часы у ребёнка закрываются уроки и игры — остаются только SOS и защита.
+            Применяется на устройстве ребёнка автоматически.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="school-mode" className="cursor-pointer">
+              Включить школьный режим
+            </Label>
+            <Switch
+              id="school-mode"
+              checked={settings?.school_mode_enabled ?? false}
+              disabled={savingSettings}
+              onCheckedChange={(v) => saveSettings({ school_mode_enabled: v })}
+            />
+          </div>
+          {settings?.school_mode_enabled && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">С</Label>
+                <Input
+                  type="time"
+                  className="w-28"
+                  value={settings.school_start}
+                  disabled={savingSettings}
+                  onChange={(e) => setSettings((s) => s ? { ...s, school_start: e.target.value } : s)}
+                  onBlur={() => saveSettings({ school_start: settings.school_start })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">До</Label>
+                <Input
+                  type="time"
+                  className="w-28"
+                  value={settings.school_end}
+                  disabled={savingSettings}
+                  onChange={(e) => setSettings((s) => s ? { ...s, school_end: e.target.value } : s)}
+                  onBlur={() => saveSettings({ school_end: settings.school_end })}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground w-full">
+                Например, 08:00–14:00 — время уроков. В эти часы ребёнок увидит экран «Время уроков».
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

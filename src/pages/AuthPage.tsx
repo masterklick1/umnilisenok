@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { Users, Baby, Sparkles } from "lucide-react";
+import { getRussianAuthError } from "@/lib/auth-errors";
 
 const signUpSchema = z.object({
   email: z.string().email({ message: "Неверный формат email" }),
@@ -20,7 +21,7 @@ const signInSchema = z.object({
   password: z.string().min(1, { message: "Введите пароль" }),
 });
 
-type Screen = "choose" | "parent";
+type Screen = "choose" | "parent" | "reset";
 
 export default function AuthPage() {
   const [screen, setScreen] = useState<Screen>("choose");
@@ -31,6 +32,7 @@ export default function AuthPage() {
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const { signUp, signIn, startDemo, isDemo, user } = useAuth();
   const navigate = useNavigate();
 
@@ -92,6 +94,8 @@ export default function AuthPage() {
             await supabase.from("profiles").update({ role: "parent" }).eq("id", newUser.id);
           }
           navigate("/parent");
+        } else {
+          setErrors({ form: getRussianAuthError(error, "sign-up") });
         }
       } else {
         const result = signInSchema.safeParse({ email, password });
@@ -106,7 +110,11 @@ export default function AuthPage() {
         }
 
         const { error } = await signIn(email, password);
-        if (!error) navigate("/parent");
+        if (!error) {
+          navigate("/parent");
+        } else {
+          setErrors({ form: getRussianAuthError(error, "sign-in") });
+        }
       }
     } catch (error) {
       console.error("Auth error:", error);
@@ -114,6 +122,97 @@ export default function AuthPage() {
       setIsLoading(false);
     }
   };
+
+  const handleResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    const emailCheck = z.string().email().safeParse(email);
+    if (!emailCheck.success) {
+      setErrors({ email: "Неверный формат email" });
+      return;
+    }
+
+    setIsLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://umnilisenok.lovable.app/reset-password",
+    });
+    setIsLoading(false);
+
+    if (error) {
+      setErrors({ email: "Не удалось отправить письмо. Попробуйте позже." });
+      return;
+    }
+    setResetSent(true);
+  };
+
+  if (screen === "reset") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/20 via-background to-secondary/20">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="text-6xl mb-4">🔑</div>
+            <CardTitle className="text-2xl">Забыли пароль?</CardTitle>
+            <CardDescription>
+              {resetSent
+                ? "Мы отправили письмо со ссылкой для смены пароля"
+                : "Введите почту, на которую зарегистрирован аккаунт"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {resetSent ? (
+              <div className="space-y-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Письмо отправлено на <span className="font-medium text-foreground">{email}</span>.
+                  Откройте его и перейдите по ссылке, чтобы задать новый пароль.
+                  Если письма нет — проверьте папку «Спам».
+                </p>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setResetSent(false);
+                    setScreen("parent");
+                  }}
+                >
+                  Вернуться ко входу
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleResetRequest} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="example@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Отправляем..." : "Отправить ссылку"}
+                </Button>
+              </form>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setResetSent(false);
+                setScreen("parent");
+              }}
+              className="mt-4 block w-full text-sm text-muted-foreground hover:text-foreground"
+            >
+              ← Назад
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+
 
   if (screen === "choose") {
     return (
@@ -157,7 +256,7 @@ export default function AuthPage() {
 
             <div className="pt-2 text-center">
               <a
-                href="https://telegra.ph/Politika-konfidencialnosti-Umnyj-Lisyonok-08-25"
+                href="https://umnilisenok.lovable.app/privacy.html"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
@@ -235,7 +334,7 @@ export default function AuthPage() {
                   <Label htmlFor="policy" className="text-xs leading-normal cursor-pointer text-muted-foreground">
                     Я принимаю{" "}
                     <a
-                      href="https://telegra.ph/Politika-konfidencialnosti-Umnyj-Lisyonok-08-25"
+                      href="https://umnilisenok.lovable.app/privacy.html"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary underline font-medium hover:opacity-80"
@@ -248,6 +347,12 @@ export default function AuthPage() {
               </div>
             )}
 
+            {errors.form && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {errors.form}
+              </div>
+            )}
+
             <Button
               type="submit"
               className="w-full"
@@ -257,6 +362,19 @@ export default function AuthPage() {
             </Button>
           </form>
           <div className="mt-4 space-y-2 text-center">
+            {!isSignUp && (
+              <button
+                type="button"
+                onClick={() => {
+                  setErrors({});
+                  setResetSent(false);
+                  setScreen("reset");
+                }}
+                className="block w-full text-sm text-primary underline hover:opacity-80"
+              >
+                Забыли пароль?
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}

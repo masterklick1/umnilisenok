@@ -1,3 +1,4 @@
+import { speak as speakTTS } from "@/lib/sound";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { speakEnglish } from "@/lib/sound";
@@ -64,7 +65,7 @@ export default function EnglishMissingPage() {
   const t = TASKS[index];
 
   const speak = (text: string) => {
-    void speakEnglish(text, 0.8);
+    void speakTTS(text, "en-US");
   };
 
   const handleSelect = (letter: string) => {

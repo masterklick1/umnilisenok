@@ -16,7 +16,7 @@ export interface UserProgress {
   last_lesson_at?: string | null;
 }
 
-type AchievementCategory = "math" | "alphabet" | "world" | "creativity" | "streak";
+type AchievementCategory = "math" | "alphabet" | "reading" | "world" | "creativity" | "streak";
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 const yesterdayStr = () => {
@@ -65,7 +65,7 @@ export const useUserProgress = () => {
       if (data) {
         setProgress({
           ...data,
-          game_tickets: data.game_tickets ?? 0,
+          game_tickets: (data as { game_tickets?: number }).game_tickets ?? 0,
         });
       } else {
         setProgress({

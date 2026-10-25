@@ -10,7 +10,11 @@ const GAME_NAMES: Record<string, string> = {
   tic_tac_toe: "Крестики-нолики",
   checkers: "Шашки",
   chess: "Шахматы",
+  connect_four: "4 в ряд",
+  gomoku: "5 в ряд",
 };
+const DISMISS_KEY = "dismissed-game-invites";
+const FRESH_MS = 30 * 60 * 1000;
 
 interface PendingGame {
   id: string;
@@ -28,20 +32,29 @@ export function GameInviteWatcher() {
   const navigate = useNavigate();
   const location = useLocation();
   const [game, setGame] = useState<PendingGame | null>(null);
-  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [dismissed, setDismissed] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(DISMISS_KEY) || "[]"); } catch { return []; }
+  });
+  const dismiss = (id: string) => {
+    const next = [...dismissed, id].slice(-50);
+    setDismissed(next);
+    localStorage.setItem(DISMISS_KEY, JSON.stringify(next));
+  };
 
   const load = useCallback(async () => {
     if (!user?.id) return;
     const { data } = await supabase
       .from("game_sessions")
-      .select("id, game_type, status")
+      .select("id, game_type, status, parent_id, current_turn")
       .eq("child_id", user.id)
       .in("status", ["active", "waiting"])
+      .gte("updated_at", new Date(Date.now() - FRESH_MS).toISOString())
       .order("created_at", { ascending: false })
       .limit(1);
 
     const row = data?.[0];
-    setGame(row ? { id: row.id, game_type: row.game_type } : null);
+    // Показываем только свежие приглашения, созданные родителем (не собственные игры ребёнка)
+    setGame(row && row.parent_id !== user.id ? { id: row.id, game_type: row.game_type } : null);
   }, [user?.id]);
 
   useEffect(() => {
@@ -94,7 +107,7 @@ export function GameInviteWatcher() {
         <button
           aria-label="Скрыть"
           className="text-muted-foreground hover:text-foreground"
-          onClick={() => setDismissed((d) => [...d, game.id])}
+          onClick={() => dismiss(game.id)}
         >
           <X className="h-4 w-4" />
         </button>

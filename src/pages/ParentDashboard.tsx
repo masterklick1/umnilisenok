@@ -13,6 +13,7 @@ import { GamesList } from "@/components/parental/GamesList";
 import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
 import { SelectedChildBar } from "@/components/parental/SelectedChildBar";
+import { FeedbackDialog } from "@/components/parental/FeedbackDialog";
 import {
   ArrowLeft,
   Users,
@@ -32,6 +33,12 @@ import {
 } from "lucide-react";
 import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
 import { MonitoringPanel } from "@/components/parental/MonitoringPanel";
+import { ReadingProgressCard } from "@/components/parental/ReadingProgressCard";
+import { LearningProgressCard } from "@/components/parental/LearningProgressCard";
+import { AttendancePanel } from "@/components/parental/AttendancePanel";
+import { CalendarDays, Sprout } from "lucide-react";
+import { GardenPanel } from "@/components/parental/GardenPanel";
+import { GiftSender } from "@/components/parental/GiftSender";
 import {
   MonitoringNotificationSettings,
   loadMonitoringPrefs,
@@ -45,6 +52,7 @@ import {
   isPushSupported,
   getPushPermission,
   subscribeToPush,
+  subscribeToPushDetailed,
   ensureServiceWorker,
   getPushStatus,
   unsubscribeFromPush,
@@ -149,14 +157,21 @@ export default function ParentDashboard() {
 
   const enablePush = async () => {
     if (!user?.id) return;
-    const ok = await subscribeToPush(user.id);
+    const result = await subscribeToPushDetailed(user.id);
     await refreshPushStatus();
+    const failureMessages = {
+      unsupported: "Этот браузер не поддерживает push-уведомления. Откройте сайт в Chrome или Safari.",
+      blocked: "Уведомления заблокированы. Разрешите их в настройках браузера для этого сайта.",
+      "service-worker": "Не удалось запустить службу уведомлений. Обновите страницу и попробуйте снова.",
+      subscription: "Разрешение получено, но браузер не создал подписку. Обновите страницу и попробуйте снова.",
+      save: "Разрешение получено, но подписка не сохранилась. Проверьте интернет и попробуйте снова.",
+    } as const;
+    let description = "Вы будете получать оповещения о геозоне даже вне приложения.";
+    if (result.ok === false) description = failureMessages[result.reason];
     toast({
-      title: ok ? "Уведомления включены" : "Не удалось включить уведомления",
-      description: ok
-        ? "Вы будете получать оповещения о геозоне даже вне приложения."
-        : "Проверьте разрешения браузера для этого сайта.",
-      variant: ok ? "default" : "destructive",
+      title: result.ok ? "Уведомления включены" : "Не удалось включить уведомления",
+      description,
+      variant: result.ok ? "default" : "destructive",
     });
   };
 
@@ -448,13 +463,19 @@ export default function ParentDashboard() {
             <h1 className="text-2xl font-bold text-foreground">Родительский кабинет</h1>
           </div>
           <div className="flex items-center gap-1">
-            {pushPerm !== "unsupported" && pushPerm !== "granted" && (
+            {(pushPerm === "default" ||
+              (pushPerm === "granted" &&
+                (!pushStatus?.subscribed || !pushStatus.matchesCurrentUser))) && (
               <Button variant="outline" size="sm" onClick={enablePush} className="gap-1">
                 <Bell className="w-4 h-4" />
-                <span className="hidden sm:inline">Включить уведомления</span>
+                <span className="hidden sm:inline">
+                  {pushPerm === "granted" ? "Подключить уведомления" : "Включить уведомления"}
+                </span>
               </Button>
             )}
-            {pushPerm === "granted" && (
+            {pushPerm === "granted" &&
+              pushStatus?.subscribed &&
+              pushStatus.matchesCurrentUser && (
               <Button variant="ghost" size="sm" disabled className="gap-1 text-muted-foreground">
                 <Bell className="w-4 h-4 text-primary" />
                 <span className="hidden sm:inline">Уведомления вкл.</span>
@@ -466,6 +487,7 @@ export default function ParentDashboard() {
                 <span className="hidden sm:inline">Заблокировано в браузере</span>
               </span>
             )}
+            <FeedbackDialog />
             <Button variant="ghost" onClick={handleSignOut}>
               <LogOut className="w-5 h-5 mr-2" />
               Выйти
@@ -558,6 +580,14 @@ export default function ParentDashboard() {
             <TabsTrigger value="room" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <House className="w-4 h-4" />
               <span className="text-[10px] leading-tight">Домик</span>
+            </TabsTrigger>
+            <TabsTrigger value="garden" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
+              <Sprout className="w-4 h-4" />
+              <span className="text-[10px] leading-tight">Садик</span>
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
+              <CalendarDays className="w-4 h-4" />
+              <span className="text-[10px] leading-tight">Активность</span>
             </TabsTrigger>
             <TabsTrigger value="analysis" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <Brain className="w-4 h-4" />
@@ -698,11 +728,15 @@ export default function ParentDashboard() {
           {/* Mirror Tab */}
           <TabsContent value="mirror">
             {selectedChildData ? (
-              <ActivityMirror
-                childName={selectedChildData.first_name || "Ребёнок"}
-                activities={childActivities}
-                connectedViaInvite={selectedChildData.connected_via_invite}
-              />
+              <div className="space-y-4">
+                <ReadingProgressCard childId={selectedChildData.child_id} />
+                <LearningProgressCard childId={selectedChildData.child_id} />
+                <ActivityMirror
+                  childName={selectedChildData.first_name || "Ребёнок"}
+                  activities={childActivities}
+                  connectedViaInvite={selectedChildData.connected_via_invite}
+                />
+              </div>
             ) : (
               <Card>
                 <CardContent className="py-8 text-center space-y-2">
@@ -721,10 +755,13 @@ export default function ParentDashboard() {
           {/* Child Room Tab */}
           <TabsContent value="room">
             {selectedChildData ? (
-              <ChildRoomViewer
-                childId={selectedChildData.child_id}
-                childName={selectedChildData.first_name || "Ребёнок"}
-              />
+              <div className="space-y-4">
+                <GiftSender childId={selectedChildData.child_id} childName={selectedChildData.first_name || "Ребёнок"} />
+                <ChildRoomViewer
+                  childId={selectedChildData.child_id}
+                  childName={selectedChildData.first_name || "Ребёнок"}
+                />
+              </div>
             ) : (
               <Card>
                 <CardContent className="py-8 text-center">
@@ -734,7 +771,23 @@ export default function ParentDashboard() {
             )}
           </TabsContent>
 
+          <TabsContent value="garden">
+            {selectedChildData ? (
+              <GardenPanel childId={selectedChildData.child_id} childName={selectedChildData.first_name || "Ребёнок"} />
+            ) : (
+              <p className="text-center text-muted-foreground py-8">Выберите ребёнка на вкладке «Дети»</p>
+            )}
+          </TabsContent>
+
           {/* AI Analysis Tab */}
+          <TabsContent value="activity">
+            {selectedChildData ? (
+              <AttendancePanel childId={selectedChildData.child_id} childName={selectedChildData.first_name || "Ребёнок"} />
+            ) : (
+              <p className="text-center text-muted-foreground py-8">Выберите ребёнка на вкладке «Дети»</p>
+            )}
+          </TabsContent>
+
           <TabsContent value="analysis">
             {selectedChildData ? (
               <AIRecommendations

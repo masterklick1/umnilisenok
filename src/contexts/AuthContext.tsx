@@ -3,6 +3,7 @@ import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { unsubscribeFromPush, subscribeToPush, isPushSupported } from "@/lib/push";
+import { getRussianAuthError } from "@/lib/auth-errors";
 import {
   clearDemoSession,
   createDemoUser,
@@ -109,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         toast({
           title: "Ошибка регистрации",
-          description: error.message,
+          description: getRussianAuthError(error, "sign-up"),
           variant: "destructive",
         });
       } else {
@@ -123,8 +124,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       const authError = error instanceof Error ? error : new Error("Неизвестная ошибка регистрации");
       toast({
-        title: "Ошибка",
-        description: authError.message,
+        title: "Ошибка регистрации",
+        description: getRussianAuthError(authError, "sign-up"),
         variant: "destructive",
       });
       return { error: authError };
@@ -141,7 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         toast({
           title: "Ошибка входа",
-          description: error.message,
+          description: getRussianAuthError(error, "sign-in"),
           variant: "destructive",
         });
       } else {
@@ -154,8 +155,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       const authError = error instanceof Error ? error : new Error("Неизвестная ошибка входа");
       toast({
-        title: "Ошибка",
-        description: authError.message,
+        title: "Ошибка входа",
+        description: getRussianAuthError(authError, "sign-in"),
         variant: "destructive",
       });
       return { error: authError };

@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PetQuizGame } from "./PetQuizGame";
+import { getPetStage, daysWord } from "@/lib/pet-growth";
 
 export const PetCare = () => {
   const {
@@ -113,9 +114,27 @@ export const PetCare = () => {
         {userPet && (
           <>
             <Card className="p-6 text-center bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border-2 border-indigo-100 shadow-sm">
-              <div className="text-8xl mb-4 animate-bounce-gentle">{userPet.pets?.icon || "🐾"}</div>
-              <h2 className="text-2xl font-bold text-indigo-950 mb-1">{userPet.pet_name}</h2>
-              <p className="text-muted-foreground text-sm">{userPet.pets?.species || userPet.pets?.name}</p>
+              {(() => {
+                const st = getPetStage(userPet.adopted_at);
+                return (
+                  <>
+                    <div className={`text-8xl mb-4 transition-transform ${st.scale}`}>
+                      <div className="animate-bounce-gentle">{userPet.pets?.icon || "🐾"}{st.key === "adult" && <span className="text-4xl align-top">👑</span>}</div>
+                    </div>
+                    <h2 className="text-2xl font-bold text-indigo-950 mb-1">{userPet.pet_name}</h2>
+                    <p className="text-muted-foreground text-sm">{userPet.pets?.species || userPet.pets?.name}</p>
+                    <div className="mt-3 inline-flex flex-col items-center gap-1">
+                      <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm font-bold">{st.label}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {st.next ? `Подрастёт через ${st.next} ${daysWord(st.next)}` : "Совсем взрослый — умеет всё! 🎉"}
+                      </span>
+                      <div className="flex gap-1 text-lg">
+                        <span>🍼</span><span className={st.key === "baby" ? "opacity-30" : ""}>🎒</span><span className={st.key === "adult" ? "" : "opacity-30"}>👑</span>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </Card>
 
             {/* Характеристики */}

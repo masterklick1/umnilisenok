@@ -1,46 +1,13 @@
-# План: исправить белую карту в Android-приложении
+# Restore features lost in the accidental rollback
 
-## Что подтверждено
-- Ключи пользователь уже настроил, поэтому исправление не будет ограничиваться настройкой Google Cloud.
-- Версии совместимы: `@capacitor/google-maps 8.0.1` поддерживает установленный Capacitor 8.4; Android SDK проекта также совпадает с требованиями плагина.
-- Нативная карта Android рисуется под WebView. Сейчас контейнер карты имеет `overflow-hidden` и скругление — такое CSS-обрезание ненадёжно работает с нативным слоем и может полностью скрыть карту.
-- Карта находится внутри переключаемой вкладки. При переходах вкладка размонтируется, а асинхронное создание и уничтожение карты могут пересечься и оставить пустой нативный слой.
-- Используется обычный `div`, хотя документированный контейнер плагина — `capacitor-google-map` с явно заданными размерами.
+## Problem (confirmed)
+The current version is missing Reading, Fairy Tales, screen-time and school-mode limits, garden, parent gifts, streak bonuses, reward items, parent feedback, learning-progress cards, watch mode, the Android auto-start receiver, and the "Забыли пароль?" / password reset page. The earlier full version still exists in project history (106 files differ).
 
-## Изменения
+## Plan
+1. Restore every file from the last good version (commit 20fed9f) that was deleted or changed by the rollback, including `ResetPasswordPage`, the `/reset-password`, `/reading`, `/tales`, `/app`, `/index` routes and `<ScreenTimeGuard/>`.
+2. Keep changes made after that version: Google and Yandex verification tags in `index.html`, `public/yandex_d30326485fce37ee.html`, the native English voice work in `src/lib/sound.ts` and English pages, and `codemagic.yaml` edits. Merge by hand where both sides changed a file.
+3. Redeploy the `send-parent-feedback` function.
+4. Check the build, then open login, reset password, Reading, Tales and the parent dashboard in the browser.
 
-1. **Исправить контейнер нативной карты**
-   - Использовать `capacitor-google-map` в Android-режиме.
-   - Задать контейнеру стабильные ширину и высоту.
-   - Убрать с нативного контейнера `overflow-hidden` и CSS-скругление, которые конфликтуют со слоем карты под WebView.
-   - Web-карту оставить без изменений.
-
-2. **Сделать WebView действительно прозрачным для карты**
-   - Сохранить прозрачность всей цепочки DOM-предков.
-   - Явно выставить прозрачный фон Android WebView в `MainActivity` при запуске.
-   - Восстанавливать обычный фон после закрытия последней карты, не оставляя другие экраны прозрачными.
-
-3. **Устранить гонку при открытии вкладки**
-   - Перед созданием дождаться готовности Capacitor и нескольких стабильных измерений контейнера с ненулевыми размерами.
-   - Не создавать новый экземпляр, пока старый с тем же ID уничтожается.
-   - Корректно отменять отложенный запуск при уходе со вкладки.
-   - После появления или изменения размера контейнера вызвать обновление границ нативной карты.
-
-4. **Добавить проверяемую диагностику**
-   - Отслеживать готовность карты через callback плагина, а не считать успешный вызов `create()` гарантией отображения.
-   - Если карта не готова за ограниченное время, вместо белого квадрата показать сообщение «Карта не загрузилась» и кнопку повторной загрузки.
-   - Записать в Android logcat этап, на котором произошёл сбой: создание, готовность SDK, размеры контейнера или загрузка тайлов.
-   - Не выводить API-ключ в интерфейс или логи.
-
-5. **Усилить проверку сборки Codemagic**
-   - В обоих workflow останавливать сборку, если `GOOGLE_MAPS_ANDROID_API_KEY` пустой.
-   - После вставки проверять наличие `com.google.android.geo.API_KEY` в итоговом манифесте без печати значения ключа.
-   - Исправить несовпадение имени в `.env.example`: сейчас там документирован `GOOGLE_MAPS_ANDROID_KEY`, а сборка читает `GOOGLE_MAPS_ANDROID_API_KEY`.
-
-6. **Проверка**
-   - Typecheck и production build.
-   - Проверить web fallback в preview — он не должен измениться.
-   - Проверить сценарии Android: первое открытие карты, уход на другую вкладку и возврат, прокрутка страницы, повторная загрузка после ошибки.
-
-## После изменений
-Нужно выполнить `git pull`, затем `npm install`, `npm run build`, `npx cap sync` и создать новую Android-сборку в Codemagic. Для окончательной проверки нативного результата потребуется установка нового APK/AAB на телефон.
+## Simpler alternative
+Use History to revert to the version right before the rollback, then re-add only the verification codes and English voice fix.

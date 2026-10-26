@@ -74,6 +74,16 @@ export const WatchHome = ({ childName }: { childName: string }) => {
       <div className="flex flex-col items-center gap-2 pb-2">
         <SOSButton big />
         <div className="text-[11px] text-white/50">Красная кнопка — позвать родителей</div>
+        <button
+          type="button"
+          onClick={() => {
+            try { localStorage.setItem("watch-mode", "off"); } catch { /* ignore */ }
+            window.dispatchEvent(new Event("watch-mode-changed"));
+          }}
+          className="mt-1 rounded-full border border-white/30 px-3 py-1 text-[11px] text-white/80"
+        >
+          Уроки и игры
+        </button>
       </div>
     </div>
   );

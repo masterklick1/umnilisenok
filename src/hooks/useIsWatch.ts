@@ -14,13 +14,13 @@ export const getWatchModeSetting = (): string => {
  * Определяет «часовой» режим:
  * - "on"  — всегда компактный экран защиты (выбрано в настройках);
  * - "off" — никогда;
- * - "auto" — по ширине экрана (детские Android-часы 240–380px).
+ * - "auto" — по ширине экрана (только часы: ≤320×480px, телефоны не попадают).
  */
 export const useIsWatch = () => {
   const [isWatch, setIsWatch] = useState(false);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 380px)");
+    const mq = window.matchMedia("(max-width: 320px) and (max-height: 480px)");
     const update = () => {
       const mode = getWatchModeSetting();
       setIsWatch(mode === "on" ? true : mode === "off" ? false : mq.matches);

@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { Users, Baby, Sparkles } from "lucide-react";
 import { getRussianAuthError } from "@/lib/auth-errors";
+import AnimatedFox from "@/components/AnimatedFox";
 
 const signUpSchema = z.object({
   email: z.string().email({ message: "Неверный формат email" }),
@@ -217,11 +218,11 @@ export default function AuthPage() {
   if (screen === "choose") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/20 via-background to-secondary/20">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="text-7xl mb-4">🦊</div>
-            <CardTitle className="text-3xl">Умный Лисёнок</CardTitle>
-            <CardDescription>Кто заходит в приложение?</CardDescription>
+        <Card className="w-full max-w-md rounded-3xl shadow-xl border-2 animate-fade-in">
+          <CardHeader className="text-center pb-4">
+            <AnimatedFox size={160} />
+            <CardTitle className="text-3xl font-extrabold">Умный Лисёнок</CardTitle>
+            <CardDescription className="text-base">Привет! Кто заходит в приложение?</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button

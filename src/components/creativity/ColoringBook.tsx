@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ColorPalette } from "./ColorPalette";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Images, RotateCcw, Save } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { saveDrawing, useGalleryOwner, type Drawing } from "@/lib/drawing-gallery";
+import { NUMBERED_COLORINGS, type NumberedColoring } from "./numbered-coloring";
 import { COLORING_SCENES, type ColoringImage } from "./coloring-scenes";
 
 const COLORING_IMAGES: ColoringImage[] = [
@@ -227,12 +230,38 @@ const COLORING_IMAGES: ColoringImage[] = [
   },
 ];
 
-const LEVELS = [
+const LEVELS: { title: string; images: (ColoringImage | NumberedColoring)[] }[] = [
   { title: "Лёгкие", images: COLORING_IMAGES },
   { title: "С деталями", images: COLORING_SCENES },
+  { title: "По номерам", images: NUMBERED_COLORINGS },
 ];
 
+async function renderColoring(image: ColoringImage, colors: Record<number, string>, strokeWidth: number) {
+  const paths = image.paths.map((path, index) =>
+    `<path d="${path}" fill="${colors[index] ?? "#ffffff"}" stroke="#202234" stroke-width="${strokeWidth}" stroke-linejoin="round"/>`
+  ).join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 300 200"><rect width="300" height="200" fill="white"/>${paths}</svg>`;
+  const picture = new Image();
+  picture.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  await picture.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = 600;
+  canvas.height = 400;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas unavailable");
+  context.drawImage(picture, 0, 0);
+  return canvas.toDataURL("image/png");
+}
+
 export const ColoringBook = () => {
+  const owner = useGalleryOwner();
+  const saving = useRef(false);
+  const drafts = useRef<Record<string, Drawing>>({});
+  const [saved, setSaved] = useState<Record<string, boolean>>({});
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [showPicker, setShowPicker] = useState(false);
+  const [selectedNumber, setSelectedNumber] = useState(1);
+  const [hint, setHint] = useState<number | null>(null);
   const [selectedColor, setSelectedColor] = useState("#FF0000");
   const [levelIndex, setLevelIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -242,31 +271,72 @@ export const ColoringBook = () => {
   const currentImage = images[currentImageIndex];
   const coloredPaths = painted[currentImage.id];
 
+  const numbered = "labels" in currentImage ? currentImage : null;
+  const strokeWidth = levelIndex === 0 ? 2 : 1.35;
+  const saveKey = owner ? `${owner.id}:${currentImage.id}` : currentImage.id;
+  const hasPaint = !!coloredPaths && Object.keys(coloredPaths).length > 0;
+
+  const changePaint = (colors: Record<number, string>) => {
+    delete drafts.current[saveKey];
+    setSaved((prev) => ({ ...prev, [saveKey]: false }));
+    setSaveStatus("idle");
+    setPainted((prev) => ({ ...prev, [currentImage.id]: colors }));
+  };
+
   const handlePathClick = (index: number) => {
-    setPainted((prev) => ({
-      ...prev,
-      [currentImage.id]: { ...prev[currentImage.id], [index]: selectedColor },
-    }));
+    if (saving.current) return;
+    const required = numbered?.labels[index].number;
+    if (required && required !== selectedNumber) {
+      if (!coloredPaths?.[index]) setHint(required);
+      return;
+    }
+    const color = numbered ? numbered.palette[selectedNumber - 1] : selectedColor;
+    setHint(null);
+    if (coloredPaths?.[index] !== color) changePaint({ ...coloredPaths, [index]: color });
   };
 
-  const handleReset = () => {
-    setPainted((prev) => ({ ...prev, [currentImage.id]: {} }));
+  const selectImage = (index: number) => {
+    setCurrentImageIndex(index);
+    setSelectedNumber(1);
+    setHint(null);
+    setSaveStatus("idle");
+    setShowPicker(false);
   };
 
-  const move = (direction: number) => {
-    setCurrentImageIndex((prev) => (prev + direction + images.length) % images.length);
+  const save = async () => {
+    if (!owner || !coloredPaths || !hasPaint || saving.current || saved[saveKey]) return;
+    saving.current = true;
+    setSaveStatus("saving");
+    try {
+      const drawing = drafts.current[saveKey] ?? {
+        id: crypto.randomUUID(),
+        title: `Раскраска · ${currentImage.name}`,
+        image_data: await renderColoring(currentImage, coloredPaths, strokeWidth),
+        created_at: new Date().toISOString(),
+      };
+      drafts.current[saveKey] = drawing;
+      await saveDrawing(owner, drawing, "coloring");
+      setSaved((prev) => ({ ...prev, [saveKey]: true }));
+      setSaveStatus("idle");
+    } catch {
+      setSaveStatus("error");
+    } finally {
+      saving.current = false;
+    }
   };
+
+  const move = (direction: number) => selectImage((currentImageIndex + direction + images.length) % images.length);
 
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="flex flex-wrap justify-center gap-2">
         {LEVELS.map((level, index) => (
           <Button key={level.title} variant={index === levelIndex ? "default" : "outline"}
-            aria-pressed={index === levelIndex}
+            aria-pressed={index === levelIndex} disabled={saveStatus === "saving"}
             onClick={() => {
               if (index === levelIndex) return;
               setLevelIndex(index);
-              setCurrentImageIndex(0);
+              selectImage(0);
             }}>
             {level.title} · {level.images.length}
           </Button>
@@ -274,20 +344,59 @@ export const ColoringBook = () => {
       </div>
 
       <div className="flex w-full max-w-xl items-center justify-between gap-2">
-        <Button variant="outline" size="icon" aria-label="Предыдущая раскраска" onClick={() => move(-1)}>
+        <Button variant="outline" size="icon" aria-label="Предыдущая раскраска" disabled={saveStatus === "saving"} onClick={() => move(-1)}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0 text-center" aria-live="polite">
           <h3 className="text-lg font-bold sm:text-2xl">{currentImage.name}</h3>
           <p className="text-sm text-muted-foreground">{currentImageIndex + 1} из {images.length}</p>
         </div>
-        <Button variant="outline" size="icon" aria-label="Следующая раскраска" onClick={() => move(1)}>
+        <Button variant="outline" size="icon" aria-label="Следующая раскраска" disabled={saveStatus === "saving"} onClick={() => move(1)}>
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
 
-      <p className="text-center text-sm text-muted-foreground">Выбери цвет и нажми на деталь рисунка.</p>
-      <ColorPalette selectedColor={selectedColor} onColorSelect={setSelectedColor} />
+      <Button variant="outline" disabled={saveStatus === "saving"} onClick={() => setShowPicker(true)}>
+        <Images className="mr-2 h-4 w-4" /> Выбрать картинку
+      </Button>
+      <Dialog open={showPicker} onOpenChange={setShowPicker}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Выбрать раскраску</DialogTitle>
+            <DialogDescription>{LEVELS[levelIndex].title}</DialogDescription>
+          </DialogHeader>
+          <div className="grid max-h-[65vh] grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-3">
+            {images.map((image, index) => (
+              <button key={image.id} type="button" aria-current={currentImageIndex === index}
+                onClick={() => selectImage(index)}
+                className="overflow-hidden rounded-xl border bg-card p-2 text-sm hover:border-primary focus-visible:outline focus-visible:outline-primary">
+                <svg aria-hidden="true" viewBox="0 0 300 200" className="mb-1 block w-full bg-white">
+                  {image.paths.map((path, i) => <path key={i} d={path} fill="white" stroke="#202234" strokeWidth="3" />)}
+                </svg>
+                {image.name}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <p className="text-center text-sm text-muted-foreground">
+        {numbered ? "Выбери краску с таким же номером, как на рисунке." : "Выбери цвет и нажми на деталь рисунка."}
+      </p>
+      {numbered ? (
+        <div className="flex flex-wrap justify-center gap-2">
+          {numbered.palette.map((color, index) => (
+            <Button key={color} variant="outline" size="icon" aria-label={`Цвет ${index + 1}`}
+              aria-pressed={selectedNumber === index + 1}
+              style={{ backgroundColor: color }}
+              className={`font-bold text-slate-950 ${hint === index + 1 ? "ring-4 ring-amber-500" : selectedNumber === index + 1 ? "ring-2 ring-slate-900" : ""}`}
+              onClick={() => { setSelectedNumber(index + 1); setHint(null); }}>
+              {index + 1}
+            </Button>
+          ))}
+        </div>
+      ) : <ColorPalette selectedColor={selectedColor} onColorSelect={setSelectedColor} />}
+      {hint !== null && <p role="status">Для этой детали нужен цвет № {hint}.</p>}
 
       <div className="w-full max-w-xl overflow-hidden rounded-2xl border-4 border-primary/20 bg-white shadow-sm">
         <svg viewBox="0 0 300 200" aria-label={currentImage.name} className="block h-auto w-full">
@@ -297,18 +406,32 @@ export const ColoringBook = () => {
               d={path}
               fill={coloredPaths?.[index] || "#ffffff"}
               stroke="#202234"
-              strokeWidth={levelIndex === 0 ? 2 : 1.35}
+              strokeWidth={strokeWidth}
               strokeLinejoin="round"
               onClick={() => handlePathClick(index)}
               className="cursor-pointer"
             />
           ))}
+          {numbered?.labels.map(({ x, y, number }, index) => !coloredPaths?.[index] && (
+            <text key={index} x={x} y={y} textAnchor="middle" dominantBaseline="central"
+              fontSize="8" fontWeight="700" fill="#202234" pointerEvents="none" aria-hidden="true">{number}</text>
+          ))}
         </svg>
       </div>
 
-      <Button variant="outline" onClick={handleReset} disabled={!coloredPaths || Object.keys(coloredPaths).length === 0}>
-        <RotateCcw className="mr-2 h-4 w-4" /> Очистить
-      </Button>
+      {numbered && Object.keys(coloredPaths ?? {}).length === numbered.paths.length && (
+        <p role="status" className="font-semibold">Готово! Все детали раскрашены.</p>
+      )}
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button variant="outline" disabled={!hasPaint || saveStatus === "saving"} onClick={() => { changePaint({}); setHint(null); }}>
+          <RotateCcw className="mr-2 h-4 w-4" /> Очистить
+        </Button>
+        <Button disabled={!owner || !hasPaint || saveStatus === "saving" || !!saved[saveKey]} onClick={() => void save()}>
+          <Save className="mr-2 h-4 w-4" /> {saveStatus === "saving" ? "Сохраняем…" : "Сохранить в галерею"}
+        </Button>
+      </div>
+      {saved[saveKey] && <p role="status">Раскраска в галерее.</p>}
+      {saveStatus === "error" && <p role="status">Не удалось сохранить раскраску. Попробуй ещё раз.</p>}
     </div>
   );
 };

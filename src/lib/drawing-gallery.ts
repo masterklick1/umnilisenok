@@ -46,13 +46,13 @@ export async function listDrawings(owner: GalleryOwner, limit?: number): Promise
   return data;
 }
 
-export async function saveDrawing(owner: GalleryOwner, drawing: Drawing) {
+export async function saveDrawing(owner: GalleryOwner, drawing: Drawing, category: "drawing" | "coloring" = "drawing") {
   if (owner.local) {
     localStorage.setItem(prefix(owner) + drawing.id, JSON.stringify(drawing));
     return;
   }
   const { error } = await supabase.from("gallery_items").insert({
-    ...drawing, category: "drawing", user_id: owner.id,
+    ...drawing, category, user_id: owner.id,
   });
   if (error && error.code !== "23505") throw error;
 }

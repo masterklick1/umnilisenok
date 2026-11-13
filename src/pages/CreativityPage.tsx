@@ -57,7 +57,7 @@ const CreativityPage = () => {
             <FreeDrawing />
           </TabsContent>
 
-          <TabsContent value="coloring">
+          <TabsContent value="coloring" forceMount className="data-[state=inactive]:hidden">
             <ColoringBook />
           </TabsContent>
 

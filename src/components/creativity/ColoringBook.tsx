@@ -2,13 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ColorPalette } from "./ColorPalette";
 import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
-import { toast } from "sonner";
-
-interface ColoringImage {
-  id: string;
-  name: string;
-  paths: string[];
-}
+import { COLORING_SCENES, type ColoringImage } from "./coloring-scenes";
 
 const COLORING_IMAGES: ColoringImage[] = [
   {
@@ -233,79 +227,88 @@ const COLORING_IMAGES: ColoringImage[] = [
   },
 ];
 
+const LEVELS = [
+  { title: "Лёгкие", images: COLORING_IMAGES },
+  { title: "С деталями", images: COLORING_SCENES },
+];
+
 export const ColoringBook = () => {
   const [selectedColor, setSelectedColor] = useState("#FF0000");
+  const [levelIndex, setLevelIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [coloredPaths, setColoredPaths] = useState<Record<number, string>>({});
+  const [painted, setPainted] = useState<Record<string, Record<number, string>>>({});
 
-  const currentImage = COLORING_IMAGES[currentImageIndex];
+  const { images } = LEVELS[levelIndex];
+  const currentImage = images[currentImageIndex];
+  const coloredPaths = painted[currentImage.id];
 
   const handlePathClick = (index: number) => {
-    setColoredPaths((prev) => ({
+    setPainted((prev) => ({
       ...prev,
-      [index]: selectedColor,
+      [currentImage.id]: { ...prev[currentImage.id], [index]: selectedColor },
     }));
   };
 
   const handleReset = () => {
-    setColoredPaths({});
-    toast.success("Раскраска очищена!");
+    setPainted((prev) => ({ ...prev, [currentImage.id]: {} }));
   };
 
-  const handleNext = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % COLORING_IMAGES.length);
-    setColoredPaths({});
-  };
-
-  const handlePrev = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + COLORING_IMAGES.length) % COLORING_IMAGES.length);
-    setColoredPaths({});
+  const move = (direction: number) => {
+    setCurrentImageIndex((prev) => (prev + direction + images.length) % images.length);
   };
 
   return (
-    <div className="flex flex-col gap-6 items-center">
-      <div className="text-center">
-        <h3 className="text-2xl font-bold text-foreground mb-2">{currentImage.name}</h3>
-        <p className="text-muted-foreground">Кликай на области, чтобы раскрасить!</p>
+    <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-wrap justify-center gap-2">
+        {LEVELS.map((level, index) => (
+          <Button key={level.title} variant={index === levelIndex ? "default" : "outline"}
+            aria-pressed={index === levelIndex}
+            onClick={() => {
+              if (index === levelIndex) return;
+              setLevelIndex(index);
+              setCurrentImageIndex(0);
+            }}>
+            {level.title} · {level.images.length}
+          </Button>
+        ))}
       </div>
 
+      <div className="flex w-full max-w-xl items-center justify-between gap-2">
+        <Button variant="outline" size="icon" aria-label="Предыдущая раскраска" onClick={() => move(-1)}>
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <div className="min-w-0 text-center" aria-live="polite">
+          <h3 className="text-lg font-bold sm:text-2xl">{currentImage.name}</h3>
+          <p className="text-sm text-muted-foreground">{currentImageIndex + 1} из {images.length}</p>
+        </div>
+        <Button variant="outline" size="icon" aria-label="Следующая раскраска" onClick={() => move(1)}>
+          <ChevronRight className="h-5 w-5" />
+        </Button>
+      </div>
+
+      <p className="text-center text-sm text-muted-foreground">Выбери цвет и нажми на деталь рисунка.</p>
       <ColorPalette selectedColor={selectedColor} onColorSelect={setSelectedColor} />
 
-      <div className="border-4 border-primary/20 rounded-2xl shadow-xl overflow-hidden bg-card p-4">
-        <svg
-          width="300"
-          height="200"
-          viewBox="0 0 300 200"
-          className="w-full h-auto"
-        >
+      <div className="w-full max-w-xl overflow-hidden rounded-2xl border-4 border-primary/20 bg-white shadow-sm">
+        <svg viewBox="0 0 300 200" aria-label={currentImage.name} className="block h-auto w-full">
           {currentImage.paths.map((path, index) => (
             <path
               key={index}
               d={path}
-              fill={coloredPaths[index] || "#ffffff"}
-              stroke="#000000"
-              strokeWidth="2"
+              fill={coloredPaths?.[index] || "#ffffff"}
+              stroke="#202234"
+              strokeWidth={levelIndex === 0 ? 2 : 1.35}
+              strokeLinejoin="round"
               onClick={() => handlePathClick(index)}
-              className="cursor-pointer hover:opacity-80 transition-opacity"
+              className="cursor-pointer"
             />
           ))}
         </svg>
       </div>
 
-      <div className="flex gap-3">
-        <Button size="lg" variant="outline" onClick={handlePrev}>
-          <ChevronLeft className="w-5 h-5 mr-2" />
-          Назад
-        </Button>
-        <Button size="lg" variant="outline" onClick={handleReset}>
-          <RotateCcw className="w-5 h-5 mr-2" />
-          Очистить
-        </Button>
-        <Button size="lg" variant="outline" onClick={handleNext}>
-          Вперёд
-          <ChevronRight className="w-5 h-5 ml-2" />
-        </Button>
-      </div>
+      <Button variant="outline" onClick={handleReset} disabled={!coloredPaths || Object.keys(coloredPaths).length === 0}>
+        <RotateCcw className="mr-2 h-4 w-4" /> Очистить
+      </Button>
     </div>
   );
 };

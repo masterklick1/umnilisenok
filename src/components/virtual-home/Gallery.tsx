@@ -1,146 +1,80 @@
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useVirtualHome } from "@/hooks/useVirtualHome";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, ZoomIn } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { deleteDrawing, listDrawings, useGalleryOwner, type Drawing } from "@/lib/drawing-gallery";
 
-export const Gallery = () => {
-  const { galleryItems = [], loading, deleteFromGallery } = useVirtualHome() as any;
-  const items = Array.isArray(galleryItems) ? galleryItems : [];
-  const [selectedImage, setSelectedImage] = useState<any>(null);
+export function Gallery() {
+  const owner = useGalleryOwner();
+  if (!owner) return <p role="status">Загружаем галерею…</p>;
+  return <GalleryContents key={owner.id} ownerId={owner.id} local={owner.local} />;
+}
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} className="aspect-square" />
-        ))}
-      </div>
-    );
-  }
+function GalleryContents({ ownerId, local }: { ownerId: string; local: boolean }) {
+  const [items, setItems] = useState<Drawing[] | null>(null);
+  const [selected, setSelected] = useState<Drawing | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeFailed, setRemoveFailed] = useState(false);
 
-  if (items.length === 0) {
-    return (
-      <Card className="p-8 text-center">
-        <div className="text-6xl mb-4">🎨</div>
-        <h3 className="text-xl font-bold mb-2">Галерея пуста</h3>
-        <p className="text-muted-foreground">
-          Создавай рисунки в разделе "Творчество" и они появятся здесь!
-        </p>
-      </Card>
-    );
-  }
+  useEffect(() => {
+    let active = true;
+    listDrawings({ id: ownerId, local }).then((drawings) => {
+      if (active) setItems(drawings);
+    }).catch(() => {
+      if (active) setLoadFailed(true);
+    });
+    return () => { active = false; };
+  }, [ownerId, local, attempt]);
+
+  const remove = async () => {
+    if (!selected || removing || !window.confirm("Удалить этот рисунок из галереи?")) return;
+    setRemoving(true);
+    setRemoveFailed(false);
+    try {
+      await deleteDrawing({ id: ownerId, local }, selected.id);
+      setItems((drawings) => drawings?.filter(({ id }) => id !== selected.id) ?? []);
+      setSelected(null);
+    } catch {
+      setRemoveFailed(true);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  if (loadFailed) return (
+    <Card className="space-y-3 p-6 text-center">
+      <p role="status">Не удалось открыть галерею.</p>
+      <Button onClick={() => { setLoadFailed(false); setAttempt((value) => value + 1); }}>Попробовать ещё раз</Button>
+    </Card>
+  );
+  if (!items) return <p role="status">Загружаем галерею…</p>;
+  if (!items.length) return <Card className="p-6 text-center">Здесь появятся рисунки, которые ты сохранишь в «Творчестве».</Card>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold">Мои работы ({items.length})</h3>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {items.map((item: any) => (
-          <Card
-            key={item.id}
-            className="group relative overflow-hidden cursor-pointer"
-            onClick={() => setSelectedImage(item)}
-          >
-            <div className="aspect-square">
-              <img
-                src={item.image_data}
-                alt={item.title || "Работа"}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-              <Button size="icon" variant="secondary">
-                <ZoomIn className="w-4 h-4" />
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="destructive"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Удалить работу?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Это действие нельзя отменить. Работа будет удалена из галереи.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Отмена</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => deleteFromGallery && deleteFromGallery(item.id)}
-                    >
-                      Удалить
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-
-            {/* Title */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-              <p className="text-white text-sm truncate">{item.title || "Без названия"}</p>
-              <p className="text-white/70 text-xs">
-                {item.category === "drawing" ? "🖌️ Рисунок" : "🎨 Раскраска"}
-              </p>
-            </div>
-          </Card>
+    <>
+      {local && <p className="mb-3 text-sm text-muted-foreground">Рисунки сохранены на этом устройстве.</p>}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {items.map((item) => (
+          <button key={item.id} type="button" onClick={() => { setRemoveFailed(false); setSelected(item); }}
+            className="overflow-hidden rounded-2xl border bg-card text-left hover:border-primary focus-visible:outline focus-visible:outline-primary">
+            <img src={item.image_data} alt="" loading="lazy" className="aspect-square w-full bg-white object-contain" />
+            <span className="block truncate p-3 text-sm font-medium">{item.title}</span>
+          </button>
         ))}
       </div>
-
-      {/* Full Image Dialog */}
-      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-        <DialogContent className="max-w-3xl">
+      <Dialog open={!!selected} onOpenChange={(open) => { if (!open && !removing) setSelected(null); }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{selectedImage?.title || "Просмотр работы"}</DialogTitle>
+            <DialogTitle>{selected?.title || "Рисунок"}</DialogTitle>
+            <DialogDescription>Работа из галереи</DialogDescription>
           </DialogHeader>
-          {selectedImage && (
-            <div className="relative">
-              <img
-                src={selectedImage.image_data}
-                alt={selectedImage.title || "Работа"}
-                className="w-full rounded-lg"
-              />
-              {selectedImage.created_at && (
-                <p className="text-center text-sm text-muted-foreground mt-2">
-                  {new Date(selectedImage.created_at).toLocaleDateString("ru-RU", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
-              )}
-            </div>
-          )}
+          {selected && <img src={selected.image_data} alt={selected.title} className="mx-auto max-h-[60vh] w-full rounded-xl bg-white object-contain" />}
+          {removeFailed && <p role="status">Не удалось удалить рисунок. Попробуй ещё раз.</p>}
+          <Button variant="outline" onClick={() => void remove()} disabled={removing}>{removing ? "Удаляем…" : "Удалить рисунок"}</Button>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
-};
+}

@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Eraser, FlipHorizontal2, Pencil, Trash2, Undo2 } from "lucide-react";
+import { Eraser, FlipHorizontal2, Pencil, Save, Trash2, Undo2 } from "lucide-react";
+import { saveDrawing, useGalleryOwner, type Drawing } from "@/lib/drawing-gallery";
 import { ColorPalette } from "./ColorPalette";
 
 const WIDTH = 600;
@@ -49,6 +50,10 @@ function paint(ctx: CanvasRenderingContext2D, to: Point, stroke: Stroke) {
 }
 
 export const FreeDrawing = () => {
+  const owner = useGalleryOwner();
+  const draft = useRef<Drawing | null>(null);
+  const saving = useRef(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const strokeRef = useRef<Stroke | null>(null);
   const history = useRef<ImageData[]>([]);
@@ -58,6 +63,35 @@ export const FreeDrawing = () => {
   const [canUndo, setCanUndo] = useState(false);
   const [hasDrawing, setHasDrawing] = useState(false);
 
+  const changed = () => {
+    draft.current = null;
+    setSaveStatus("idle");
+  };
+
+  const save = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !owner || !hasDrawing || strokeRef.current || saving.current || saveStatus === "saved") return;
+    saving.current = true;
+    setSaveStatus("saving");
+    try {
+      if (!draft.current) {
+        const now = new Date();
+        draft.current = {
+          id: crypto.randomUUID(),
+          title: `Рисунок · ${now.toLocaleDateString("ru-RU")}`,
+          image_data: canvas.toDataURL("image/png"),
+          created_at: now.toISOString(),
+        };
+      }
+      await saveDrawing(owner, draft.current);
+      setSaveStatus("saved");
+    } catch {
+      setSaveStatus("error");
+    } finally {
+      saving.current = false;
+    }
+  };
+
   const remember = (ctx: CanvasRenderingContext2D) => {
     if (history.current.length === HISTORY_LIMIT) history.current.shift();
     history.current.push(ctx.getImageData(0, 0, WIDTH, HEIGHT));
@@ -65,7 +99,7 @@ export const FreeDrawing = () => {
   };
 
   const startDrawing = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (event.button !== 0 || strokeRef.current) return;
+    if (event.button !== 0 || strokeRef.current || saving.current) return;
     const canvas = event.currentTarget;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -78,6 +112,7 @@ export const FreeDrawing = () => {
       mirror,
     };
     remember(ctx);
+    changed();
     strokeRef.current = stroke;
     canvas.setPointerCapture(event.pointerId);
     paint(ctx, point, stroke);
@@ -99,22 +134,24 @@ export const FreeDrawing = () => {
   };
 
   const undo = () => {
-    if (strokeRef.current) return;
+    if (strokeRef.current || saving.current) return;
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
     const previous = history.current.pop();
     if (!previous) return;
     ctx.putImageData(previous, 0, 0);
+    changed();
     setCanUndo(history.current.length > 0);
     setHasDrawing(previous.data.some((value, index) => index % 4 === 3 && value > 0));
   };
 
   const clear = () => {
-    if (strokeRef.current || !hasDrawing) return;
+    if (strokeRef.current || saving.current || !hasDrawing) return;
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
     remember(ctx);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    changed();
     setHasDrawing(false);
   };
 
@@ -160,6 +197,11 @@ export const FreeDrawing = () => {
         />
         {mirror && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 border-l-2 border-dashed border-violet-400/70" />}
       </div>
+      <Button disabled={!owner || !hasDrawing || saveStatus === "saving" || saveStatus === "saved"} onClick={() => void save()}>
+        <Save className="mr-2 h-4 w-4" /> {saveStatus === "saving" ? "Сохраняем…" : "Сохранить в галерею"}
+      </Button>
+      {saveStatus === "saved" && <p role="status">Рисунок в галерее.</p>}
+      {saveStatus === "error" && <p role="status">Не удалось сохранить рисунок. Попробуй ещё раз.</p>}
     </div>
   );
 };

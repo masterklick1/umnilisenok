@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Palette, Pencil, Sticker } from "lucide-react";
+import { ArrowLeft, Images, Palette, Pencil, Sticker } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FreeDrawing } from "@/components/creativity/FreeDrawing";
 import { ColoringBook } from "@/components/creativity/ColoringBook";
+import { Gallery } from "@/components/virtual-home/Gallery";
 import { StickerBoard } from "@/components/creativity/StickerBoard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
@@ -33,7 +34,7 @@ const CreativityPage = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mx-auto mb-6 grid h-auto w-full max-w-xl grid-cols-3 gap-1">
+          <TabsList className="mx-auto mb-6 grid h-auto w-full max-w-xl grid-cols-2 gap-1 sm:grid-cols-4">
             <TabsTrigger value="draw" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Pencil className="w-4 h-4" />
               Рисовать
@@ -45,6 +46,10 @@ const CreativityPage = () => {
             <TabsTrigger value="stickers" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Sticker className="w-4 h-4" />
               Наклейки
+            </TabsTrigger>
+            <TabsTrigger value="gallery" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
+              <Images className="w-4 h-4" />
+              Галерея
             </TabsTrigger>
           </TabsList>
 
@@ -58,6 +63,9 @@ const CreativityPage = () => {
 
           <TabsContent value="stickers">
             <StickerBoard />
+          </TabsContent>
+          <TabsContent value="gallery">
+            <Gallery />
           </TabsContent>
         </Tabs>
       </div>

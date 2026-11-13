@@ -3,14 +3,8 @@ import { Card } from "@/components/ui/card";
 import { useVirtualHome, UserRoomItem } from "@/hooks/useVirtualHome";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles, Heart } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { listDrawings, useGalleryOwner, type Drawing } from "@/lib/drawing-gallery";
 import { getPetStage } from "@/lib/pet-growth";
-
-interface Drawing {
-  id: string;
-  title: string | null;
-  image_data: string;
-}
 
 const FRAME_COLORS = ["border-amber-700", "border-rose-400", "border-emerald-500"];
 const GOLD = ["border-yellow-400", "border-amber-400", "border-yellow-500"];
@@ -21,19 +15,20 @@ export const RoomView = () => {
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [zoom, setZoom] = useState<Drawing | null>(null);
 
+  const owner = useGalleryOwner();
+  const ownerId = owner?.id;
+  const local = owner?.local;
   useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("gallery_items")
-        .select("id, title, image_data")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(3);
-      if (data) setDrawings(data as Drawing[]);
-    })();
-  }, []);
+    let active = true;
+    setDrawings([]);
+    setZoom(null);
+    if (ownerId) {
+      listDrawings({ id: ownerId, local: !!local }, 3)
+        .then((items) => { if (active) setDrawings(items); })
+        .catch((error) => console.warn("Could not load drawings", error));
+    }
+    return () => { active = false; };
+  }, [ownerId, local]);
 
   const frameIcons = userRoomItems.filter((i) => i.room_items?.category === "frame").map((i) => i.room_items?.icon);
   const frames = frameIcons.includes("🌈") ? RAINBOW : frameIcons.includes("🖼️") ? GOLD : FRAME_COLORS;
@@ -83,7 +78,7 @@ export const RoomView = () => {
               className={`bg-white p-1 border-[6px] ${frames[i % 3]} ${frames !== FRAME_COLORS ? "border-8 shadow-lg" : ""} rounded-sm shadow-md transition-transform hover:scale-105 ${i % 2 ? "rotate-2" : "-rotate-2"}`}
               aria-label={d.title || "Рисунок"}
             >
-              <img src={d.image_data} alt={d.title || "Рисунок"} className="w-16 h-16 sm:w-20 sm:h-20 object-cover" />
+              <img src={d.image_data} alt={d.title || "Рисунок"} className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
             </button>
           ))
         ) : (

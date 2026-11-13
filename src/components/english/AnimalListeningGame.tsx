@@ -17,8 +17,8 @@ function shuffle<T>(items: readonly T[]): T[] {
   return shuffled;
 }
 
-function makeRounds(animals: readonly Animal[]): Round[] {
-  return shuffle(animals).map((answer) => {
+function makeRounds(animals: readonly Animal[], targets: readonly Animal[]): Round[] {
+  return shuffle(targets).map((answer) => {
     const distractors = shuffle(animals.filter((animal) => animal !== answer)).slice(0, 2);
     return { answer, choices: shuffle([answer, ...distractors]) };
   });
@@ -31,6 +31,7 @@ export function AnimalListeningGame({ animals, onBack }: { animals: readonly Ani
   const [solved, setSolved] = useState(false);
   const [showWord, setShowWord] = useState(false);
   const [score, setScore] = useState(0);
+  const [practice, setPractice] = useState<Animal[]>([]);
 
   const round = rounds[index];
   const finished = rounds.length > 0 && !round;
@@ -38,8 +39,9 @@ export function AnimalListeningGame({ animals, onBack }: { animals: readonly Ani
   const locked = solved || revealed;
   const playWord = (animal: Animal) => void speakEnglish(animal.word, 0.8);
 
-  const start = () => {
-    const next = makeRounds(animals);
+  const start = (targets: readonly Animal[]) => {
+    const next = makeRounds(animals, targets);
+    setPractice([]);
     setRounds(next);
     setIndex(0);
     setMissed([]);
@@ -61,6 +63,9 @@ export function AnimalListeningGame({ animals, onBack }: { animals: readonly Ani
   };
 
   const advance = () => {
+    if (round && (missed.length > 0 || showWord)) {
+      setPractice((words) => [...words, round.answer]);
+    }
     const next = rounds[index + 1];
     setIndex(index + 1);
     setMissed([]);
@@ -78,7 +83,10 @@ export function AnimalListeningGame({ animals, onBack }: { animals: readonly Ani
             {finished ? `Ты нашёл ${score} из ${rounds.length} животных.` : "Послушай английское слово и покажи нужное животное."}
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={start}><Volume2 className="mr-2 h-5 w-5" />{finished ? "Сыграть ещё раз" : "Начать игру"}</Button>
+            {finished && practice.length > 0 && (
+              <Button onClick={() => start(practice)}>Повторить сложные слова</Button>
+            )}
+            <Button onClick={() => start(animals)}><Volume2 className="mr-2 h-5 w-5" />{finished ? "Сыграть ещё раз" : "Начать игру"}</Button>
             <Button variant="outline" onClick={onBack}>К карточкам</Button>
           </div>
         </>

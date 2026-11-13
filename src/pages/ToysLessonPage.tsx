@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { BearPositionGame } from "@/components/russian/BearPositionGame";
 import { SchoolModeGuard } from "@/components/child/SchoolModeGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -45,6 +46,7 @@ export default function ToysLessonPage() {
 }
 
 function ToysLesson({ userId, childId }: { userId?: string; childId: string | null }) {
+  const [playingPositions, setPlayingPositions] = useState(false);
   const [stage, setStage] = useState<Stage>("intro");
   const [index, setIndex] = useState(0);
   const [attempt, setAttempt] = useState(0);
@@ -123,6 +125,8 @@ function ToysLesson({ userId, childId }: { userId?: string; childId: string | nu
     }
   };
 
+  if (playingPositions) return <BearPositionGame onBack={() => setPlayingPositions(false)} />;
+
   return (
     <>
       <header className="mb-5">
@@ -139,6 +143,9 @@ function ToysLesson({ userId, childId }: { userId?: string; childId: string | nu
             <p className="text-muted-foreground">Лисёнок назовёт три игрушки. Потом покажи, какую он попросит. Если захочешь, повтори фразу вслух.</p>
             <Button size="lg" className="w-full gap-2" onClick={start}>
               <Volume2 className="h-5 w-5" /> Начать урок
+            </Button>
+            <Button variant="outline" size="lg" className="w-full" onClick={() => setPlayingPositions(true)}>
+              Где мишка?
             </Button>
           </div>
         )}
@@ -210,7 +217,8 @@ function ToysLesson({ userId, childId }: { userId?: string; childId: string | nu
                 <Button variant="outline" onClick={() => void save()}>Повторить отправку</Button>
               </div>
             )}
-            <Button size="lg" onClick={start} disabled={saveStatus === "saving"} className="w-full">Сыграть ещё раз</Button>
+            <Button size="lg" disabled={saveStatus === "saving"} className="w-full" onClick={() => setPlayingPositions(true)}>Где мишка?</Button>
+            <Button variant="outline" onClick={start} disabled={saveStatus === "saving"} className="w-full">Сыграть ещё раз</Button>
           </div>
         )}
       </Card>

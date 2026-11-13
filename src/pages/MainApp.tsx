@@ -128,9 +128,9 @@ export const MainApp = () => {
     navigate("/parent");
   };
 
-  const handleCreateAccount = async () => {
+  const openDemoAuth = async (mode: "login" | "register") => {
     await signOut();
-    navigate("/auth");
+    navigate(`/auth?mode=${mode}`, { replace: true });
   };
 
   if (loading || roleLoading) {
@@ -188,12 +188,12 @@ export const MainApp = () => {
           <div className="mb-6 rounded-2xl border border-primary/20 bg-card/90 p-4 text-center shadow-md">
             <p className="font-bold text-primary">Демо-режим</p>
             <p className="text-sm text-muted-foreground">
-              Уроки доступны без регистрации. Родительский контроль, безопасность и будущая подписка
-              подключаются после создания аккаунта.
+              Можно заниматься без регистрации. Для родительского кабинета войдите или создайте аккаунт.
             </p>
-            <Button size="sm" variant="secondary" className="mt-3" onClick={handleCreateAccount}>
-              Создать аккаунт
-            </Button>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => void openDemoAuth("login")}>Войти</Button>
+              <Button size="sm" variant="secondary" onClick={() => void openDemoAuth("register")}>Зарегистрироваться</Button>
+            </div>
           </div>
         )}
 

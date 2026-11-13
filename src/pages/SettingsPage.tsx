@@ -24,7 +24,7 @@ const App: any = Capacitor.isNativePlatform() ? registerPlugin<any>("App") : nul
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signOut } = useAuth();
+  const { user, isDemo, signOut } = useAuth();
   const { isChild } = useUserRole();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [firstName, setFirstName] = useState("");
@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
+    if (!user || isDemo) return;
     if (!confirm("Удалить аккаунт и все данные безвозвратно?")) return;
     if (!confirm("Точно удалить? Это действие нельзя отменить.")) return;
     setDeleting(true);
@@ -59,6 +60,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setSoundEnabled(localStorage.getItem(SOUND_KEY) !== "false");
+    if (isDemo) return;
     purgeLegacyPin();
     hasParentPin().then(setPinSet);
     if (user) {
@@ -76,7 +78,7 @@ export default function SettingsPage() {
         .then(setBackgroundGeoPermission)
         .catch(() => setBackgroundGeoPermission("prompt"));
     }
-  }, [user]);
+  }, [user, isDemo]);
 
   const toggleSound = (v: boolean) => {
     setSoundEnabled(v);
@@ -124,6 +126,11 @@ export default function SettingsPage() {
     }
     setPinSet(false);
     toast({ title: "PIN удалён" });
+  };
+
+  const openDemoAuth = async (mode: "login" | "register") => {
+    await signOut();
+    navigate(`/auth?mode=${mode}`, { replace: true });
   };
 
   const handleSignOut = async () => {
@@ -217,7 +224,7 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold mb-6">⚙️ Настройки</h1>
 
         {/* Профиль */}
-        <Card className="p-5 mb-4">
+        {!isDemo && <Card className="p-5 mb-4">
           <div className="flex items-center gap-2 mb-3 font-semibold">
             <User className="w-5 h-5 text-primary" /> Профиль
           </div>
@@ -234,7 +241,7 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-        </Card>
+        </Card>}
 
         {/* Звук */}
         <Card className="p-5 mb-4">
@@ -250,12 +257,15 @@ export default function SettingsPage() {
           </p>
         </Card>
 
-        <ScreenTimeSettings />
-
-        <WatchModeSettings />
+        {!isDemo && (
+          <>
+            <ScreenTimeSettings />
+            <WatchModeSettings />
+          </>
+        )}
 
         {/* Родительский PIN — только для родителей на своём телефоне */}
-        {!isChild && (
+        {!isDemo && !isChild && (
           <Card className="p-5 mb-4">
             <div className="flex items-center gap-2 mb-3 font-semibold">
               <Lock className="w-5 h-5 text-primary" /> Родительский PIN
@@ -286,7 +296,7 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {user && isChild && (
+        {!isDemo && user && isChild && (
           <Card className="p-5 mb-4 border-primary/20 bg-primary/5">
             <p className="text-sm text-muted-foreground">
               📱 Это аккаунт ребёнка. Родители управляют и следят со своего телефона в родительском
@@ -296,7 +306,7 @@ export default function SettingsPage() {
         )}
 
         {/* Фоновая геолокация — native Android (уведомление FGS на устройстве ребёнка) */}
-        {Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
+        {!isDemo && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
           <>
             <Card className="p-5 mb-4">
               <div className="flex items-center justify-between mb-3">
@@ -344,7 +354,16 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {!user ? (
+        {isDemo ? (
+          <Card className="space-y-3 p-5">
+            <h2 className="font-semibold">Демо-режим</h2>
+            <p className="text-sm text-muted-foreground">Вы можете заниматься без регистрации. Для родительского кабинета нужен аккаунт.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => void openDemoAuth("login")}>Войти</Button>
+              <Button onClick={() => void openDemoAuth("register")}>Зарегистрироваться</Button>
+            </div>
+          </Card>
+        ) : !user ? (
           <Button className="w-full" onClick={() => navigate("/auth")}>
             <LogIn className="w-4 h-4 mr-2" /> Войти в аккаунт
           </Button>

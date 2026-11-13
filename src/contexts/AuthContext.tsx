@@ -170,10 +170,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setDemoActive(false);
         setSession(null);
         setUser(null);
-        toast({
-          title: "Демо завершено",
-          description: "Можно войти или создать родительский аккаунт.",
-        });
         return;
       }
 

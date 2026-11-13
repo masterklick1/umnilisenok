@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,8 +26,10 @@ const signInSchema = z.object({
 type Screen = "choose" | "parent" | "reset";
 
 export default function AuthPage() {
-  const [screen, setScreen] = useState<Screen>("choose");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode");
+  const [screen, setScreen] = useState<Screen>(mode === "login" || mode === "register" ? "parent" : "choose");
+  const [isSignUp, setIsSignUp] = useState(mode === "register");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");

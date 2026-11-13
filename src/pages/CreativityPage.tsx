@@ -16,7 +16,7 @@ const CreativityPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-background pb-8">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
             size="lg"
@@ -26,30 +26,29 @@ const CreativityPage = () => {
             <ArrowLeft className="w-5 h-5" />
             Назад
           </Button>
-          <h1 className="text-3xl font-extrabold flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-extrabold sm:text-3xl">
             <span>🎨</span>
             <span className="text-gradient">Творчество</span>
           </h1>
-          <div className="w-24" />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-xl mx-auto grid-cols-3 mb-8">
-            <TabsTrigger value="draw" className="gap-2">
+          <TabsList className="mx-auto mb-6 grid h-auto w-full max-w-xl grid-cols-3 gap-1">
+            <TabsTrigger value="draw" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Pencil className="w-4 h-4" />
               Рисовать
             </TabsTrigger>
-            <TabsTrigger value="coloring" className="gap-2">
+            <TabsTrigger value="coloring" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Palette className="w-4 h-4" />
               Раскрашивать
             </TabsTrigger>
-            <TabsTrigger value="stickers" className="gap-2">
+            <TabsTrigger value="stickers" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Sticker className="w-4 h-4" />
               Наклейки
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="draw">
+          <TabsContent value="draw" forceMount className="data-[state=inactive]:hidden">
             <FreeDrawing />
           </TabsContent>
 

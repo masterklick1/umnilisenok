@@ -18,6 +18,9 @@ import { SOSButton } from "@/components/SOSButton";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useIsWatch } from "@/hooks/useIsWatch";
 import { WatchHome } from "@/components/child/WatchHome";
+import { loadReadingSession } from "@/lib/reading-session";
+import { READING_LEVEL_TITLES } from "@/lib/reading-items";
+import { getActivityChildId } from "@/lib/activity-log";
 import { SchoolModeGuard } from "@/components/child/SchoolModeGuard";
 
 export const MainApp = () => {
@@ -29,6 +32,8 @@ export const MainApp = () => {
   const [childName, setChildName] = useState<string>("");
   const [parentPlayMode, setParentPlayMode] = useState(false);
   const isWatch = useIsWatch();
+  const readingSession = loadReadingSession(isChild ? user?.id ?? null : getActivityChildId(user?.id));
+  const hasUnfinishedReading = readingSession && readingSession.index < readingSession.items.length;
 
   useActivityTracker();
 
@@ -210,6 +215,22 @@ export const MainApp = () => {
         {/* Subject Cards - Vertical List (закрываются в школьные часы) */}
         <SchoolModeGuard>
         <div className="space-y-4">
+          <Button
+            size="lg"
+            className="h-auto w-full justify-start gap-4 rounded-3xl p-5 text-left"
+            onClick={() => navigate(hasUnfinishedReading ? "/reading?continue" : "/reading")}
+          >
+            <BookOpenText className="h-7 w-7 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 whitespace-normal">
+              <span className="block text-lg font-bold">
+                {hasUnfinishedReading ? "Продолжить занятие" : "Начать чтение"}
+              </span>
+              <span className="block text-sm font-normal">
+                {hasUnfinishedReading ? READING_LEVEL_TITLES[readingSession.level] : "Буквы, слоги и первые слова"}
+              </span>
+            </span>
+          </Button>
+
           <SubjectCard
             icon={<Calculator className="w-8 h-8 text-blue-600" />}
             title="Математика"
@@ -226,15 +247,6 @@ export const MainApp = () => {
             onClick={() => navigate("/alphabet")}
             bgColor="bg-gradient-to-br from-rose-100 to-orange-100"
             decorativeElements="АБВ"
-          />
-
-          <SubjectCard
-            icon={<BookOpenText className="w-8 h-8 text-teal-600" />}
-            title="Чтение"
-            subtitle="Читаем по слогам"
-            onClick={() => navigate("/reading")}
-            bgColor="bg-gradient-to-br from-teal-100 to-emerald-100"
-            decorativeElements="МА-МА"
           />
 
           <SubjectCard

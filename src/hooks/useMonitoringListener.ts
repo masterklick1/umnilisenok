@@ -14,9 +14,7 @@ interface MonitoringRequest {
   status: "pending" | "fulfilled" | "failed";
 }
 
-export const MONITORING_CONSENT_KEY = "monitoring-consent-acknowledged-v1";
-
-export const hasMonitoringConsent = (): boolean => true;
+export const monitoringConsentKey = (userId: string) => `monitoring-consent-acknowledged-v2:${userId}`;
 
 const MONITORING_NOTIFICATION_CHANNEL_ID = "monitoring-active";
 
@@ -213,7 +211,7 @@ export const prewarmMonitoringPermissions = async (): Promise<void> => {
   }
 };
 
-export const useMonitoringListener = (enabled: boolean = true) => {
+export const useMonitoringListener = (enabled: boolean) => {
   const { user } = useAuth();
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -226,10 +224,6 @@ export const useMonitoringListener = (enabled: boolean = true) => {
       try {
         const childId = await resolveChildTrackingId(user);
         if (!childId || !active) return;
-
-        try {
-          localStorage.setItem(MONITORING_CONSENT_KEY, "1");
-        } catch (e) {}
 
         const channel = supabase
           .channel(`monitoring-${childId}`)

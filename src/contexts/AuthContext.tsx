@@ -186,6 +186,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       await supabase.auth.signOut();
+      sessionStorage.removeItem("activeChildId");
+      sessionStorage.removeItem("activeChildName");
       toast({
         title: "До скорой встречи! 👋",
       });

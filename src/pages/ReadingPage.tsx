@@ -1,9 +1,10 @@
 import { StreakBonusBanner } from "@/components/StreakBonusBanner";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Volume2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useUserProgress } from "@/hooks/useUserProgress";
@@ -11,18 +12,22 @@ import { useReadingProgress } from "@/hooks/useReadingProgress";
 import { speak } from "@/lib/sound";
 import {
   VOWELS,
-  SIMPLE_SYLLABLES,
-  COMPLEX_SYLLABLES,
   READING_WORDS,
-  pickRandom,
   shuffleLetters,
   pickPictureOptions,
   pickLetterOptions,
   type ReadingWord,
 } from "@/lib/reading-curriculum";
 
-type Level = 1 | 2 | 3 | 4;
-const EXERCISES_PER_SESSION = 5;
+import { READING_LEVEL_TITLES, readingItemsForLevel } from "@/lib/reading-items";
+import {
+  loadReadingSession,
+  saveReadingSession,
+  startReadingSession,
+  READING_LESSON_LENGTH,
+  type ReadingLevel as Level,
+  type ReadingSession,
+} from "@/lib/reading-session";
 
 const LEVELS: {
   level: Level;
@@ -67,20 +72,11 @@ type Round =
   | { kind: "word"; word: ReadingWord }
   | { kind: "picture"; word: ReadingWord; options: ReadingWord[] };
 
-const makeRound = (level: Level): Round => {
-  if (level === 1) {
-    const target = pickRandom(VOWELS);
-    return { kind: "vowel", target, options: pickLetterOptions(target, VOWELS) };
-  }
-  if (level === 2 || level === 3) {
-    return {
-      kind: "syllable",
-      target: pickRandom(level === 2 ? SIMPLE_SYLLABLES : COMPLEX_SYLLABLES),
-    };
-  }
-  // Уровень 4 — чередуем сборку слова и выбор картинки
-  const word = pickRandom(READING_WORDS);
-  return Math.random() < 0.5
+const makeRound = (level: Level, item: string, index: number): Round => {
+  if (level === 1) return { kind: "vowel", target: item, options: pickLetterOptions(item, VOWELS) };
+  if (level < 4) return { kind: "syllable", target: item };
+  const word = READING_WORDS.find((entry) => entry.word === item)!;
+  return index % 2 === 0
     ? { kind: "word", word }
     : { kind: "picture", word, options: pickPictureOptions(word) };
 };
@@ -159,7 +155,8 @@ const Builder = ({
     setPicked(next);
     if (next.length === target.length) {
       const built = next.map((p) => p.ch).join("");
-      setTimeout(() => onResult(built === target, target), 350);
+      if (built !== target) setPicked([]);
+      onResult(built === target, target);
     }
   };
 
@@ -195,6 +192,7 @@ const Builder = ({
             variant="secondary"
             size="lg"
             disabled={locked || picked.some((p) => p.id === t.id)}
+            aria-label={t.ch}
             className={`text-4xl h-20 w-20 font-extrabold ${
               picked.some((p) => p.id === t.id) ? "opacity-30" : ""
             }`}
@@ -262,86 +260,88 @@ const PictureQuiz = ({
 };
 
 export default function ReadingPage() {
+  const progress = useReadingProgress();
+  if (progress.roleLoading) return <p className="p-6 text-center">Загружаем занятие…</p>;
+  return <ReadingLesson key={progress.childId ?? "guest"} {...progress} />;
+}
+
+function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useReadingProgress>) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
   const { addStars } = useUserProgress();
-  const { learned, markLearned } = useReadingProgress();
-  const levelItems = (l: Level): string[] =>
-    l === 1 ? VOWELS : l === 2 ? SIMPLE_SYLLABLES : l === 3 ? COMPLEX_SYLLABLES : READING_WORDS.map((w) => w.word);
+  const [saved, setSaved] = useState(() => loadReadingSession(childId));
+  const currentSession = useRef(saved);
+  const rewards = useRef(Promise.resolve());
+  const [showLesson, setShowLesson] = useState(() => searchParams.has("continue") && saved !== null);
 
-  const [level, setLevel] = useState<Level | null>(null);
-  const [round, setRound] = useState<Round | null>(null);
-  const [score, setScore] = useState(0);
-  const [answered, setAnswered] = useState(0);
-  const [locked, setLocked] = useState(false);
-  const [finished, setFinished] = useState(false);
+  const session = showLesson ? saved : null;
+  const level = session?.level;
+  const item = session?.items[session.index];
+  const index = session?.index ?? 0;
+  const round = useMemo(() => level && item ? makeRound(level, item, index) : null, [level, item, index]);
+  const finished = !!session && !round;
+  const locked = session?.feedback === "correct" || session?.feedback === "incorrect";
 
-  const startLevel = (l: Level) => {
-    setLevel(l);
-    setRound(makeRound(l));
-    setScore(0);
-    setAnswered(0);
-    setLocked(false);
-    setFinished(false);
+  const updateSession = (next: ReadingSession) => {
+    currentSession.current = next;
+    setSaved(next);
+    saveReadingSession(childId, next);
   };
 
-  const reset = () => {
-    setLevel(null);
-    setRound(null);
-    setFinished(false);
+  const startLevel = (nextLevel: Level, repeatItems?: string[]) => {
+    updateSession(startReadingSession(nextLevel, learned, repeatItems));
+    setShowLesson(true);
+  };
+
+  const reward = (amount: number) => {
+    if (childId !== user?.id) return;
+    rewards.current = rewards.current.then(() => addStars(amount, "reading"));
   };
 
   const handleResult: ResultFn = (ok, correct) => {
-    if (locked) return;
-    setLocked(true);
-    const mode = round?.kind ?? "reading";
+    if (!session || session !== currentSession.current || !round || locked) return;
+    const details = { section: "reading", mode: round.kind, item: correct };
+
     if (ok) {
-      setScore((s) => s + 1);
-      addStars(1, "reading");
-      if (round && level) {
-        const item =
-          round.kind === "vowel" || round.kind === "syllable" ? round.target : round.word.word;
-        markLearned(item, level);
-      }
-      logCorrectAnswer({ section: "reading", mode });
-      speak("Правильно! Молодец!");
-      toast({ title: "Правильно! 🎉", description: "+1 ⭐" });
-    } else {
-      logWrongAnswer({ section: "reading", mode });
-      speak("Попробуй ещё раз!");
-      toast({
-        title: "Попробуй ещё! 💪",
-        description: `Правильно: ${correct}`,
-        variant: "destructive",
-      });
+      updateSession({ ...session, score: session.score + 1, feedback: "correct" });
+      reward(1);
+      void markLearned(correct, session.level);
+      void logCorrectAnswer(details);
+      void speak("Правильно! Молодец!");
+      return;
     }
-    // Даём похвале/подсказке договорить до конца, прежде чем показать следующее задание
-    setTimeout(() => {
-      const next = answered + 1;
-      setAnswered(next);
-      setLocked(false);
-      if (level && next >= EXERCISES_PER_SESSION) {
-        setFinished(true);
-        const stars = score + (ok ? 1 : 0);
-        if (stars === EXERCISES_PER_SESSION) {
-          addStars(5, "reading");
-          speak("Отлично! Все ответы верные! Ты настоящий читатель!");
-          toast({ title: "Уровень пройден! 🏆", description: `Все верно! +5 ⭐ бонус` });
-        } else {
-          speak("Молодец! Урок пройден!");
-          toast({
-            title: "Уровень пройден! 🎉",
-            description: `Верных ответов: ${stars} из ${EXERCISES_PER_SESSION}`,
-          });
-        }
-      } else if (level) {
-        setRound(makeRound(level));
-      }
-    }, ok ? 2800 : 2200);
+
+    const feedback = session.feedback === "retry" ? "incorrect" : "retry";
+    updateSession({
+      ...session,
+      mistakes: [...new Set([...session.mistakes, correct])],
+      feedback,
+    });
+    void logWrongAnswer(details);
+    void speak(feedback === "retry" ? "Попробуй ещё раз!" : `Правильный ответ: ${correct}`);
   };
 
-  const currentLevel = LEVELS.find((l) => l.level === level);
+  const advance = () => {
+    if (!session || session !== currentSession.current || !locked) return;
+    const next = { ...session, index: session.index + 1, feedback: null };
+    updateSession(next);
+    if (next.index !== next.items.length) return;
+    if (childId === user?.id && next.score === READING_LESSON_LENGTH && next.mistakes.length === 0) {
+      reward(5);
+      toast({ title: "Все ответы с первой попытки! 🏆", description: "+5 ⭐ бонус" });
+    }
+    void speak("Молодец! Урок пройден!");
+  };
+
+  const nextLevel = session && LEVELS.find(({ level: candidate }) => candidate > session.level &&
+    readingItemsForLevel(candidate).some((entry) => !learned.has(entry)))?.level;
+  const hasMoreInLevel = session && readingItemsForLevel(session.level)
+    .some((entry) => !learned.has(entry) && !session.items.includes(entry));
+  const nextLessonLevel = hasMoreInLevel ? session.level : nextLevel;
+  const listenLabel = round?.kind === "picture" ? "Послушать слово" : "Послушать ещё";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-background via-primary/5 to-accent/5 pb-24">
@@ -351,13 +351,13 @@ export default function ReadingPage() {
       <div className="relative z-10 container mx-auto px-4 py-6 max-w-4xl">
       <StreakBonusBanner />
         <div className="flex justify-between items-center mb-6">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => (level ? reset() : navigate("/"))}>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => (session ? setShowLesson(false) : navigate("/"))}>
             <ArrowLeft className="w-4 h-4" />
-            {level ? "Уровни" : "Назад"}
+            {session ? "Уровни" : "Назад"}
           </Button>
-          {level && !finished && (
+          {session && !finished && (
             <div className="bg-card rounded-full px-4 py-2 shadow-md font-bold text-primary">
-              {answered + 1} / {EXERCISES_PER_SESSION} · Счёт: {score}
+              {session.index + 1} / {session.items.length} · Счёт: {session.score}
             </div>
           )}
         </div>
@@ -368,11 +368,18 @@ export default function ReadingPage() {
           {!level && <p className="text-lg text-muted-foreground">Читаем по складам весело!</p>}
         </div>
 
-        {!level && (
+        {!session && saved && saved.index < saved.items.length && (
+          <Button className="mb-6 w-full" size="lg" onClick={() => setShowLesson(true)}>
+            Продолжить занятие · {READING_LEVEL_TITLES[saved.level]}
+          </Button>
+        )}
+
+        {!session && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {LEVELS.map((l, i) => (
-              <Card
+              <button
                 key={l.level}
+                type="button"
                 onClick={() => startLevel(l.level)}
                 className={`group relative overflow-hidden p-8 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.03] transition-all duration-300 bg-gradient-to-br ${l.bg}`}
                 style={{ animationDelay: `${i * 70}ms` }}
@@ -382,7 +389,7 @@ export default function ReadingPage() {
                 <h3 className="relative z-10 text-2xl font-extrabold mb-2">{l.title}</h3>
                 <p className="relative z-10 text-muted-foreground">Уровень {l.level} · {l.subtitle}</p>
                 {(() => {
-                  const items = levelItems(l.level);
+                  const items = [...new Set(readingItemsForLevel(l.level))];
                   const done = items.filter((x) => learned.has(x));
                   const pct = Math.round((done.length / items.length) * 100);
                   return (
@@ -402,37 +409,41 @@ export default function ReadingPage() {
                     </div>
                   );
                 })()}
-              </Card>
+              </button>
             ))}
           </div>
         )}
 
-        {level && finished && (
-          <Card className="p-10 text-center space-y-6">
-            <div className="text-7xl">{score === EXERCISES_PER_SESSION ? "🏆" : "🎉"}</div>
-            <div className="text-2xl font-bold">
-              Уровень «{currentLevel?.title}» пройден!
-            </div>
-            <p className="text-muted-foreground">
-              Верных ответов: {score} из {EXERCISES_PER_SESSION}
-            </p>
-            <div className="flex justify-center gap-3">
-              <Button size="lg" onClick={() => level && startLevel(level)}>
-                Играть ещё раз
-              </Button>
-              <Button size="lg" variant="outline" onClick={reset}>
-                Другой уровень
-              </Button>
+        {session && finished && (
+          <Card className="p-6 sm:p-10 text-center space-y-6">
+            <div className="text-7xl">{session.score === session.items.length ? "🏆" : "🎉"}</div>
+            <div className="text-2xl font-bold">Занятие завершено!</div>
+            <p className="text-muted-foreground">Верных ответов: {session.score} из {session.items.length}</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {session.mistakes.length > 0 && (
+                <Button size="lg" onClick={() => startLevel(session.level, session.mistakes)}>
+                  Повторить сложное
+                </Button>
+              )}
+              {nextLessonLevel ? (
+                <Button size="lg" onClick={() => startLevel(nextLessonLevel)}>
+                  Следующий урок
+                </Button>
+              ) : (
+                <Button size="lg" onClick={() => startLevel(session.level)}>Играть ещё раз</Button>
+              )}
+              <Button size="lg" variant="outline" onClick={() => setShowLesson(false)}>Другой уровень</Button>
             </div>
           </Card>
         )}
 
         {level && !finished && round?.kind === "vowel" && (
-          <VowelQuiz round={round} locked={locked} onResult={handleResult} />
+          <VowelQuiz key={index} round={round} locked={locked} onResult={handleResult} />
         )}
 
         {level && !finished && round?.kind === "syllable" && (
           <Builder
+            key={index}
             target={round.target}
             locked={locked}
             onResult={handleResult}
@@ -441,6 +452,7 @@ export default function ReadingPage() {
 
         {level && !finished && round?.kind === "word" && (
           <Builder
+            key={index}
             target={round.word.word}
             hint={
               <div className="mb-4">
@@ -454,7 +466,22 @@ export default function ReadingPage() {
         )}
 
         {level && !finished && round?.kind === "picture" && (
-          <PictureQuiz round={round} locked={locked} onResult={handleResult} />
+          <PictureQuiz key={index} round={round} locked={locked} onResult={handleResult} />
+        )}
+
+        {session?.feedback && item && (
+          <div className="mt-4 space-y-3 text-center">
+            <p role="status" className="font-semibold">
+              {session.feedback === "retry" && `Попробуй ещё раз. Нажми «${listenLabel}», если нужна подсказка.`}
+              {session.feedback === "correct" && "Правильно! Молодец!"}
+              {session.feedback === "incorrect" && `Правильный ответ: ${item}`}
+            </p>
+            {locked && (
+              <Button size="lg" onClick={advance}>
+                {session.index + 1 === session.items.length ? "Посмотреть результат" : "Дальше"}
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </div>

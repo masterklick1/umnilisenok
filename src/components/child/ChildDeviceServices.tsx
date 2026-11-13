@@ -12,7 +12,7 @@ import {
   BACKGROUND_GEO_RESTART_EVENT,
 } from "@/lib/geo-permission";
 import { ProminentDisclosureModal } from "@/components/ProminentDisclosureModal";
-import { MONITORING_CONSENT_KEY, prewarmMonitoringPermissions } from "@/hooks/useMonitoringListener";
+import { monitoringConsentKey, prewarmMonitoringPermissions } from "@/hooks/useMonitoringListener";
 import { whenCapacitorReady } from "@/lib/native-ready";
 import { isPushSupported, subscribeToPush } from "@/lib/push";
 import {
@@ -190,6 +190,11 @@ export function ChildDeviceServices() {
   const route = useLocation();
   const { isChild, loading: roleLoading } = useUserRole();
   const [disclosureQueue, setDisclosureQueue] = useState<DisclosureStep[]>([]);
+  const [confirmedUserId, setConfirmedUserId] = useState<string | null>(null);
+  const consentKey = user?.id ? monitoringConsentKey(user.id) : null;
+  const monitoringConsent = !!consentKey && (
+    confirmedUserId === user?.id || localStorage.getItem(consentKey) === "1"
+  );
 
   const active =
     !!user?.id &&
@@ -238,7 +243,7 @@ export function ChildDeviceServices() {
 
           const needsLocationDisclosure =
             !alreadyAcknowledged && (currentPermission === "prompt" || currentPermission === "not-determined");
-          const needsMonitoringDisclosure = localStorage.getItem(MONITORING_CONSENT_KEY) !== "1";
+          const needsMonitoringDisclosure = !!consentKey && localStorage.getItem(consentKey) !== "1";
 
           if (needsLocationDisclosure || needsMonitoringDisclosure) {
             // Показываем предупреждения (in-app disclosure) до самого первого системного
@@ -290,7 +295,7 @@ export function ChildDeviceServices() {
       cancelled = true;
       cancelledRef.current = true;
     };
-  }, [active, user?.id]);
+  }, [active, consentKey]);
 
   const currentDisclosure = disclosureQueue[0] ?? null;
 
@@ -302,8 +307,9 @@ export function ChildDeviceServices() {
     if (currentDisclosure === "location") {
       localStorage.setItem(LOCATION_DISCLOSURE_KEY, "1");
       void startLocationServices({ current: false });
-    } else if (currentDisclosure === "monitoring") {
-      localStorage.setItem(MONITORING_CONSENT_KEY, "1");
+    } else if (currentDisclosure === "monitoring" && consentKey && user) {
+      localStorage.setItem(consentKey, "1");
+      setConfirmedUserId(user.id);
       void prewarmMonitoringPermissions();
       // Если геолокация не была отдельным шагом (уже разрешена раньше), запускаем её здесь.
       if (!disclosureQueue.includes("location")) {
@@ -332,7 +338,7 @@ export function ChildDeviceServices() {
   }, [active]);
 
   useLocationTracker(active);
-  useMonitoringListener(active);
+  useMonitoringListener(active && monitoringConsent);
 
   if (!active) return null;
 

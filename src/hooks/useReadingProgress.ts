@@ -1,27 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
+import { getActivityChildId } from "@/lib/activity-log";
+import { recordLearned } from "@/lib/learning-progress";
 import { readingItemsForLevel } from "@/lib/reading-items";
 
 /** Загружает пройденные элементы «Чтения» ребёнка из базы. */
 export const fetchReadingLearned = async (childId: string): Promise<Set<string>> => {
-  const { data, error } = await supabase
-    .from("reading_progress")
-    .select("level, lesson_index")
-    .eq("child_id", childId);
+  const [reading, shared] = await Promise.all([
+    supabase.from("reading_progress").select("level, lesson_index").eq("child_id", childId),
+    supabase.from("learning_progress").select("item").eq("child_id", childId).eq("subject", "reading"),
+  ]);
   const set = new Set<string>();
-  if (error || !data) return set;
-  data.forEach((r) => {
-    const item = readingItemsForLevel(r.level)[r.lesson_index];
+  reading.data?.forEach((row) => {
+    const item = readingItemsForLevel(row.level)[row.lesson_index];
     if (item) set.add(item);
   });
+  shared.data?.forEach(({ item }) => set.add(item));
   return set;
 };
 
 /** Пройденные буквы/слоги/слова в «Чтении». Хранится в базе + копия на устройстве. */
 export const useReadingProgress = () => {
   const { user, isDemo } = useAuth();
-  const key = `reading_progress_${user?.id ?? "guest"}`;
+  const { isChild, loading: roleLoading } = useUserRole();
+  const childId = isChild || isDemo ? user?.id ?? null : getActivityChildId(user?.id);
+  const key = `reading_progress_${childId ?? "guest"}`;
   const readLocal = () => {
     try {
       return new Set<string>(JSON.parse(localStorage.getItem(key) || "[]"));
@@ -34,8 +39,8 @@ export const useReadingProgress = () => {
   useEffect(() => {
     let cancel = false;
     setLearned(readLocal());
-    if (!user || isDemo) return;
-    fetchReadingLearned(user.id).then((remote) => {
+    if (!childId || isDemo) return;
+    fetchReadingLearned(childId).then((remote) => {
       if (cancel) return;
       setLearned((prev) => {
         const next = new Set([...prev, ...remote]);
@@ -47,7 +52,7 @@ export const useReadingProgress = () => {
       cancel = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isDemo, key]);
+  }, [childId, isDemo, key]);
 
   const markLearned = useCallback(
     async (item: string, level: number) => {
@@ -57,17 +62,21 @@ export const useReadingProgress = () => {
         localStorage.setItem(key, JSON.stringify([...next]));
         return next;
       });
-      if (!user || isDemo) return;
+      if (!childId || isDemo) return;
+      if (childId !== user?.id) {
+        await recordLearned("reading", item);
+        return;
+      }
       const idx = readingItemsForLevel(level).indexOf(item);
       if (idx < 0) return;
       const { error } = await supabase.from("reading_progress").upsert(
-        { child_id: user.id, level, lesson_index: idx, completed_at: new Date().toISOString() },
+        { child_id: childId, level, lesson_index: idx, completed_at: new Date().toISOString() },
         { onConflict: "child_id,level,lesson_index" }
       );
       if (error) console.warn("reading progress save failed", error);
     },
-    [user, isDemo, key]
+    [childId, user?.id, isDemo, key]
   );
 
-  return { learned, markLearned };
+  return { childId, learned, markLearned, roleLoading };
 };

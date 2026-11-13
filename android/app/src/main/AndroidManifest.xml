@@ -32,6 +32,8 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme">
 
+        <meta-data android:name="isMonitoringTool" android:value="child_monitoring" />
+
         <!-- Ключ Google Maps API -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -65,7 +67,7 @@
             android:exported="false"
             android:foregroundServiceType="location"
             android:stopWithTask="false"
-            android:tools:node="replace" />
+            tools:node="replace" />
 
         <!-- Автозапуск защиты после перезагрузки / обновления / убийства процесса -->
         <receiver android:name=".BootReceiver" android:enabled="true" android:exported="true">

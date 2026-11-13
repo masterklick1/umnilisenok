@@ -729,7 +729,7 @@ export default function ParentDashboard() {
           <TabsContent value="mirror">
             {selectedChildData ? (
               <div className="space-y-4">
-                <ReadingProgressCard childId={selectedChildData.child_id} />
+                <ReadingProgressCard childId={selectedChildData.child_id} activities={childActivities} />
                 <LearningProgressCard childId={selectedChildData.child_id} />
                 <ActivityMirror
                   childName={selectedChildData.first_name || "Ребёнок"}

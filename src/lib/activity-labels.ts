@@ -1,3 +1,5 @@
+import { TOYS_LESSON_EVENT, TOYS_LESSON_PATH } from "@/lib/toys-lesson";
+
 export interface ActivityLike {
   activity_type: string;
   page_path: string | null;
@@ -6,6 +8,7 @@ export interface ActivityLike {
 
 const SECTION_LABELS: Record<string, string> = {
   math: "Математика",
+  russian: "Русский через игру",
   alphabet: "Азбука",
   intellect: "Интеллект",
   world: "Мир вокруг",
@@ -16,6 +19,7 @@ const SECTION_LABELS: Record<string, string> = {
 const PATH_LABELS: Record<string, string> = {
   "/": "Главная",
   "/math": "Математика",
+  [TOYS_LESSON_PATH]: "Русский через игру · Мои игрушки",
   "/alphabet": "Азбука",
   "/world": "Мир вокруг",
   "/creativity": "Творчество",
@@ -63,6 +67,7 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   click: "Нажал",
   select_level: "Выбрал уровень",
   start_learning: "Начал занятие",
+  [TOYS_LESSON_EVENT]: "Завершил занятие «Мои игрушки»",
 };
 
 const asString = (value: unknown): string | null => {

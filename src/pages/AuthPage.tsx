@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { z } from "zod";
 import { Users, Baby, Sparkles } from "lucide-react";
 import { getRussianAuthError } from "@/lib/auth-errors";
 import AnimatedFox from "@/components/AnimatedFox";
+import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
 
 const signUpSchema = z.object({
   email: z.string().email({ message: "Неверный формат email" }),
@@ -254,6 +255,14 @@ export default function AuthPage() {
                 Уроки без регистрации, родительский контроль после аккаунта
               </span>
             </Button>
+
+            <div className="rounded-2xl bg-teal-50 p-4 text-center text-teal-950">
+              <p className="font-semibold">Русский через игру · Мои игрушки</p>
+              <p lang="tg" className="mt-1 text-sm">Барои кӯдаконе, ки нав ба омӯзиши забони русӣ шурӯъ мекунанд.</p>
+              <Button asChild variant="link" className="mt-1 text-teal-800">
+                <Link to={TOYS_LESSON_PATH}>Попробовать урок</Link>
+              </Button>
+            </div>
 
             <div className="pt-2 text-center">
               <a

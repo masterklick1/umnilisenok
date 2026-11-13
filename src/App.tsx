@@ -35,6 +35,9 @@ import { GameInviteWatcher } from "./components/child/GameInviteWatcher";
 import { ScreenTimeGuard } from "./components/child/ScreenTimeGuard";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
+import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
+
+const ToysLessonPage = lazy(() => import("./pages/ToysLessonPage"));
 
 const queryClient = new QueryClient();
 
@@ -184,6 +187,11 @@ const App = () => (
           <Routes>
             {/* Публичные роуты */}
             <Route path="/auth" element={<AuthPage />} />
+            <Route path={TOYS_LESSON_PATH} element={
+              <Suspense fallback={<p className="p-6 text-center" role="status">Загружаем урок…</p>}>
+                <ToysLessonPage />
+              </Suspense>
+            } />
             <Route path="/join" element={<JoinPage />} />
             <Route path="/delete-account" element={<DeleteAccountPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />

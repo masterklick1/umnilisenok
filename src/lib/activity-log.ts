@@ -17,10 +17,9 @@ export const logChildActivity = async (
   activityType: string,
   pagePath: string | null,
   details?: Record<string, unknown> | null,
-): Promise<void> => {
-  const childId = getActivityChildId(authUserId);
-  if (!childId) return;
-  if (isDemoUserId(childId)) return;
+  childId = getActivityChildId(authUserId),
+): Promise<boolean> => {
+  if (!authUserId || !childId || isDemoUserId(childId)) return false;
 
   const payload = {
     p_child_id: childId,
@@ -31,11 +30,11 @@ export const logChildActivity = async (
 
   const { error: rpcError } = await (supabase.rpc as any)("log_child_activity", payload);
 
-  if (!rpcError) return;
+  if (!rpcError) return true;
 
   // Fallback when migration not applied yet — works for child on own phone
   if (rpcError.code === "PGRST202" || rpcError.message?.includes("log_child_activity")) {
-    if (childId !== authUserId) return;
+    if (childId !== authUserId) return false;
 
     const { error: insertError } = await supabase.from("child_activity").insert([
       {
@@ -49,8 +48,9 @@ export const logChildActivity = async (
     if (insertError) {
       console.error("Activity logging error:", insertError.message);
     }
-    return;
+    return !insertError;
   }
 
   console.error("Activity logging error:", rpcError.message);
+  return false;
 };

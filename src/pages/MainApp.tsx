@@ -21,6 +21,7 @@ import { WatchHome } from "@/components/child/WatchHome";
 import { loadReadingSession } from "@/lib/reading-session";
 import { READING_LEVEL_TITLES } from "@/lib/reading-items";
 import { getActivityChildId } from "@/lib/activity-log";
+import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
 import { SchoolModeGuard } from "@/components/child/SchoolModeGuard";
 
 export const MainApp = () => {
@@ -228,6 +229,19 @@ export const MainApp = () => {
               <span className="block text-sm font-normal">
                 {hasUnfinishedReading ? READING_LEVEL_TITLES[readingSession.level] : "Буквы, слоги и первые слова"}
               </span>
+            </span>
+          </Button>
+
+          <Button
+            size="lg"
+            variant="outline"
+            className="h-auto w-full justify-start gap-4 rounded-3xl border-teal-200 bg-teal-50 p-5 text-left text-teal-950 hover:bg-teal-100 hover:text-teal-950"
+            onClick={() => navigate(TOYS_LESSON_PATH)}
+          >
+            <span className="text-3xl" aria-hidden="true">🧸</span>
+            <span className="min-w-0 whitespace-normal">
+              <span className="block text-lg font-bold">Русский через игру</span>
+              <span className="block text-sm font-normal">Мои игрушки · послушай и покажи</span>
             </span>
           </Button>
 

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { ChildRoomViewer } from "@/components/parental/ChildRoomViewer";
 import { MonitoringPanel } from "@/components/parental/MonitoringPanel";
+import { ToysLessonReport } from "@/components/parental/ToysLessonReport";
 import { ReadingProgressCard } from "@/components/parental/ReadingProgressCard";
 import { LearningProgressCard } from "@/components/parental/LearningProgressCard";
 import { AttendancePanel } from "@/components/parental/AttendancePanel";
@@ -729,6 +730,7 @@ export default function ParentDashboard() {
           <TabsContent value="mirror">
             {selectedChildData ? (
               <div className="space-y-4">
+                <ToysLessonReport childId={selectedChildData.child_id} activities={childActivities} />
                 <ReadingProgressCard childId={selectedChildData.child_id} activities={childActivities} />
                 <LearningProgressCard childId={selectedChildData.child_id} />
                 <ActivityMirror

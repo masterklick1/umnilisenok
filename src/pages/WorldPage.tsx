@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useUserProgress } from "@/hooks/useUserProgress";
 import { speak } from "@/lib/sound";
+import { ColorListeningGame } from "@/components/world/ColorListeningGame";
 
 type Item = {
   name: string;
@@ -311,7 +312,7 @@ export default function WorldPage() {
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
   const { addStars } = useUserProgress();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [mode, setMode] = useState<"learn" | "quiz" | "describe" | null>(null);
+  const [mode, setMode] = useState<"learn" | "quiz" | "describe" | "listen" | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [quizOptions, setQuizOptions] = useState<Item[]>([]);
   const [score, setScore] = useState(0);
@@ -504,8 +505,24 @@ export default function WorldPage() {
                 <p className="relative z-10 text-muted-foreground">Выбери по подсказке</p>
               </Card>
             </div>
+
+            {selectedTopic.id === "colors" && (
+              <Button
+                variant="outline"
+                className="h-auto w-full justify-start gap-4 rounded-3xl border-teal-300 bg-teal-50 p-5 text-left text-teal-950 hover:bg-teal-100 hover:text-teal-950"
+                onClick={() => setMode("listen")}
+              >
+                <Volume2 className="h-7 w-7 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 whitespace-normal">
+                  <span className="block text-lg font-bold">Послушай и покажи</span>
+                  <span className="block text-sm font-normal">Найди игрушку нужного цвета по просьбе Лисёнка</span>
+                </span>
+              </Button>
+            )}
           </div>
         )}
+
+        {mode === "listen" && <ColorListeningGame onBack={resetMode} />}
 
         {mode === "learn" && currentItem && (
           <div className="space-y-6">

@@ -37,6 +37,7 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
 
+const PageReaderPage = lazy(() => import("./pages/PageReaderPage"));
 const VoiceTeacherPage = lazy(() => import("./pages/VoiceTeacherPage"));
 const ToysLessonPage = lazy(() => import("./pages/ToysLessonPage"));
 
@@ -246,6 +247,16 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <FairyTalesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tales/read-page"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<p className="p-6 text-center" role="status">Открываем сканер…</p>}>
+                    <PageReaderPage />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />

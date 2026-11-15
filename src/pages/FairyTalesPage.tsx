@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Volume2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Camera, Volume2, ChevronLeft, ChevronRight } from "lucide-react";
 import { speak } from "@/lib/sound";
 import { recordLearned } from "@/lib/learning-progress";
 
@@ -207,6 +207,11 @@ export default function FairyTalesPage() {
             <div className="text-6xl mb-4 animate-bounce-gentle">📖</div>
             <h1 className="text-4xl font-extrabold text-gradient mb-2">Сказки</h1>
             <p className="text-lg text-muted-foreground">Слушаем и отвечаем на вопросы!</p>
+          </div>
+          <div className="mb-6 flex justify-center">
+            <Button className="h-14 w-full max-w-sm rounded-2xl text-lg" onClick={() => navigate("/tales/read-page")}>
+              <Camera className="mr-2 h-5 w-5" /> Прочитай страницу
+            </Button>
           </div>
           <div className="flex justify-center gap-2 mb-6 flex-wrap">
             {MODES.map((m) => (

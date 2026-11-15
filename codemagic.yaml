@@ -146,6 +146,7 @@ workflows:
     artifacts:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/mapping.txt
+      - android/app/build/outputs/native-debug-symbols/**/native-debug-symbols.zip
 
   android-release-apk:
     name: Android Release APK (подписанный APK для установки на телефон)
@@ -290,6 +291,7 @@ workflows:
     artifacts:
       - android/app/build/outputs/**/*.apk
       - android/app/build/outputs/**/mapping.txt
+      - android/app/build/outputs/native-debug-symbols/**/native-debug-symbols.zip
 
   android-debug:
     name: Android Debug APK (для теста на телефоне)

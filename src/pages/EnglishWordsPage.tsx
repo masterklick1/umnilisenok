@@ -1,3 +1,4 @@
+import { ENGLISH_VOCABULARY } from "@/lib/english-vocabulary";
 import { ENGLISH_ANIMALS } from "@/lib/english-animals";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -31,139 +32,55 @@ const CATEGORIES: Category[] = [
     id: "colors",
     name: "Цвета",
     icon: <Palette className="w-5 h-5" />,
-    items: [
-      { word: "Red", translation: "Красный", emoji: "🔴" },
-      { word: "Blue", translation: "Синий", emoji: "🔵" },
-      { word: "Yellow", translation: "Желтый", emoji: "🟡" },
-      { word: "Green", translation: "Зеленый", emoji: "🟢" },
-      { word: "Orange", translation: "Оранжевый", emoji: "🟠" },
-      { word: "Purple", translation: "Фиолетовый", emoji: "🟣" },
-    ],
+    items: ENGLISH_VOCABULARY.colors,
   },
   {
     id: "numbers",
     name: "Цифры",
     icon: <Hash className="w-5 h-5" />,
-    items: [
-      { word: "One", translation: "Один", emoji: "1️⃣" },
-      { word: "Two", translation: "Два", emoji: "2️⃣" },
-      { word: "Three", translation: "Три", emoji: "3️⃣" },
-      { word: "Four", translation: "Четыре", emoji: "4️⃣" },
-      { word: "Five", translation: "Пять", emoji: "5️⃣" },
-      { word: "Ten", translation: "Десять", emoji: "🔟" },
-    ],
+    items: ENGLISH_VOCABULARY.numbers,
   },
   {
     id: "food",
     name: "Еда",
     icon: <Utensils className="w-5 h-5" />,
-    items: [
-      { word: "Pizza", translation: "Пицца", emoji: "🍕" },
-      { word: "Apple", translation: "Яблоко", emoji: "🍎" },
-      { word: "Banana", translation: "Банан", emoji: "🍌" },
-      { word: "Ice Cream", translation: "Мороженое", emoji: "🍦" },
-      { word: "Cake", translation: "Торт", emoji: "🎂" },
-      { word: "Cookie", translation: "Печенье", emoji: "🍪" },
-    ],
+    items: ENGLISH_VOCABULARY.food,
   },
   {
     id: "transport", name: "Транспорт", icon: <Car className="w-5 h-5" />,
-    items: [
-      { word: "Car", translation: "Машина", emoji: "🚗" },
-      { word: "Bus", translation: "Автобус", emoji: "🚌" },
-      { word: "Train", translation: "Поезд", emoji: "🚂" },
-      { word: "Plane", translation: "Самолёт", emoji: "✈️" },
-      { word: "Boat", translation: "Лодка", emoji: "⛵" },
-      { word: "Bike", translation: "Велосипед", emoji: "🚲" },
-    ],
+    items: ENGLISH_VOCABULARY.transport,
   },
   {
     id: "family", name: "Семья", icon: <Users className="w-5 h-5" />,
-    items: [
-      { word: "Mom", translation: "Мама", emoji: "👩" },
-      { word: "Dad", translation: "Папа", emoji: "👨" },
-      { word: "Baby", translation: "Малыш", emoji: "👶" },
-      { word: "Sister", translation: "Сестра", emoji: "👧" },
-      { word: "Brother", translation: "Брат", emoji: "👦" },
-      { word: "Grandma", translation: "Бабушка", emoji: "👵" },
-    ],
+    items: ENGLISH_VOCABULARY.family,
   },
   {
     id: "clothes", name: "Одежда", icon: <Shirt className="w-5 h-5" />,
-    items: [
-      { word: "Hat", translation: "Шапка", emoji: "🧢" },
-      { word: "Shirt", translation: "Рубашка", emoji: "👕" },
-      { word: "Dress", translation: "Платье", emoji: "👗" },
-      { word: "Shoes", translation: "Обувь", emoji: "👟" },
-      { word: "Socks", translation: "Носки", emoji: "🧦" },
-      { word: "Coat", translation: "Пальто", emoji: "🧥" },
-    ],
+    items: ENGLISH_VOCABULARY.clothes,
   },
   {
     id: "nature", name: "Природа", icon: <TreePine className="w-5 h-5" />,
-    items: [
-      { word: "Sun", translation: "Солнце", emoji: "☀️" },
-      { word: "Moon", translation: "Луна", emoji: "🌙" },
-      { word: "Tree", translation: "Дерево", emoji: "🌳" },
-      { word: "Flower", translation: "Цветок", emoji: "🌸" },
-      { word: "Rain", translation: "Дождь", emoji: "🌧️" },
-      { word: "Star", translation: "Звезда", emoji: "⭐" },
-    ],
+    items: ENGLISH_VOCABULARY.nature,
   },
   {
     id: "body", name: "Тело", icon: <Hand className="w-5 h-5" />,
-    items: [
-      { word: "Eyes", translation: "Глаза", emoji: "👀" },
-      { word: "Nose", translation: "Нос", emoji: "👃" },
-      { word: "Ear", translation: "Ухо", emoji: "👂" },
-      { word: "Mouth", translation: "Рот", emoji: "👄" },
-      { word: "Hand", translation: "Рука", emoji: "✋" },
-      { word: "Foot", translation: "Нога", emoji: "🦶" },
-    ],
+    items: ENGLISH_VOCABULARY.body,
   },
   {
     id: "emotions", name: "Эмоции", icon: <Smile className="w-5 h-5" />,
-    items: [
-      { word: "Happy", translation: "Радостный", emoji: "😊" },
-      { word: "Sad", translation: "Грустный", emoji: "😢" },
-      { word: "Angry", translation: "Сердитый", emoji: "😠" },
-      { word: "Scared", translation: "Испуганный", emoji: "😨" },
-      { word: "Surprised", translation: "Удивлённый", emoji: "😮" },
-      { word: "Sleepy", translation: "Сонный", emoji: "😴" },
-    ],
+    items: ENGLISH_VOCABULARY.emotions,
   },
   {
     id: "home", name: "Дом", icon: <Home className="w-5 h-5" />,
-    items: [
-      { word: "House", translation: "Дом", emoji: "🏠" },
-      { word: "Bed", translation: "Кровать", emoji: "🛏️" },
-      { word: "Chair", translation: "Стул", emoji: "🪑" },
-      { word: "Door", translation: "Дверь", emoji: "🚪" },
-      { word: "Window", translation: "Окно", emoji: "🪟" },
-      { word: "Lamp", translation: "Лампа", emoji: "💡" },
-    ],
+    items: ENGLISH_VOCABULARY.home,
   },
   {
     id: "weather", name: "Погода", icon: <Sun className="w-5 h-5" />,
-    items: [
-      { word: "Sun", translation: "Солнце", emoji: "☀️" },
-      { word: "Rain", translation: "Дождь", emoji: "🌧️" },
-      { word: "Snow", translation: "Снег", emoji: "❄️" },
-      { word: "Wind", translation: "Ветер", emoji: "💨" },
-      { word: "Cloud", translation: "Облако", emoji: "☁️" },
-      { word: "Rainbow", translation: "Радуга", emoji: "🌈" },
-    ],
+    items: ENGLISH_VOCABULARY.weather,
   },
   {
     id: "fruits", name: "Фрукты", icon: <Apple className="w-5 h-5" />,
-    items: [
-      { word: "Banana", translation: "Банан", emoji: "🍌" },
-      { word: "Orange", translation: "Апельсин", emoji: "🍊" },
-      { word: "Grapes", translation: "Виноград", emoji: "🍇" },
-      { word: "Pear", translation: "Груша", emoji: "🍐" },
-      { word: "Cherry", translation: "Вишня", emoji: "🍒" },
-      { word: "Lemon", translation: "Лимон", emoji: "🍋" },
-    ],
+    items: ENGLISH_VOCABULARY.fruits,
   },
 ];
 

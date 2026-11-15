@@ -3,27 +3,20 @@ import { ArrowLeft, ArrowRight, Check, Headphones, Lock, RotateCcw, Volume2 } fr
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ENGLISH_ANIMALS } from "@/lib/english-animals";
+import { ENGLISH_COURSE_LESSONS as LESSONS, ENGLISH_COURSE_UNITS as UNITS } from "@/lib/english-course";
 import { speakEnglish, stopSpeech } from "@/lib/sound";
 
-const ANIMALS = ENGLISH_ANIMALS.slice(0, 3);
-
-const LESSONS = [
-  { title: "Animals", description: "Услышь слово", order: [0, 1, 2], prompt: (word: string) => word },
-  { title: "Show me the dog", description: "Пойми просьбу", order: [1, 2, 0], prompt: (word: string) => `Show me the ${word}.` },
-  { title: "What is it?", description: "Повтори фразу", order: [2, 0, 1], prompt: (word: string) => `What is it? It's a ${word}.` },
-];
-
-const animalId = z.number().int().min(0).max(ANIMALS.length - 1);
-const animalIds = z.array(animalId).max(ANIMALS.length);
+const WORDS_PER_LESSON = 3;
+const wordId = z.number().int().min(0).max(WORDS_PER_LESSON - 1);
+const wordIds = z.array(wordId).max(WORDS_PER_LESSON);
 const courseSchema = z.object({
   completed: z.number().int().min(0).max(LESSONS.length),
   run: z.object({
     lesson: z.number().int().min(0).max(LESSONS.length - 1),
-    order: animalIds.min(1),
-    step: z.number().int().min(0).max(ANIMALS.length),
-    missed: animalIds,
-    wrong: animalIds,
+    order: wordIds.min(1),
+    step: z.number().int().min(0).max(WORDS_PER_LESSON),
+    missed: wordIds,
+    wrong: wordIds,
     solved: z.boolean(),
     review: z.boolean(),
   }).nullable(),
@@ -43,10 +36,12 @@ function loadCourse(key: string): Course {
 }
 
 function questionFor(run: Run) {
-  return LESSONS[run.lesson].prompt(ANIMALS[run.order[run.step]].word.toLowerCase());
+  const lesson = LESSONS[run.lesson];
+  return lesson.prompt(lesson.words[run.order[run.step]]);
 }
 
-export function AnimalCourse({ learner }: { learner: string }) {
+export function EnglishCourse({ learner }: { learner: string }) {
+  // The expanded course keeps the original lesson order and storage key.
   const storageKey = `fox-english-animals-v1:${learner}`;
   const [course, setCourse] = useState(() => loadCourse(storageKey));
   const [showLesson, setShowLesson] = useState(false);
@@ -54,9 +49,13 @@ export function AnimalCourse({ learner }: { learner: string }) {
   const lesson = run && LESSONS[run.lesson];
   const done = !!run && run.step === run.order.length;
   const target = run && !done ? run.order[run.step] : null;
-  const answer = target !== null ? `It's a ${ANIMALS[target].word.toLowerCase()}.` : "";
-  const choiceOffset = run ? (run.step * 2 + run.lesson) % ANIMALS.length : 0;
-  const choices = ANIMALS.map((_, index) => (index + choiceOffset) % ANIMALS.length);
+  const answer = lesson && target !== null ? lesson.reply(lesson.words[target]) : "";
+  const choiceOffset = run && lesson ? (run.step * 2 + run.lesson + lesson.unitIndex) % WORDS_PER_LESSON : 0;
+  const choices = lesson?.words.map((_, index) => (index + choiceOffset) % WORDS_PER_LESSON) ?? [];
+  const nextUnitIndex = LESSONS[Math.min(completed, LESSONS.length - 1)].unitIndex;
+  const [selectedUnitIndex, setSelectedUnitIndex] = useState<number | null>(null);
+  const unitIndex = selectedUnitIndex ?? (lesson && !done ? lesson.unitIndex : nextUnitIndex);
+  const unit = UNITS[unitIndex];
 
   useEffect(() => () => { void stopSpeech(); }, []);
 
@@ -75,6 +74,7 @@ export function AnimalCourse({ learner }: { learner: string }) {
       step: 0, missed: [], wrong: [], solved: false, review: !!reviewOrder,
     };
     save({ completed, run: next });
+    setSelectedUnitIndex(null);
     setShowLesson(true);
     void speakEnglish(questionFor(next));
   };
@@ -114,6 +114,7 @@ export function AnimalCourse({ learner }: { learner: string }) {
 
   const goToRoute = () => {
     void stopSpeech();
+    setSelectedUnitIndex(null);
     setShowLesson(false);
   };
 
@@ -139,25 +140,25 @@ export function AnimalCourse({ learner }: { learner: string }) {
             {completed < LESSONS.length && (
               <Button size="lg" className="mx-auto flex" onClick={() => start(completed)}>Следующий урок <ArrowRight className="ml-2 h-5 w-5" /></Button>
             )}
-            {completed === LESSONS.length && <p className="font-semibold text-teal-800">Все три урока пройдены!</p>}
+            {completed === LESSONS.length && <p className="font-semibold text-teal-800">Все уроки курса пройдены!</p>}
           </div>
         ) : (
           <>
-            <h2 className="text-2xl font-extrabold">{run.solved && run.lesson === 2 ? "Повтори за Лисёнком" : "Послушай и выбери"}</h2>
+            <h2 className="text-2xl font-extrabold">{run.solved && lesson.repeat ? "Повтори за Лисёнком" : "Послушай и выбери"}</h2>
             <Button size="lg" variant="outline" className="min-h-14 text-lg"
               onClick={() => void speakEnglish(run.solved ? answer : questionFor(run))}>
               <Volume2 className="mr-2 h-6 w-6" /> Послушать ещё
             </Button>
             <div className="mx-auto grid max-w-lg grid-cols-3 gap-2 sm:gap-4">
               {choices.map((index) => {
-                const animal = ANIMALS[index];
+                const word = lesson.words[index];
                 return (
-                  <button type="button" key={animal.word} aria-label={animal.translation}
+                  <button type="button" key={word.word} aria-label={word.translation}
                     disabled={run.solved || run.wrong.includes(index)} onClick={() => choose(index)}
-                    className={`aspect-square min-w-0 rounded-2xl border-2 text-4xl focus-visible:outline focus-visible:outline-primary sm:text-6xl ${
+                    className={`aspect-square min-w-0 rounded-2xl border-2 focus-visible:outline focus-visible:outline-primary ${word.emoji.startsWith("●") ? "text-lg tracking-wide text-teal-800 sm:text-3xl" : "text-4xl sm:text-6xl"} ${
                       run.solved && index === target ? "border-green-600 bg-green-50" : "border-teal-100 bg-teal-50 enabled:hover:border-teal-500 disabled:opacity-40"
                     }`}>
-                    <span aria-hidden="true">{animal.emoji}</span>
+                    <span aria-hidden="true">{word.emoji}</span>
                   </button>
                 );
               })}
@@ -179,7 +180,7 @@ export function AnimalCourse({ learner }: { learner: string }) {
     <Card className="overflow-hidden rounded-3xl border-teal-200">
       <div className="space-y-3 bg-teal-950 p-5 text-white sm:p-6">
         <div className="flex items-center gap-2 text-sm font-semibold text-teal-200"><Headphones className="h-4 w-4" /> Маршрут английского</div>
-        <h2 className="text-2xl font-extrabold sm:text-3xl">Животные</h2>
+        <h2 className="text-2xl font-extrabold sm:text-3xl">Английский по шагам</h2>
         <p className="text-sm text-teal-100">Пройдено {completed} из {LESSONS.length}</p>
         {run && !done ? (
           <Button className="min-h-12 bg-lime-300 font-bold text-teal-950 hover:bg-lime-200" onClick={() => openLesson(run.lesson)}>
@@ -196,21 +197,34 @@ export function AnimalCourse({ learner }: { learner: string }) {
           </Button>
         )}
       </div>
-      <ol className="space-y-2 bg-white p-4 sm:p-5">
-        {LESSONS.map(({ title, description }, index) => (
-          <li key={title}>
-            <button type="button" disabled={index > completed} onClick={() => openLesson(index)}
-              className="flex w-full items-center gap-3 rounded-2xl border border-teal-100 px-3 py-2 text-left text-slate-900 enabled:hover:border-teal-500 disabled:opacity-55">
-              <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-100 font-bold text-teal-900">
-                {index < completed ? <Check className="h-5 w-5" /> : index > completed ? <Lock className="h-4 w-4" /> : index + 1}
-              </span>
-              <span>
-                <span lang="en" className="block font-bold">{title}</span>
-                <span className="block text-sm text-slate-600">{description}{index < completed ? " · пройден" : ""}</span>
-              </span>
-            </button>
-          </li>
-        ))}
+      <div className="space-y-2 border-b border-teal-100 bg-teal-50 p-4 sm:p-5">
+        <label htmlFor="english-course-unit" className="block text-sm font-semibold text-teal-950">Темы курса</label>
+        <select id="english-course-unit" value={unitIndex} onChange={(event) => setSelectedUnitIndex(Number(event.target.value))}
+          className="min-h-12 w-full rounded-xl border border-teal-200 bg-white px-3 text-base font-semibold text-teal-950">
+          {UNITS.map((item, index) => {
+            const count = Math.max(0, Math.min(item.size, completed - item.firstLesson));
+            return <option key={item.label} value={index}>{item.icon} {item.label} · {count}/{item.size}</option>;
+          })}
+        </select>
+      </div>
+      <ol className="space-y-2 bg-white p-4 sm:p-5" start={unit.firstLesson + 1}>
+        {LESSONS.slice(unit.firstLesson, unit.firstLesson + unit.size).map(({ title, description }, offset) => {
+          const index = unit.firstLesson + offset;
+          return (
+            <li key={index}>
+              <button type="button" disabled={index > completed} onClick={() => openLesson(index)}
+                className="flex w-full items-center gap-3 rounded-2xl border border-teal-100 px-3 py-2 text-left text-slate-900 enabled:hover:border-teal-500 disabled:opacity-55">
+                <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-100 font-bold text-teal-900">
+                  {index < completed ? <Check className="h-5 w-5" /> : index > completed ? <Lock className="h-4 w-4" /> : index + 1}
+                </span>
+                <span>
+                  <span lang="en" className="block font-bold">{title}</span>
+                  <span className="block text-sm text-slate-600">{description}{index < completed ? " · пройден" : ""}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ol>
     </Card>
   );

@@ -1,5 +1,5 @@
 import { StreakBonusBanner } from "@/components/StreakBonusBanner";
-import { AnimalCourse } from "@/components/english/AnimalCourse";
+import { EnglishCourse } from "@/components/english/EnglishCourse";
 import { SchoolModeGuard } from "@/components/child/SchoolModeGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -107,7 +107,7 @@ export default function EnglishPage() {
         </div>
 
         {learner && (
-          <SchoolModeGuard><AnimalCourse key={learner} learner={learner} /></SchoolModeGuard>
+          <SchoolModeGuard><EnglishCourse key={learner} learner={learner} /></SchoolModeGuard>
         )}
 
         <h2 className="text-xl font-extrabold">Карточки и игры</h2>

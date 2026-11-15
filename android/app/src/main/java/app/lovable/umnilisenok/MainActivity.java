@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(LessonSpeechPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Запущено автоматически после перезагрузки — через 8 с уводим в фон, защита стартует из JS.

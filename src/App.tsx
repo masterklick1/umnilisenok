@@ -37,6 +37,7 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
 
+const VoiceTeacherPage = lazy(() => import("./pages/VoiceTeacherPage"));
 const ToysLessonPage = lazy(() => import("./pages/ToysLessonPage"));
 
 const queryClient = new QueryClient();
@@ -201,6 +202,13 @@ const App = () => (
             <Route path="/index" element={<Navigate to="/" replace />} />
 
             {/* Защищенные роуты (для детей и родителей) */}
+            <Route path="/voice-lesson" element={
+              <ProtectedRoute>
+                <Suspense fallback={<p className="p-6 text-center" role="status">Загружаем урок…</p>}>
+                  <VoiceTeacherPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
             <Route
               path="/"
               element={

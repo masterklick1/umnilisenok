@@ -12,13 +12,6 @@ export const BottomNavigation = () => {
   const { isDemo } = useAuth();
   const { isParent } = useUserRole();
 
-  const handleAIChat = () => {
-    toast({
-      title: "ИИ-учитель скоро появится! 🤖",
-      description: "Мы работаем над созданием умного помощника для обучения",
-    });
-  };
-
   const handleVirtualHome = () => {
     if (isDemo) {
       toast({
@@ -63,7 +56,8 @@ export const BottomNavigation = () => {
       
       <Button
         size="icon"
-        onClick={handleAIChat}
+        aria-label="Голосовой урок с Лисёнком"
+        onClick={() => navigate("/voice-lesson")}
         className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 shadow-2xl hover:shadow-primary/50 hover:scale-105 transition-all duration-300"
       >
         <Mic className="w-7 h-7 text-primary-foreground" />

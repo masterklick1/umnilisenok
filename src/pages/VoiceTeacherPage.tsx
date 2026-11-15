@@ -30,10 +30,10 @@ function matchesAnswer(phrase: string, target: Toy) {
 
 export default function VoiceTeacherPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-background to-teal-50 px-4 py-5">
-      <div className="mx-auto max-w-lg">
-        <Button asChild variant="ghost" className="mb-3 gap-2">
-          <Link to="/"><ArrowLeft className="h-4 w-4" /> Назад</Link>
+    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-background to-teal-50 px-3 py-3 sm:px-6 sm:py-6">
+      <div className="mx-auto max-w-2xl">
+        <Button asChild variant="ghost" className="mb-2 min-h-11 gap-2 px-3 text-base">
+          <Link to="/"><ArrowLeft className="h-5 w-5" /> Назад</Link>
         </Button>
         <SchoolModeGuard><VoiceLesson /></SchoolModeGuard>
       </div>
@@ -113,42 +113,45 @@ function VoiceLesson() {
   };
 
   return (
-    <Card className="space-y-4 rounded-3xl p-4 text-center sm:p-8">
-      <h1 className="text-2xl font-extrabold sm:text-3xl">Голосовой урок · Мои игрушки</h1>
+    <Card className="space-y-4 rounded-3xl p-3 text-center sm:space-y-5 sm:p-7">
+      <header>
+        <p className="text-base font-semibold text-teal-800 sm:text-lg">Голосовой урок</p>
+        <h1 className="text-3xl font-extrabold leading-tight sm:text-4xl">Мои игрушки</h1>
+      </header>
       {!round && (
         <>
-          <AnimatedFox size={148} />
-          <p className="text-lg font-semibold">{finished ? "Молодец! Ты узнал все игрушки." : "Лисёнок задаст три вопроса."}</p>
-          <Button size="lg" onClick={() => goTo(0)}>{finished ? "Сыграть ещё раз" : "Начать урок"}</Button>
+          <AnimatedFox size={242} />
+          <p className="text-xl font-semibold sm:text-2xl">{finished ? "Молодец! Ты узнал все игрушки." : "Лисёнок задаст три вопроса."}</p>
+          <Button size="lg" className="h-auto min-h-14 w-full max-w-md whitespace-normal py-3 text-xl" onClick={() => goTo(0)}>{finished ? "Сыграть ещё раз" : "Начать урок"}</Button>
         </>
       )}
       {round && (
         <>
-          <p className="text-sm font-semibold text-muted-foreground">{index + 1} из {TOYS_ROUNDS.length}</p>
+          <p className="text-base font-semibold text-muted-foreground">{index + 1} из {TOYS_ROUNDS.length}</p>
           <img src={`/lessons/toys/${round.target}.webp`} alt={TOYS[round.target].word}
-            className="mx-auto aspect-square w-36 rounded-2xl object-cover sm:w-48" />
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button variant="outline" disabled={listening} onClick={() => void speak(answered ? feedback : question)}>
-              <Volume2 className="mr-2 h-5 w-5" /> Послушать
+            className="mx-auto aspect-square w-[clamp(12rem,36dvh,20rem)] max-w-full rounded-3xl object-cover" />
+          <div className="mx-auto grid w-full max-w-md gap-2 min-[420px]:grid-flow-col min-[420px]:auto-cols-fr">
+            <Button variant="outline" className="h-auto min-h-14 whitespace-normal px-2 py-2 text-lg" disabled={listening} onClick={() => void speak(answered ? feedback : question)}>
+              <Volume2 className="mr-2 h-6 w-6 shrink-0" /> Послушать
             </Button>
             {canListen && !answered && (
-              <Button onClick={() => void listen()} disabled={listening}>
-                <Mic className="mr-2 h-5 w-5" /> {listening ? "Слушаю…" : "Ответить голосом"}
+              <Button className="h-auto min-h-14 whitespace-normal px-2 py-2 text-lg" onClick={() => void listen()} disabled={listening}>
+                <Mic className="mr-2 h-6 w-6 shrink-0" /> {listening ? "Слушаю…" : "Ответить голосом"}
               </Button>
             )}
           </div>
           {!answered && (
-            <div className="mx-auto grid max-w-xs grid-cols-2 gap-3">
+            <div className="mx-auto grid w-full max-w-md grid-cols-2 gap-3">
               {round.choices.map((toy) => (
                 <button key={toy} type="button" disabled={listening} onClick={() => respond(toy === round.target, round.target)}
-                  className="overflow-hidden rounded-2xl border-2 border-teal-200 enabled:hover:border-teal-600 focus-visible:outline focus-visible:outline-primary">
+                  className="min-w-0 overflow-hidden rounded-3xl border-2 border-teal-200 enabled:hover:border-teal-600 focus-visible:outline focus-visible:outline-primary">
                   <img src={`/lessons/toys/${toy}.webp`} alt={TOYS[toy].word} className="aspect-square w-full object-cover" />
                 </button>
               ))}
             </div>
           )}
-          {feedback && <p className="font-semibold" role="status">{feedback}</p>}
-          {answered && <Button className="bg-emerald-700 text-white hover:bg-emerald-800" size="lg"
+          {feedback && <p className="text-xl font-semibold sm:text-2xl" role="status">{feedback}</p>}
+          {answered && <Button className="h-auto min-h-14 w-full max-w-md bg-emerald-700 py-3 text-xl text-white hover:bg-emerald-800" size="lg"
             onClick={() => goTo(index + 1)}>Дальше <span aria-hidden="true" className="ml-2">→</span></Button>}
         </>
       )}

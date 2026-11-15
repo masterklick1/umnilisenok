@@ -1,3 +1,4 @@
+import { ENGLISH_ANIMALS } from "@/lib/english-animals";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { speakEnglish } from "@/lib/sound";
@@ -24,14 +25,7 @@ const CATEGORIES: Category[] = [
     id: "animals",
     name: "Животные",
     icon: <Dog className="w-5 h-5" />,
-    items: [
-      { word: "Cat", translation: "Кошка", emoji: "🐱" },
-      { word: "Dog", translation: "Собака", emoji: "🐶" },
-      { word: "Bear", translation: "Медведь", emoji: "🐻" },
-      { word: "Rabbit", translation: "Кролик", emoji: "🐰" },
-      { word: "Fox", translation: "Лиса", emoji: "🦊" },
-      { word: "Panda", translation: "Панда", emoji: "🐼" },
-    ],
+    items: ENGLISH_ANIMALS,
   },
   {
     id: "colors",

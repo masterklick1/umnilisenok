@@ -1,5 +1,7 @@
 import { StreakBonusBanner } from "@/components/StreakBonusBanner";
-import { useState } from "react";
+import { AnimalCourse } from "@/components/english/AnimalCourse";
+import { SchoolModeGuard } from "@/components/child/SchoolModeGuard";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function EnglishPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const learner = user ? `${user.id}:${sessionStorage.getItem("activeChildId") || user.id}` : null;
 
   const handleModuleClick = (id: string, title: string) => {
     if (id === "abc") {
@@ -102,7 +106,11 @@ export default function EnglishPage() {
           </div>
         </div>
 
-        {/* Сетка модулей */}
+        {learner && (
+          <SchoolModeGuard><AnimalCourse key={learner} learner={learner} /></SchoolModeGuard>
+        )}
+
+        <h2 className="text-xl font-extrabold">Карточки и игры</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {modules.map((mod) => (
             <Card

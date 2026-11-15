@@ -15,7 +15,7 @@ let voicesReady = false;
 let voicesPromise: Promise<SpeechSynthesisVoice[]> | null = null;
 let pendingTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
+export const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
   if (!hasTTS()) return Promise.resolve([]);
   const existing = window.speechSynthesis.getVoices();
   if (existing.length) {

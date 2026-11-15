@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
-import { ArrowLeft, Camera as CameraIcon, ImagePlus, Pause, Play, RotateCcw } from "lucide-react";
+import { ArrowLeft, Camera as CameraIcon, ImagePlus, Pause, Play, RotateCcw, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isSoundEnabled, speak, stopSpeech } from "@/lib/sound";
-import { createPageVoice, pagePassages, type PageLanguage } from "@/lib/page-reader-voice";
+import { createPageVoice, getPageVoiceChoices, pagePassages, pageVoiceSamples, type PageLanguage } from "@/lib/page-reader-voice";
 
 const languageKey = "page-reader-language";
+const voiceKey = (lang: PageLanguage) => `page-reader-voice-${lang}`;
 const blurryMessage = "Не получилось прочитать страницу. Поднеси камеру ближе и попробуй ещё раз.";
 
 function stopCamera(stream: MediaStream | null) {
@@ -36,7 +37,8 @@ export default function PageReaderPage() {
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
   const [text, setText] = useState("");
-  const [reading, setReading] = useState(false);
+  const [playing, setPlaying] = useState<"page" | "preview" | null>(null);
+  const [voiceChoices, setVoiceChoices] = useState<Awaited<ReturnType<typeof getPageVoiceChoices>> | null>(null);
   const [paused, setPaused] = useState(false);
   const systemCameraOpen = useRef(false);
   const stream = useRef<MediaStream | null>(null);
@@ -59,7 +61,8 @@ export default function PageReaderPage() {
     operation.current?.abort();
     playback.current?.cancel();
     void stopSpeech();
-    setReading(false);
+    playback.current = null;
+    setPlaying(null);
     setPaused(false);
     setMessage("");
     setText("");
@@ -88,13 +91,39 @@ export default function PageReaderPage() {
     void stopSpeech();
   }, []);
 
-  async function readPage(content: string, fromStart = false) {
+  useEffect(() => {
+    let active = true;
+    setVoiceChoices(null);
+    async function refreshVoices() {
+      const options = await getPageVoiceChoices(language).catch(() => []);
+      if (active) setVoiceChoices(options);
+    }
+    const refreshOnReturn = () => {
+      if (!document.hidden) void refreshVoices();
+    };
+    void refreshVoices();
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.speechSynthesis?.addEventListener?.("voiceschanged", refreshOnReturn);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.speechSynthesis?.removeEventListener?.("voiceschanged", refreshOnReturn);
+    };
+  }, [language]);
+
+  function stopPlayback() {
     playback.current?.cancel();
+    playback.current = null;
+    setPlaying(null);
+    if (playing === "page") setPaused(true);
+  }
+
+  async function readPage(content: string, fromStart = false, preview = false) {
+    stopPlayback();
     if (fromStart) {
       position.current = 0;
       setPaused(false);
     }
-    const passages = pagePassages(content);
     const controller = new AbortController();
     let voice: Awaited<ReturnType<typeof createPageVoice>>;
     const run = {
@@ -107,28 +136,32 @@ export default function PageReaderPage() {
     const canceled = new Promise<false>((resolve) => {
       controller.signal.addEventListener("abort", () => resolve(false), { once: true });
     });
-    setReading(true);
+    setPlaying(preview ? "preview" : "page");
     setMessage("");
     try {
-      voice = await createPageVoice(language);
+      voice = await createPageVoice(language, localStorage.getItem(voiceKey(language)) ?? "");
       if (controller.signal.aborted) return;
       if (!voice) {
-        setMessage(language === "ru" ? "Включи русский голос в настройках устройства." : "Включи английский голос в настройках устройства.");
+        const name = language === "ru" ? "русский" : "английский";
+        setMessage(`Скачай ${name} голос для чтения без интернета в настройках устройства.`);
         return;
       }
-      while (position.current < passages.length) {
-        const finished = await Promise.race([voice.say(passages[position.current]).then(() => true), canceled]);
+      const passages = pagePassages(content, voice.passageLimit);
+      for (let index = preview ? 0 : position.current; index < passages.length; index += 1) {
+        const finished = await Promise.race([voice.say(passages[index]).then(() => true), canceled]);
         if (!finished || controller.signal.aborted) return;
-        position.current += 1;
+        if (!preview) position.current = index + 1;
       }
-      position.current = 0;
-      setPaused(false);
+      if (!preview) {
+        position.current = 0;
+        setPaused(false);
+      }
     } catch {
-      if (!controller.signal.aborted) setMessage("Не удалось включить голос. Нажми «Читать», чтобы попробовать ещё раз.");
+      if (!controller.signal.aborted) setMessage("Не удалось включить голос. Попробуй выбрать другой голос.");
     } finally {
       if (playback.current === run && !controller.signal.aborted) {
         playback.current = null;
-        setReading(false);
+        setPlaying(null);
       }
     }
   }
@@ -274,6 +307,35 @@ export default function PageReaderPage() {
           ))}
         </div>
 
+        {status === "ready" && (
+          <details key={language} className="rounded-xl border bg-card p-3">
+            <summary className="cursor-pointer font-medium">Голос Лисёнка</summary>
+            <div className="mt-3 space-y-2">
+              {voiceChoices && voiceChoices.length > 1 && (
+                <select aria-label="Голос рассказчика"
+                  className="h-11 w-full rounded-lg border bg-background px-3"
+                  defaultValue={localStorage.getItem(voiceKey(language)) ?? ""}
+                  onChange={(event) => {
+                    stopPlayback();
+                    localStorage.setItem(voiceKey(language), event.currentTarget.value);
+                  }}>
+                  <option value="">Выбирать автоматически</option>
+                  {voiceChoices.map(({ id, lang }, index) => (
+                    <option key={id} value={id}>Голос {index + 1} ({lang})</option>
+                  ))}
+                </select>
+              )}
+              <Button variant="outline" className="h-11 w-full" onClick={() => {
+                if (playing === "preview") stopPlayback();
+                else void readPage(pageVoiceSamples[language], false, true);
+              }}>
+                <Volume2 className="mr-2 h-4 w-4" />
+                {playing === "preview" ? "Остановить пример" : "Послушать пример"}
+              </Button>
+            </div>
+          </details>
+        )}
+
         {status === "camera" && (
           <section className="space-y-3">
             <div className="relative overflow-hidden rounded-2xl bg-slate-950">
@@ -306,15 +368,11 @@ export default function PageReaderPage() {
           <section className="space-y-3">
             <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
               <Button className="h-12 rounded-xl" onClick={() => {
-                if (reading) {
-                  playback.current?.cancel();
-                  playback.current = null;
-                  setReading(false);
-                  setPaused(true);
-                } else void readPage(text);
+                if (playing === "page") stopPlayback();
+                else void readPage(text);
               }}>
-                {reading ? <Pause className="mr-2 h-5 w-5" /> : <Play className="mr-2 h-5 w-5" />}
-                {reading ? "Пауза" : paused ? "Продолжить" : "Читать"}
+                {playing === "page" ? <Pause className="mr-2 h-5 w-5" /> : <Play className="mr-2 h-5 w-5" />}
+                {playing === "page" ? "Пауза" : paused ? "Продолжить" : "Читать"}
               </Button>
               <Button variant="outline" className="h-12 rounded-xl" onClick={() => void readPage(text, true)}>
                 <RotateCcw className="mr-2 h-4 w-4" /> С начала

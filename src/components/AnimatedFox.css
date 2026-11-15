@@ -1,0 +1,54 @@
+@media (prefers-reduced-motion: no-preference) {
+  .fox-mascot__tail {
+    transform-origin: 91px 166px;
+    animation: mascot-tail 3.2s ease-in-out infinite;
+  }
+
+  .fox-mascot__body {
+    transform-origin: 130px 198px;
+    animation: mascot-breathe 3.8s ease-in-out infinite;
+  }
+
+  .fox-mascot__head {
+    transform-origin: 131px 150px;
+    animation: mascot-nod 7.2s ease-in-out infinite;
+  }
+
+  .fox-mascot__ear {
+    transform-origin: 85px 71px;
+    animation: mascot-ear 7.2s ease-in-out infinite;
+  }
+
+  .fox-mascot__eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: mascot-blink 5.6s ease-in-out infinite;
+  }
+}
+
+@keyframes mascot-tail {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@keyframes mascot-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.012, 1.025); }
+}
+
+@keyframes mascot-nod {
+  0%, 42%, 100% { transform: rotate(0); }
+  52%, 61% { transform: rotate(4deg); }
+  72% { transform: rotate(-1deg); }
+}
+
+@keyframes mascot-ear {
+  0%, 54%, 72%, 100% { transform: rotate(0); }
+  60% { transform: rotate(-7deg); }
+  65% { transform: rotate(2deg); }
+}
+
+@keyframes mascot-blink {
+  0%, 40%, 46%, 94%, 100% { transform: scaleY(1); }
+  43%, 97% { transform: scaleY(.1); }
+}

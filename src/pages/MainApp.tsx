@@ -1,3 +1,4 @@
+import AnimatedFox from "@/components/AnimatedFox";
 import { UserWelcome } from "@/components/UserWelcome";
 import { SubjectCard } from "@/components/SubjectCard";
 import { ScoreDisplay } from "@/components/ScoreDisplay";
@@ -197,19 +198,10 @@ export const MainApp = () => {
           </div>
         )}
 
-        {/* Fox Avatar */}
-        <div className="flex justify-center my-10">
-          <div className="relative animate-float">
-            {/* glow rings */}
-            <div className="absolute inset-0 -m-6 rounded-full bg-primary/20 blur-2xl animate-pulse-soft" />
-            <div className="absolute inset-0 -m-3 rounded-full bg-gradient-to-br from-accent/40 to-secondary/40 blur-md" />
-            <div className="relative w-48 h-48 rounded-full bg-gradient-to-br from-primary via-primary/80 to-accent flex items-center justify-center shadow-2xl ring-4 ring-white/60">
-              <div className="text-8xl drop-shadow-lg">🦊</div>
-            </div>
-            {/* sparkles */}
-            <div className="absolute -top-1 right-4 text-3xl" style={{ animation: "sparkle 2.5s ease-in-out infinite" }}>✨</div>
-            <div className="absolute bottom-2 -left-2 text-2xl" style={{ animation: "sparkle 2.5s ease-in-out infinite 0.8s" }}>⭐</div>
-            <div className="absolute top-6 -right-3 text-xl" style={{ animation: "sparkle 2.5s ease-in-out infinite 1.6s" }}>💫</div>
+        <div className="relative mx-auto my-4 w-full max-w-60">
+          <div aria-hidden="true" className="absolute inset-x-4 bottom-5 top-6 rounded-[45%] bg-[radial-gradient(ellipse_at_center,#ffe9c7,transparent_73%)]" />
+          <div className="relative">
+            <AnimatedFox size={240} />
           </div>
         </div>
 

@@ -1,9 +1,9 @@
 import { initializePaddle, type Paddle, type PaddleEventData } from "@paddle/paddle-js";
 
 export function getPaddlePurchaseConfig() {
-  const mode = import.meta.env.VITE_PADDLE_ENVIRONMENT;
-  const token = import.meta.env.VITE_PADDLE_CLIENT_TOKEN;
-  const priceId = import.meta.env.VITE_PADDLE_FULL_ACCESS_PRICE_ID;
+  const mode = import.meta.env.VITE_PADDLE_ENVIRONMENT || "live";
+  const token = import.meta.env.VITE_PADDLE_CLIENT_TOKEN || "live_1304ee3d73b6079067238d4b85a";
+  const priceId = import.meta.env.VITE_PADDLE_FULL_ACCESS_PRICE_ID || "pri_01m7hmyq4c89kvbatnev8mppd0";
 
   if (mode !== "live" && mode !== "sandbox") {
     throw new Error("Set VITE_PADDLE_ENVIRONMENT explicitly to live or sandbox.");

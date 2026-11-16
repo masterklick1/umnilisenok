@@ -7,7 +7,7 @@ import { addUsedSeconds, getLimitMinutes, getUsedSeconds, isLoginNotifyEnabled }
 import { Button } from "@/components/ui/button";
 
 // Pages where the child's learning time is counted and limited.
-const EXEMPT = ["/auth", "/parent", "/settings", "/join", "/delete-account"];
+const EXEMPT = ["/auth", "/parent", "/settings", "/join", "/delete-account", "/checkout", "/welcome"];
 
 export function ScreenTimeGuard() {
   const { t } = useLanguage();

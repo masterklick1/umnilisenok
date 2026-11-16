@@ -38,6 +38,8 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
 
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const CheckoutWelcomePage = lazy(() => import("./pages/CheckoutPage").then((module) => ({ default: module.CheckoutWelcomePage })));
 const PageReaderPage = lazy(() => import("./pages/PageReaderPage"));
 const VoiceTeacherPage = lazy(() => import("./pages/VoiceTeacherPage"));
 const ToysLessonPage = lazy(() => import("./pages/ToysLessonPage"));
@@ -199,6 +201,8 @@ const AppContent = () => (
           <Routes>
             {/* Публичные роуты */}
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/checkout" element={<Suspense fallback={<LoadingScreen />}><CheckoutPage /></Suspense>} />
+            <Route path="/welcome" element={<Suspense fallback={<LoadingScreen />}><CheckoutWelcomePage /></Suspense>} />
             <Route path={TOYS_LESSON_PATH} element={
               <Suspense fallback={<LoadingScreen />}>
                 <ToysLessonPage />

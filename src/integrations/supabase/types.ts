@@ -587,6 +587,65 @@ export type Database = {
         }
         Relationships: []
       }
+      paddle_customers: {
+        Row: {
+          customer_id: string
+          email: string
+          environment: string
+          paddle_updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          customer_id: string
+          email: string
+          environment: string
+          paddle_updated_at: string
+          user_id?: string | null
+        }
+        Update: {
+          customer_id?: string
+          email?: string
+          environment?: string
+          paddle_updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      paddle_purchases: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          customer_id: string
+          environment: string
+          price_id: string
+          transaction_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          customer_id: string
+          environment: string
+          price_id: string
+          transaction_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          environment?: string
+          price_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paddle_purchases_environment_customer_id_fkey"
+            columns: ["environment", "customer_id"]
+            isOneToOne: false
+            referencedRelation: "paddle_customers"
+            referencedColumns: ["environment", "customer_id"]
+          },
+        ]
+      }
       parent_child_links: {
         Row: {
           child_id: string
@@ -1239,6 +1298,16 @@ export type Database = {
         Returns: undefined
       }
       open_parent_gift: { Args: { _gift_id: string }; Returns: boolean }
+      record_paddle_customer: {
+        Args: {
+          p_customer_id: string
+          p_email: string
+          p_environment: string
+          p_updated_at: string
+          p_user_id?: string
+        }
+        Returns: undefined
+      }
       redeem_child_invite: {
         Args: { p_child_id: string; p_code: string }
         Returns: undefined

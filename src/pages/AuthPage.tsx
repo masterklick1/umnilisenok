@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect } from "react";
@@ -279,6 +280,14 @@ export default function AuthPage() {
                 {t("Политика конфиденциальности", "Privacy Policy")}
               </a>
             </div>
+            {!Capacitor.isNativePlatform() && (
+              <nav aria-label={t("Информация для родителей", "Parent information")} className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+                <a href="/pricing.html" className="underline">{t("Цена и полный доступ", "Pricing and full access")}</a>
+                <a href="/terms.html" className="underline">{t("Условия использования", "Terms of use")}</a>
+                <a href="/refunds.html" className="underline">{t("Возврат средств", "Refund policy")}</a>
+                <a href="mailto:masterklick1@gmail.com" className="underline">{t("Поддержка", "Support")}</a>
+              </nav>
+            )}
           </CardContent>
         </Card>
       </div>

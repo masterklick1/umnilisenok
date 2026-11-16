@@ -1,0 +1,21 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  color: #272027;
+  background: #fff9ef;
+  line-height: 1.6;
+}
+
+body { margin: 0 auto; padding: 1.5rem; max-width: 46rem; }
+header, footer { padding: 1rem 0; }
+.brand { font-weight: 750; }
+nav { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+header nav { margin-top: .5rem; }
+main { background: #fff; border: 1px solid #ebded0; border-radius: 1.25rem; padding: clamp(1rem, 4vw, 2rem); }
+h1 { margin: 0 0 1rem; line-height: 1.15; }
+h2 { margin-top: 1.5rem; line-height: 1.3; }
+p, ul { margin-block: .6em 1em; }
+a { color: #8a340c; text-underline-offset: .15em; }
+a:focus-visible { outline: 2px solid currentColor; outline-offset: .2em; }
+.price { color: #8a340c; font-size: 2rem; font-weight: 750; margin-block: .35em; }
+.translation { border-top: 1px solid #ebded0; margin-top: 2rem; padding-top: 1.5rem; }

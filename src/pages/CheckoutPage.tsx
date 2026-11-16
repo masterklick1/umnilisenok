@@ -12,7 +12,11 @@ type Offer = { paddle: Paddle; priceId: string; total: string };
 
 async function billingRequest<T>(action: "status" | "checkout" | "portal"): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T>(`paddle-account?action=${action}`);
-  if (error || !data) throw error ?? new Error("No billing response");
+  if (error) {
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    throw new Error(body?.error ?? "billing_unavailable");
+  }
+  if (!data) throw new Error("No billing response");
   return data;
 }
 
@@ -33,6 +37,7 @@ export default function CheckoutPage() {
   const [offer, setOffer] = useState<Offer>();
   const [priceUnavailable, setPriceUnavailable] = useState(false);
   const [checkoutError, setCheckoutError] = useState(false);
+  const [checkoutDisabled, setCheckoutDisabled] = useState(false);
   const [opening, setOpening] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const isNative = Capacitor.isNativePlatform();
@@ -90,9 +95,10 @@ export default function CheckoutPage() {
         transactionId: transaction.transactionId,
         settings: { ...getCheckoutSettings(), locale: language },
       });
-    } catch {
+    } catch (error) {
       setOpening(false);
-      setCheckoutError(true);
+      if (error instanceof Error && error.message === "checkout_not_enabled") setCheckoutDisabled(true);
+      else setCheckoutError(true);
     }
   }
 
@@ -136,7 +142,9 @@ export default function CheckoutPage() {
                 </a>
               </Button>
             ) : purchase.isError ? (
-              <p role="status">{t("Оплата доступна из родительского аккаунта, когда платёжный сервис подключён.", "Checkout is available from a parent account once billing is enabled.")}</p>
+              <p role="status">{purchase.error instanceof Error && purchase.error.message === "parent_account_required"
+                ? t("Покупка доступна только из родительского аккаунта. Войдите как родитель.", "Purchases are available only from a parent account. Please sign in as a parent.")
+                : t("Не удалось проверить покупку. Обновите страницу или попробуйте позже.", "Could not check your purchase. Refresh the page or try again later.")}</p>
             ) : (
               <Button className="w-full" onClick={openCheckout} disabled={loading || opening || purchase.data?.paid !== false}>
                 {opening ? t("Открываем оплату…", "Opening checkout…") : t("Купить полный доступ", "Buy full access")}
@@ -148,6 +156,7 @@ export default function CheckoutPage() {
         ) : (
           <p role="status">{t("Загружаем цену…", "Loading price…")}</p>
         )}
+        {checkoutDisabled && <p role="alert">{t("Оплата скоро будет доступна: платёжный сервис ещё проверяет магазин. Попробуйте позже.", "Checkout will be available soon: the payment provider is still reviewing the store. Please try again later.")}</p>}
         {checkoutError && <p role="alert">{t("Не удалось открыть оплату. Попробуйте ещё раз.", "Could not open checkout. Please try again.")}</p>}
       </div>
     </main>

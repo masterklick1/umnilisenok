@@ -142,7 +142,9 @@ export default function CheckoutPage() {
                 </a>
               </Button>
             ) : purchase.isError ? (
-              <p role="status">{t("Оплата доступна из родительского аккаунта, когда платёжный сервис подключён.", "Checkout is available from a parent account once billing is enabled.")}</p>
+              <p role="status">{purchase.error instanceof Error && purchase.error.message === "parent_account_required"
+                ? t("Покупка доступна только из родительского аккаунта. Войдите как родитель.", "Purchases are available only from a parent account. Please sign in as a parent.")
+                : t("Не удалось проверить покупку. Обновите страницу или попробуйте позже.", "Could not check your purchase. Refresh the page or try again later.")}</p>
             ) : (
               <Button className="w-full" onClick={openCheckout} disabled={loading || opening || purchase.data?.paid !== false}>
                 {opening ? t("Открываем оплату…", "Opening checkout…") : t("Купить полный доступ", "Buy full access")}

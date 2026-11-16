@@ -78,7 +78,8 @@ Deno.serve(async (request) => {
     if (purchaseError) throw purchaseError;
     return respond({ transactionId: transaction.id, priceId: config.priceId });
   } catch (error) {
-    console.error("Paddle account request failed", error instanceof Error ? error.name : "request error");
+    const detail = error as { name?: string; code?: string; message?: string; type?: string };
+    console.error("Paddle account request failed", detail?.name, detail?.code, detail?.type, detail?.message);
     return respond({ error: "billing_unavailable" }, 503);
   }
 });

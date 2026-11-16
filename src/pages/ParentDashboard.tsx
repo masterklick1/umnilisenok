@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
@@ -490,6 +491,11 @@ export default function ParentDashboard() {
                 <BellOff className="w-4 h-4" />
                 <span className="hidden sm:inline">{t("Заблокировано в браузере", "Blocked by browser")}</span>
               </span>
+            )}
+            {!Capacitor.isNativePlatform() && (
+              <Button asChild variant="ghost" size="sm">
+                <a href="/checkout">{t("Полный доступ", "Full access")}</a>
+              </Button>
             )}
             <FeedbackDialog />
             <Button variant="ghost" onClick={handleSignOut}>

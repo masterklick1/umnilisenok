@@ -31,6 +31,8 @@ export function getCheckoutSettings() {
   return {
     displayMode: "overlay",
     variant: "one-page",
+    allowLogout: false,
+    showAddDiscounts: false,
     successUrl: new URL("/welcome", window.location.origin).href,
   } as const;
 }

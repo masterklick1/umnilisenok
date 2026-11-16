@@ -21,6 +21,7 @@ export default function AuthPage() {
   const { t, language } = useLanguage();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode");
+  const parentDestination = searchParams.get("next") === "checkout" ? "/checkout" : "/parent";
   const [screen, setScreen] = useState<Screen>(mode === "login" || mode === "register" ? "parent" : "choose");
   const [isSignUp, setIsSignUp] = useState(mode === "register");
   const [email, setEmail] = useState("");
@@ -52,10 +53,10 @@ export default function AuthPage() {
           sessionStorage.setItem("activeChildId", user.id);
           navigate("/", { replace: true });
         } else {
-          navigate("/parent", { replace: true });
+          navigate(parentDestination, { replace: true });
         }
       });
-  }, [user, isDemo, navigate]);
+  }, [user, isDemo, navigate, parentDestination]);
 
   const handleDemo = () => {
     startDemo();
@@ -96,7 +97,7 @@ export default function AuthPage() {
           if (newUser) {
             await supabase.from("profiles").update({ role: "parent" }).eq("id", newUser.id);
           }
-          navigate("/parent");
+          navigate(parentDestination);
         } else {
           setErrors({ form: getAuthError(error, "sign-up", t) });
         }
@@ -117,7 +118,7 @@ export default function AuthPage() {
 
         const { error } = await signIn(email, password);
         if (!error) {
-          navigate("/parent");
+          navigate(parentDestination);
         } else {
           setErrors({ form: getAuthError(error, "sign-in", t) });
         }

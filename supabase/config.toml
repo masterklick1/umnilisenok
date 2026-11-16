@@ -1,1 +1,8 @@
 project_id = "iekivmkxlpqwrfnakrbb"
+
+[functions.paddle-webhook]
+verify_jwt = false
+
+[functions.paddle-account]
+# The handler verifies the bearer token with Supabase Auth before querying billing data.
+verify_jwt = false

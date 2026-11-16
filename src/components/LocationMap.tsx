@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useId, useRef, useState } from "react";
 import { GoogleMap } from "@capacitor/google-maps";
 import { loadGoogleMaps } from "@/lib/google-maps";
@@ -139,6 +140,7 @@ const NativeLocationMap = ({
   routeMode = "driving",
   onError,
 }: NativeProps) => {
+  const { t } = useLanguage();
   const containerRef = useRef<HTMLElement>(null);
   const mapRef = useRef<GoogleMap | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -196,7 +198,7 @@ const NativeLocationMap = ({
       if (cancelled) return null;
       if (!laidOut) {
         console.error("[map] контейнер карты не получил размеры");
-        setMapError("Карта не получила размеры на экране.");
+        setMapError(t("Карта не получила размеры на экране.", "The map couldn’t load at this screen size."));
         onError?.();
         return null;
       }
@@ -234,7 +236,7 @@ const NativeLocationMap = ({
         window.setTimeout(() => {
           if (!cancelled && !ready) {
             console.error("[map] нативная карта не сообщила onMapReady за 10 c");
-            setMapError("Нативная карта временно недоступна.");
+            setMapError(t("Нативная карта временно недоступна.", "The map is temporarily unavailable."));
             onError?.();
           }
         }, 10_000);
@@ -243,7 +245,7 @@ const NativeLocationMap = ({
       } catch (e) {
         console.error("[map] GoogleMap.create failed, falling back to web:", e);
         if (!cancelled) {
-          setMapError("Переключение на стандартный режим...");
+          setMapError(t("Переключение на стандартный режим...", "Switching map modes…"));
           revertTransparencyChain(snapshots);
           snapshots = [];
           onError?.();
@@ -302,7 +304,7 @@ const NativeLocationMap = ({
         }
         markerIdsRef.current.child = await map.addMarker({
           coordinate: center,
-          title: label || "Ребёнок",
+          title: label || t("Ребёнок", "Child"),
         });
 
         if (markerIdsRef.current.parent) {
@@ -312,7 +314,7 @@ const NativeLocationMap = ({
         if (parentLocation) {
           markerIdsRef.current.parent = await map.addMarker({
             coordinate: { lat: parentLocation.lat, lng: parentLocation.lng },
-            title: "Вы",
+            title: t("Вы", "You"),
           });
         }
 
@@ -341,7 +343,7 @@ const NativeLocationMap = ({
           }
           const mid = await map.addMarker({
             coordinate: { lat: zone.lat, lng: zone.lng },
-            title: zone.label || "Место",
+            title: zone.label || t("Место", "Place"),
           });
           markerIdsRef.current.zones.push(mid);
         }
@@ -471,7 +473,7 @@ const NativeLocationMap = ({
             onClick={() => setAttempt((n) => n + 1)}
             className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
           >
-            Повторить
+            {t("Повторить", "Try again")}
           </button>
         </div>
       )}
@@ -496,6 +498,7 @@ const WebLocationMap = ({
   showRoute = false,
   routeMode = "driving",
 }: Props) => {
+  const { t } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const childMarkerRef = useRef<any>(null);
@@ -537,7 +540,7 @@ const WebLocationMap = ({
           childMarkerRef.current = new google.maps.Marker({
             position: center,
             map: mapRef.current,
-            title: label || "Ребёнок",
+            title: label || t("Ребёнок", "Child"),
             label: { text: "👶", fontSize: "14px" },
           });
 
@@ -620,7 +623,7 @@ const WebLocationMap = ({
             const marker = new google.maps.Marker({
               map: mapRef.current,
               position: gCenter,
-              title: zone.label || "Место",
+              title: zone.label || t("Место", "Place"),
               label: zone.label
                 ? { text: zone.label.slice(0, 2), fontSize: "11px" }
                 : undefined,
@@ -669,7 +672,7 @@ const WebLocationMap = ({
             geofenceMarkerRef.current = new google.maps.Marker({
               map: mapRef.current,
               position: gCenter,
-              title: geofence.label || "Активная зона",
+              title: geofence.label || t("Активная зона", "Active zone"),
               icon: {
                 path: google.maps.SymbolPath.CIRCLE,
                 scale: 7,
@@ -697,7 +700,7 @@ const WebLocationMap = ({
             parentMarkerRef.current = new google.maps.Marker({
               position: pPos,
               map: mapRef.current,
-              title: "Вы",
+              title: t("Вы", "You"),
               label: { text: "👨", fontSize: "14px" },
             });
           } else {

@@ -1,3 +1,5 @@
+import { englishTales } from "@/lib/fairy-tales-en";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { StreakBonusBanner } from "@/components/StreakBonusBanner";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -163,13 +165,14 @@ const RHYMES: Tale[] = [
 ];
 
 type Mode = "tales" | "riddles" | "rhymes";
-const MODES: { key: Mode; label: string; list: Tale[]; prefix: string }[] = [
-  { key: "tales", label: "📚 Сказки", list: TALES, prefix: "" },
-  { key: "riddles", label: "❓ Загадки", list: RIDDLES, prefix: "Загадка: " },
-  { key: "rhymes", label: "🔢 Считалки", list: RHYMES, prefix: "Считалка: " },
+const MODES: { key: Mode; label: [string, string]; list: Tale[]; prefix: string }[] = [
+  { key: "tales", label: ["📚 Сказки", "📚 Stories"], list: TALES, prefix: "" },
+  { key: "riddles", label: ["❓ Загадки", "❓ Riddles"], list: RIDDLES, prefix: "Загадка: " },
+  { key: "rhymes", label: ["🔢 Считалки", "🔢 Counting rhymes"], list: RHYMES, prefix: "Считалка: " },
 ];
 
 export default function FairyTalesPage() {
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("tales");
   const [tale, setTale] = useState<Tale | null>(null);
@@ -179,20 +182,24 @@ export default function FairyTalesPage() {
 
   const isQuiz = tale ? page >= tale.pages.length : false;
 
+  const story = language === "en" && tale ? englishTales[tale.id] : undefined;
+  const readLocale = story ? "en-US" : "ru-RU";
+  const narration = tale
+    ? isQuiz ? (story?.question ?? tale.question.q) : (story?.pages[page] ?? tale.pages[page].text)
+    : "";
+
   useEffect(() => {
-    if (!tale) return;
-    if (isQuiz) void speak(tale.question.q);
-    else void speak(tale.pages[page].text);
-  }, [tale, page, isQuiz]);
+    if (narration) void speak(narration, readLocale);
+  }, [tale, page, narration, readLocale]);
 
   const choose = (opt: string) => {
     if (!tale) return;
     setAnswer(opt);
     if (opt === tale.question.correct) {
-      void speak("Молодец! Правильно!");
+      void speak(t("Молодец! Правильно!", "Well done! That’s right!"), readLocale);
       void recordLearned("tales", current.prefix + tale.title);
     } else {
-      void speak("Подумай ещё!");
+      void speak(t("Подумай ещё!", "Try again!"), readLocale);
     }
   };
 
@@ -201,22 +208,22 @@ export default function FairyTalesPage() {
       <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-primary/5 p-4">
         <div className="container mx-auto max-w-4xl">
           <Button variant="ghost" onClick={() => navigate("/")} className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Назад
+            <ArrowLeft className="mr-2 h-4 w-4" /> {t("Назад", "Back")}
           </Button>
           <div className="text-center mb-8">
             <div className="text-6xl mb-4 animate-bounce-gentle">📖</div>
-            <h1 className="text-4xl font-extrabold text-gradient mb-2">Сказки</h1>
-            <p className="text-lg text-muted-foreground">Слушаем и отвечаем на вопросы!</p>
+            <h1 className="text-4xl font-extrabold text-gradient mb-2">{t("Сказки", "Stories")}</h1>
+            <p className="text-lg text-muted-foreground">{t("Слушаем и отвечаем на вопросы!", "Listen and answer the questions!")}</p>
           </div>
           <div className="mb-6 flex justify-center">
             <Button className="h-14 w-full max-w-sm rounded-2xl text-lg" onClick={() => navigate("/tales/read-page")}>
-              <Camera className="mr-2 h-5 w-5" /> Прочитай страницу
+              <Camera className="mr-2 h-5 w-5" /> {t("Прочитай страницу", "Read a page")}
             </Button>
           </div>
           <div className="flex justify-center gap-2 mb-6 flex-wrap">
             {MODES.map((m) => (
               <Button key={m.key} variant={mode === m.key ? "default" : "outline"} className="rounded-full" onClick={() => setMode(m.key)}>
-                {m.label}
+                {t(...m.label)}
               </Button>
             ))}
           </div>
@@ -230,7 +237,7 @@ export default function FairyTalesPage() {
               >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
                 <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{t.emoji}</div>
-                <h3 className="relative z-10 text-2xl font-extrabold">{t.title}</h3>
+                <h3 className="relative z-10 text-2xl font-extrabold" lang={language}>{language === "en" ? englishTales[t.id]?.title ?? t.title : t.title}</h3>
               </Card>
             ))}
           </div>
@@ -243,21 +250,21 @@ export default function FairyTalesPage() {
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-primary/5 p-4 flex flex-col">
       <StreakBonusBanner />
       <Button variant="ghost" className="self-start" onClick={() => setTale(null)}>
-        <ArrowLeft className="w-5 h-5 mr-2" /> Назад к списку
+        <ArrowLeft className="w-5 h-5 mr-2" /> {t("Назад к списку", "Back to stories")}
       </Button>
-      <h1 className="text-2xl font-bold text-center my-2">{tale.title}</h1>
+      <h1 className="text-2xl font-bold text-center my-2" lang={readLocale}>{story?.title ?? tale.title}</h1>
       <Card className="flex-1 max-w-md w-full mx-auto p-6 flex flex-col items-center justify-center text-center gap-6">
         {!isQuiz ? (
           <>
             <div className="text-8xl">{tale.pages[page].emoji}</div>
-            <p className="text-xl leading-relaxed">{tale.pages[page].text}</p>
-            <Button variant="outline" onClick={() => void speak(tale.pages[page].text)}>
-              <Volume2 className="w-5 h-5 mr-2" /> Послушать
+            <p className="text-xl leading-relaxed" lang={readLocale}>{narration}</p>
+            <Button variant="outline" onClick={() => void speak(narration, readLocale)}>
+              <Volume2 className="w-5 h-5 mr-2" /> {t("Послушать", "Listen")}
             </Button>
           </>
         ) : (
           <>
-            <p className="text-xl font-bold">{tale.question.q}</p>
+            <p className="text-xl font-bold" lang={readLocale}>{narration}</p>
             <div className="flex gap-4">
               {tale.question.options.map((o) => (
                 <button
@@ -272,7 +279,7 @@ export default function FairyTalesPage() {
               ))}
             </div>
             {answer === tale.question.correct && (
-              <Button onClick={() => setTale(null)}>Дальше ⭐</Button>
+              <Button onClick={() => setTale(null)}>{t("Дальше ⭐", "Next ⭐")}</Button>
             )}
           </>
         )}

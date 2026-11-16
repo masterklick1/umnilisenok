@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { recordLearned } from "@/lib/learning-progress";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -51,6 +52,7 @@ const QUESTIONS: Question[] = [
 ];
 
 export default function EnglishQuizPage() {
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -104,22 +106,22 @@ export default function EnglishQuizPage() {
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div>
-            <h1 className="text-3xl font-black text-cyan-600">Викторина</h1>
-            <p className="text-sm text-muted-foreground">Найди правильную букву!</p>
+            <h1 className="text-3xl font-black text-cyan-600">{t("Викторина", "Quiz")}</h1>
+            <p className="text-sm text-muted-foreground">{t("Найди правильную букву!", "Find the right letter!")}</p>
           </div>
         </div>
 
         {!isFinished ? (
           <Card className="p-6 bg-white border-2 border-cyan-200 rounded-3xl text-center shadow-lg space-y-6">
             <div className="flex justify-between items-center text-xs text-cyan-600 font-bold uppercase tracking-wider">
-              <span>Вопрос {currentIndex + 1} из {QUESTIONS.length}</span>
-              <span>Очки: {score}</span>
+              <span>{t("Вопрос", "Question")} {currentIndex + 1} {t("из", "of")} {QUESTIONS.length}</span>
+              <span>{t("Очки:", "Score:")} {score}</span>
             </div>
 
             <div className="space-y-2">
               <div className="text-7xl">{q.emoji}</div>
               <h2 className="text-2xl font-black text-slate-800">{q.word}</h2>
-              <p className="text-sm text-slate-500">{q.translation}</p>
+              {language === "ru" && <p className="text-sm text-slate-500">{q.translation}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-2">
@@ -149,16 +151,16 @@ export default function EnglishQuizPage() {
           <Card className="p-8 bg-white border-2 border-cyan-200 rounded-3xl text-center shadow-lg space-y-6">
             <div className="text-6xl">🎉</div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800">Отличная работа!</h2>
+              <h2 className="text-2xl font-black text-slate-800">{t("Отличная работа!", "Great job!")}</h2>
               <p className="text-slate-600 mt-2">
-                Ты ответил правильно на <span className="font-bold text-cyan-600">{score}</span> из {QUESTIONS.length} вопросов!
+                {t("Ты ответил правильно на", "You got")} <span className="font-bold text-cyan-600">{score}</span> {t("из", "of")} {QUESTIONS.length} {t("вопросов!", "questions right!")}
               </p>
             </div>
             <Button
               onClick={restart}
               className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-6 rounded-2xl text-lg flex items-center justify-center gap-2"
             >
-              <RotateCcw className="w-5 h-5" /> Играть снова
+              <RotateCcw className="w-5 h-5" /> {t("Играть снова", "Play again")}
             </Button>
           </Card>
         )}

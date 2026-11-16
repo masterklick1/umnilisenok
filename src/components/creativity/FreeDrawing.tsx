@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useRef, useState, type PointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Eraser, FlipHorizontal2, Pencil, Save, Trash2, Undo2 } from "lucide-react";
@@ -50,6 +51,7 @@ function paint(ctx: CanvasRenderingContext2D, to: Point, stroke: Stroke) {
 }
 
 export const FreeDrawing = () => {
+  const { t } = useLanguage();
   const owner = useGalleryOwner();
   const draft = useRef<Drawing | null>(null);
   const saving = useRef(false);
@@ -78,7 +80,7 @@ export const FreeDrawing = () => {
         const now = new Date();
         draft.current = {
           id: crypto.randomUUID(),
-          title: `Рисунок · ${now.toLocaleDateString("ru-RU")}`,
+          title: t(`Рисунок · ${now.toLocaleDateString("ru-RU")}`, `Drawing · ${now.toLocaleDateString("en-US")}`),
           image_data: canvas.toDataURL("image/png"),
           created_at: now.toISOString(),
         };
@@ -159,16 +161,16 @@ export const FreeDrawing = () => {
     <div className="flex flex-col items-center gap-4">
       <div className="flex w-full flex-wrap justify-center gap-2">
         <Button variant={activeTool === "draw" ? "default" : "outline"} aria-pressed={activeTool === "draw"} onClick={() => setActiveTool("draw")}>
-          <Pencil className="mr-2 h-4 w-4" /> Кисть
+          <Pencil className="mr-2 h-4 w-4" /> {t("Кисть", "Brush")}
         </Button>
         <Button variant={activeTool === "eraser" ? "default" : "outline"} aria-pressed={activeTool === "eraser"} onClick={() => setActiveTool("eraser")}>
-          <Eraser className="mr-2 h-4 w-4" /> Ластик
+          <Eraser className="mr-2 h-4 w-4" /> {t("Ластик", "Eraser")}
         </Button>
         <Button variant="outline" onClick={undo} disabled={!canUndo}>
-          <Undo2 className="mr-2 h-4 w-4" /> Отменить
+          <Undo2 className="mr-2 h-4 w-4" /> {t("Отменить", "Cancel")}
         </Button>
         <Button variant="outline" onClick={clear} disabled={!hasDrawing}>
-          <Trash2 className="mr-2 h-4 w-4" /> Очистить
+          <Trash2 className="mr-2 h-4 w-4" /> {t("Очистить", "Clear")}
         </Button>
       </div>
 
@@ -178,16 +180,16 @@ export const FreeDrawing = () => {
       }} />
 
       <Button variant={mirror ? "default" : "outline"} aria-pressed={mirror} onClick={() => setMirror((value) => !value)}>
-        <FlipHorizontal2 className="mr-2 h-4 w-4" /> Зеркальная кисть
+        <FlipHorizontal2 className="mr-2 h-4 w-4" /> {t("Зеркальная кисть", "Mirror brush")}
       </Button>
-      {mirror && <p className="text-center text-sm text-muted-foreground">Нарисуй одно крыло бабочки. Второе появится само!</p>}
+      {mirror && <p className="text-center text-sm text-muted-foreground">{t("Нарисуй одно крыло бабочки. Второе появится само!", "Draw one butterfly wing and watch the other one appear!")}</p>}
 
       <div className="relative w-full max-w-[600px] overflow-hidden rounded-2xl border-4 border-primary/20 bg-white shadow-xl">
         <canvas
           ref={canvasRef}
           width={WIDTH}
           height={HEIGHT}
-          aria-label="Холст для рисования"
+          aria-label={t("Холст для рисования", "Drawing canvas")}
           onPointerDown={startDrawing}
           onPointerMove={draw}
           onPointerUp={stopDrawing}
@@ -198,10 +200,10 @@ export const FreeDrawing = () => {
         {mirror && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 border-l-2 border-dashed border-violet-400/70" />}
       </div>
       <Button disabled={!owner || !hasDrawing || saveStatus === "saving" || saveStatus === "saved"} onClick={() => void save()}>
-        <Save className="mr-2 h-4 w-4" /> {saveStatus === "saving" ? "Сохраняем…" : "Сохранить в галерею"}
+        <Save className="mr-2 h-4 w-4" /> {saveStatus === "saving" ? t("Сохраняем…", "Saving…") : t("Сохранить в галерею", "Save to gallery")}
       </Button>
-      {saveStatus === "saved" && <p role="status">Рисунок в галерее.</p>}
-      {saveStatus === "error" && <p role="status">Не удалось сохранить рисунок. Попробуй ещё раз.</p>}
+      {saveStatus === "saved" && <p role="status">{t("Рисунок в галерее.", "Drawing saved to the gallery.")}</p>}
+      {saveStatus === "error" && <p role="status">{t("Не удалось сохранить рисунок. Попробуй ещё раз.", "Couldn’t save the drawing. Try again.")}</p>}
     </div>
   );
 };

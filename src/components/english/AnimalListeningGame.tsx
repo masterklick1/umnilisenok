@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ function makeRounds(animals: readonly Animal[], targets: readonly Animal[]): Rou
 }
 
 export function AnimalListeningGame({ animals, onBack }: { animals: readonly Animal[]; onBack: () => void }) {
+  const { t } = useLanguage();
   const [rounds, setRounds] = useState<Round[]>([]);
   const [index, setIndex] = useState(0);
   const [missed, setMissed] = useState<string[]>([]);
@@ -76,27 +78,27 @@ export function AnimalListeningGame({ animals, onBack }: { animals: readonly Ani
 
   return (
     <Card className="space-y-5 rounded-3xl border-amber-200 bg-white p-4 text-center text-slate-900 sm:p-8">
-      <h2 className="text-2xl font-extrabold">Послушай и выбери</h2>
+      <h2 className="text-2xl font-extrabold">{t("Послушай и выбери", "Listen and choose")}</h2>
       {!round && (
         <>
           <p className="text-slate-600">
-            {finished ? `Ты нашёл ${score} из ${rounds.length} животных.` : "Послушай английское слово и покажи нужное животное."}
+            {finished ? t(`Ты нашёл ${score} из ${rounds.length} животных.`, `You found ${score} of ${rounds.length} animals.`) : t("Послушай английское слово и покажи нужное животное.", "Listen to the English word and choose the right animal.")}
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {finished && practice.length > 0 && (
-              <Button onClick={() => start(practice)}>Повторить сложные слова</Button>
+              <Button onClick={() => start(practice)}>{t("Повторить сложные слова", "Review tricky words")}</Button>
             )}
-            <Button onClick={() => start(animals)}><Volume2 className="mr-2 h-5 w-5" />{finished ? "Сыграть ещё раз" : "Начать игру"}</Button>
-            <Button variant="outline" onClick={onBack}>К карточкам</Button>
+            <Button onClick={() => start(animals)}><Volume2 className="mr-2 h-5 w-5" />{finished ? t("Сыграть ещё раз", "Play again") : t("Начать игру", "Start game")}</Button>
+            <Button variant="outline" onClick={onBack}>{t("К карточкам", "Back to flashcards")}</Button>
           </div>
         </>
       )}
 
       {round && (
         <>
-          <p className="text-sm font-semibold text-slate-600">Задание {index + 1} из {rounds.length}</p>
+          <p className="text-sm font-semibold text-slate-600">{t("Задание", "Task")} {index + 1} {t("из", "of")} {rounds.length}</p>
           <Button size="lg" onClick={() => playWord(round.answer)}>
-            <Volume2 className="mr-2 h-5 w-5" /> Послушать слово
+            <Volume2 className="mr-2 h-5 w-5" /> {t("Послушать слово", "Listen to the word")}
           </Button>
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {round.choices.map((animal) => (
@@ -118,18 +120,18 @@ export function AnimalListeningGame({ animals, onBack }: { animals: readonly Ani
           </div>
           {locked ? (
             <p role="status" className="font-semibold">
-              {solved ? "Правильно!" : "Вот правильный ответ:"} <span lang="en">{round.answer.word}</span>
+              {solved ? t("Правильно!", "That’s right!") : t("Вот правильный ответ:", "Here’s the right answer:")} <span lang="en">{round.answer.word}</span>
             </p>
           ) : (
             <>
-              {missed.length > 0 && <p role="status" className="font-semibold">Попробуй ещё раз.</p>}
-              <Button variant="ghost" onClick={() => setShowWord(true)} disabled={showWord}>Показать слово</Button>
+              {missed.length > 0 && <p role="status" className="font-semibold">{t("Попробуй ещё раз.", "Try again.")}</p>}
+              <Button variant="ghost" onClick={() => setShowWord(true)} disabled={showWord}>{t("Показать слово", "Show the word")}</Button>
               {showWord && <p lang="en" className="font-semibold">{round.answer.word}</p>}
             </>
           )}
           <div className="flex flex-wrap justify-center gap-2">
-            <Button variant="outline" onClick={onBack}>К карточкам</Button>
-            {locked && <Button onClick={advance}>{index + 1 === rounds.length ? "Посмотреть итог" : "Дальше"}</Button>}
+            <Button variant="outline" onClick={onBack}>{t("К карточкам", "Back to flashcards")}</Button>
+            {locked && <Button onClick={advance}>{index + 1 === rounds.length ? t("Посмотреть итог", "See results") : t("Дальше", "Next")}</Button>}
           </div>
         </>
       )}

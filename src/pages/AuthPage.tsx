@@ -1,3 +1,5 @@
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,24 +10,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { Users, Baby, Sparkles } from "lucide-react";
-import { getRussianAuthError } from "@/lib/auth-errors";
+import { getAuthError } from "@/lib/auth-errors";
 import AnimatedFox from "@/components/AnimatedFox";
 import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
-
-const signUpSchema = z.object({
-  email: z.string().email({ message: "Неверный формат email" }),
-  password: z.string().min(6, { message: "Пароль должен быть минимум 6 символов" }),
-  firstName: z.string().min(2, { message: "Имя должно быть минимум 2 символа" }),
-});
-
-const signInSchema = z.object({
-  email: z.string().email({ message: "Неверный формат email" }),
-  password: z.string().min(1, { message: "Введите пароль" }),
-});
 
 type Screen = "choose" | "parent" | "reset";
 
 export default function AuthPage() {
+  const { t, language } = useLanguage();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode");
   const [screen, setScreen] = useState<Screen>(mode === "login" || mode === "register" ? "parent" : "choose");
@@ -39,6 +31,8 @@ export default function AuthPage() {
   const [resetSent, setResetSent] = useState(false);
   const { signUp, signIn, startDemo, isDemo, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => setErrors({}), [language]);
 
   useEffect(() => {
     if (!user) return;
@@ -75,12 +69,16 @@ export default function AuthPage() {
     try {
       if (isSignUp) {
         if (!acceptedPolicy) {
-          setErrors({ policy: "Необходимо принять политику конфиденциальности" });
+          setErrors({ policy: t("Необходимо принять политику конфиденциальности", "Accept the Privacy Policy to create an account") });
           setIsLoading(false);
           return;
         }
 
-        const result = signUpSchema.safeParse({ email, password, firstName });
+        const result = z.object({
+          email: z.string().email({ message: t("Неверный формат email", "Enter a valid email address") }),
+          password: z.string().min(6, { message: t("Пароль должен быть минимум 6 символов", "Use at least 6 characters for your password") }),
+          firstName: z.string().min(2, { message: t("Имя должно быть минимум 2 символа", "Enter at least 2 characters for your name") }),
+        }).safeParse({ email, password, firstName });
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
           result.error.errors.forEach((err) => {
@@ -99,10 +97,13 @@ export default function AuthPage() {
           }
           navigate("/parent");
         } else {
-          setErrors({ form: getRussianAuthError(error, "sign-up") });
+          setErrors({ form: getAuthError(error, "sign-up", t) });
         }
       } else {
-        const result = signInSchema.safeParse({ email, password });
+        const result = z.object({
+          email: z.string().email({ message: t("Неверный формат email", "Enter a valid email address") }),
+          password: z.string().min(1, { message: t("Введите пароль", "Enter your password") }),
+        }).safeParse({ email, password });
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
           result.error.errors.forEach((err) => {
@@ -117,7 +118,7 @@ export default function AuthPage() {
         if (!error) {
           navigate("/parent");
         } else {
-          setErrors({ form: getRussianAuthError(error, "sign-in") });
+          setErrors({ form: getAuthError(error, "sign-in", t) });
         }
       }
     } catch (error) {
@@ -133,7 +134,7 @@ export default function AuthPage() {
 
     const emailCheck = z.string().email().safeParse(email);
     if (!emailCheck.success) {
-      setErrors({ email: "Неверный формат email" });
+      setErrors({ email: t("Неверный формат email", "Enter a valid email address") });
       return;
     }
 
@@ -144,7 +145,7 @@ export default function AuthPage() {
     setIsLoading(false);
 
     if (error) {
-      setErrors({ email: "Не удалось отправить письмо. Попробуйте позже." });
+      setErrors({ email: t("Не удалось отправить письмо. Попробуйте позже.", "We couldn't send the email. Try again later.") });
       return;
     }
     setResetSent(true);
@@ -155,21 +156,20 @@ export default function AuthPage() {
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/20 via-background to-secondary/20">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
+            <LanguageSwitcher />
             <div className="text-6xl mb-4">🔑</div>
-            <CardTitle className="text-2xl">Забыли пароль?</CardTitle>
+            <CardTitle className="text-2xl">{t("Забыли пароль?", "Forgot your password?")}</CardTitle>
             <CardDescription>
               {resetSent
-                ? "Мы отправили письмо со ссылкой для смены пароля"
-                : "Введите почту, на которую зарегистрирован аккаунт"}
+                ? t("Мы отправили письмо со ссылкой для смены пароля", "We sent you a password reset link")
+                : t("Введите почту, на которую зарегистрирован аккаунт", "Enter the email address you used to sign up")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {resetSent ? (
               <div className="space-y-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Письмо отправлено на <span className="font-medium text-foreground">{email}</span>.
-                  Откройте его и перейдите по ссылке, чтобы задать новый пароль.
-                  Если письма нет — проверьте папку «Спам».
+                  {t("Письмо отправлено на", "We sent an email to")} <span className="font-medium text-foreground">{email}</span>{t(". Откройте его и перейдите по ссылке, чтобы задать новый пароль. Если письма нет — проверьте папку «Спам».", ". Follow the link to set a new password. If you can’t find the email, check your spam folder.")}
                 </p>
                 <Button
                   className="w-full"
@@ -178,7 +178,7 @@ export default function AuthPage() {
                     setScreen("parent");
                   }}
                 >
-                  Вернуться ко входу
+                  {t("Вернуться ко входу", "Back to sign in")}
                 </Button>
               </div>
             ) : (
@@ -196,7 +196,7 @@ export default function AuthPage() {
                   {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Отправляем..." : "Отправить ссылку"}
+                  {isLoading ? t("Отправляем...", "Sending…") : t("Отправить ссылку", "Send reset link")}
                 </Button>
               </form>
             )}
@@ -208,7 +208,7 @@ export default function AuthPage() {
               }}
               className="mt-4 block w-full text-sm text-muted-foreground hover:text-foreground"
             >
-              ← Назад
+              {t("← Назад", "← Back")}
             </button>
           </CardContent>
         </Card>
@@ -223,9 +223,10 @@ export default function AuthPage() {
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/20 via-background to-secondary/20">
         <Card className="w-full max-w-md rounded-3xl shadow-xl border-2 animate-fade-in">
           <CardHeader className="text-center pb-4">
+            <LanguageSwitcher />
             <AnimatedFox size={160} />
-            <CardTitle className="text-3xl font-extrabold">Умный Лисёнок</CardTitle>
-            <CardDescription className="text-base">Привет! Кто заходит в приложение?</CardDescription>
+            <CardTitle className="text-3xl font-extrabold">{t("Умный Лисёнок", "Clever Little Fox")}</CardTitle>
+            <CardDescription className="text-base">{t("Привет! Кто заходит в приложение?", "Hi! Who’s using the app?")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button
@@ -235,7 +236,7 @@ export default function AuthPage() {
               onClick={() => setScreen("parent")}
             >
               <Users className="w-8 h-8" />
-              Я родитель
+              {t("Я родитель", "I’m a parent")}
             </Button>
             <Button
               size="lg"
@@ -243,7 +244,7 @@ export default function AuthPage() {
               onClick={() => navigate("/join")}
             >
               <Baby className="w-8 h-8" />
-              Я ребёнок
+              {t("Я ребёнок", "I’m a child")}
             </Button>
             <Button
               size="lg"
@@ -252,17 +253,19 @@ export default function AuthPage() {
               onClick={handleDemo}
             >
               <Sparkles className="w-8 h-8" />
-              Попробовать бесплатно
+              {t("Попробовать бесплатно", "Try for free")}
               <span className="text-xs font-normal text-muted-foreground">
-                Уроки без регистрации, родительский контроль после аккаунта
+                {t("Уроки без регистрации, родительский контроль после аккаунта", "Play lessons without an account. Sign up for parental controls.")}
               </span>
             </Button>
 
             <div className="rounded-2xl bg-teal-50 p-4 text-center text-teal-950">
-              <p className="font-semibold">Русский через игру · Мои игрушки</p>
-              <p lang="tg" className="mt-1 text-sm">Барои кӯдаконе, ки нав ба омӯзиши забони русӣ шурӯъ мекунанд.</p>
+              <p className="font-semibold">{t("Русский через игру · Мои игрушки", "Russian through play · My toys")}</p>
+              <p lang={language === "ru" ? "tg" : "en"} className="mt-1 text-sm">
+                {t("Барои кӯдаконе, ки нав ба омӯзиши забони русӣ шурӯъ мекунанд.", "For children who are just starting to learn Russian.")}
+              </p>
               <Button asChild variant="link" className="mt-1 text-teal-800">
-                <Link to={TOYS_LESSON_PATH}>Попробовать урок</Link>
+                <Link to={TOYS_LESSON_PATH}>{t("Попробовать урок", "Try the lesson")}</Link>
               </Button>
             </div>
 
@@ -273,7 +276,7 @@ export default function AuthPage() {
                 rel="noopener noreferrer"
                 className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
               >
-                Политика конфиденциальности
+                {t("Политика конфиденциальности", "Privacy Policy")}
               </a>
             </div>
           </CardContent>
@@ -286,21 +289,22 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/20 via-background to-secondary/20">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <LanguageSwitcher />
           <div className="text-6xl mb-4">👨‍👩‍👧</div>
-          <CardTitle className="text-2xl">Родитель</CardTitle>
+          <CardTitle className="text-2xl">{t("Родитель", "Parent")}</CardTitle>
           <CardDescription>
-            {isSignUp ? "Создайте аккаунт" : "Войдите в аккаунт"}
+            {isSignUp ? t("Создайте аккаунт", "Create an account") : t("Войдите в аккаунт", "Sign in to your account")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="firstName">Ваше имя</Label>
+                <Label htmlFor="firstName">{t("Ваше имя", "Your name")}</Label>
                 <Input
                   id="firstName"
                   type="text"
-                  placeholder="Введите имя"
+                  placeholder={t("Введите имя", "Enter your name")}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required
@@ -321,7 +325,7 @@ export default function AuthPage() {
               {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
+              <Label htmlFor="password">{t("Пароль", "Password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -344,14 +348,14 @@ export default function AuthPage() {
                     className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
                   />
                   <Label htmlFor="policy" className="text-xs leading-normal cursor-pointer text-muted-foreground">
-                    Я принимаю{" "}
+                    {t("Я принимаю", "I accept the")}{" "}
                     <a
                       href="https://umnilisenok.lovable.app/privacy.html"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary underline font-medium hover:opacity-80"
                     >
-                      Политику конфиденциальности
+                      {t("Политику конфиденциальности", "Privacy Policy")}
                     </a>
                   </Label>
                 </div>
@@ -370,7 +374,7 @@ export default function AuthPage() {
               className="w-full"
               disabled={isLoading || (isSignUp && !acceptedPolicy)}
             >
-              {isLoading ? "Загрузка..." : isSignUp ? "Зарегистрироваться" : "Войти"}
+              {isLoading ? t("Загрузка...", "Loading…") : isSignUp ? t("Зарегистрироваться", "Sign up") : t("Войти", "Sign in")}
             </Button>
           </form>
           <div className="mt-4 space-y-2 text-center">
@@ -384,7 +388,7 @@ export default function AuthPage() {
                 }}
                 className="block w-full text-sm text-primary underline hover:opacity-80"
               >
-                Забыли пароль?
+                {t("Забыли пароль?", "Forgot your password?")}
               </button>
             )}
             <button
@@ -392,14 +396,14 @@ export default function AuthPage() {
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              {isSignUp ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
+              {isSignUp ? t("Уже есть аккаунт? Войти", "Already have an account? Sign in") : t("Нет аккаунта? Зарегистрироваться", "New here? Sign up")}
             </button>
             <button
               type="button"
               onClick={() => setScreen("choose")}
               className="block w-full text-sm text-muted-foreground hover:text-foreground"
             >
-              ← Назад
+              {t("← Назад", "← Back")}
             </button>
           </div>
         </CardContent>

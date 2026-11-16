@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Heart, ShoppingBag, Sprout } from "lucide-react";
@@ -8,6 +9,7 @@ import { Garden } from "./Garden";
 import { GiftInbox } from "./GiftInbox";
 
 export const VirtualHome = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("room");
   const [roomKey, setRoomKey] = useState(0);
 
@@ -18,19 +20,19 @@ export const VirtualHome = () => {
         <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/60 p-1 rounded-xl">
           <TabsTrigger value="room" className="flex items-center gap-1 rounded-lg text-xs sm:text-sm">
             <Home className="w-4 h-4" />
-            <span>Комната</span>
+            <span>{t("Комната", "Room")}</span>
           </TabsTrigger>
           <TabsTrigger value="care" className="flex items-center gap-1 rounded-lg text-xs sm:text-sm">
             <Heart className="w-4 h-4 text-rose-500" />
-            <span>Уход</span>
+            <span>{t("Уход", "Care")}</span>
           </TabsTrigger>
           <TabsTrigger value="garden" className="flex items-center gap-1 rounded-lg text-xs sm:text-sm">
             <Sprout className="w-4 h-4 text-emerald-600" />
-            <span>Садик</span>
+            <span>{t("Садик", "Garden")}</span>
           </TabsTrigger>
           <TabsTrigger value="shop" className="flex items-center gap-1 rounded-lg text-xs sm:text-sm">
             <ShoppingBag className="w-4 h-4 text-amber-500" />
-            <span>Магазин</span>
+            <span>{t("Магазин", "Shop")}</span>
           </TabsTrigger>
         </TabsList>
 

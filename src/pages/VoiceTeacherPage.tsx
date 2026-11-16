@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useRef, useState } from "react";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { ArrowLeft, Mic, Volume2 } from "lucide-react";
@@ -55,20 +56,21 @@ function matchesAnswer(phrase: string, answers: readonly string[]) {
 }
 
 export default function VoiceTeacherPage() {
+  const { t } = useLanguage();
   const [lesson, setLesson] = useState<"toys" | "actions">("toys");
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50 via-background to-teal-50 px-3 py-3 sm:px-6 sm:py-6">
       <div className="mx-auto max-w-2xl">
         <Button asChild variant="ghost" className="mb-2 min-h-11 gap-2 px-3 text-base">
-          <Link to="/"><ArrowLeft className="h-5 w-5" /> Назад</Link>
+          <Link to="/"><ArrowLeft className="h-5 w-5" /> {t("Назад", "Back")}</Link>
         </Button>
         <SchoolModeGuard>
-          <div className="mb-3 grid grid-cols-2 gap-2" role="group" aria-label="Выбрать голосовой урок">
+          <div className="mb-3 grid grid-cols-2 gap-2" role="group" aria-label={t("Выбрать голосовой урок", "Choose a voice lesson")}>
             <Button className="h-auto min-h-12 whitespace-normal px-2 py-2 text-base" aria-pressed={lesson === "toys"}
-              variant={lesson === "toys" ? "default" : "outline"} onClick={() => setLesson("toys")}>Мои игрушки</Button>
+              variant={lesson === "toys" ? "default" : "outline"} onClick={() => setLesson("toys")}>{t("Мои игрушки", "My toys")}</Button>
             <Button className="h-auto min-h-12 whitespace-normal px-2 py-2 text-base" aria-pressed={lesson === "actions"}
-              variant={lesson === "actions" ? "default" : "outline"} onClick={() => setLesson("actions")}>Что делает мишка?</Button>
+              variant={lesson === "actions" ? "default" : "outline"} onClick={() => setLesson("actions")}>{t("Что делает мишка?", "What’s the teddy doing?")}</Button>
           </div>
           <VoiceLesson key={lesson} actions={lesson === "actions"} />
         </SchoolModeGuard>
@@ -78,6 +80,8 @@ export default function VoiceTeacherPage() {
 }
 
 function VoiceLesson({ actions }: { actions: boolean }) {
+  const { t, language } = useLanguage();
+  const voiceLocale = language === "en" ? "en-US" : "ru-RU";
   const rounds = actions ? ACTION_QUESTIONS : TOY_QUESTIONS;
   const [index, setIndex] = useState(-1);
   const [canListen, setCanListen] = useState(false);
@@ -88,9 +92,9 @@ function VoiceLesson({ actions }: { actions: boolean }) {
   const attempt = useRef(0);
   const round = rounds[index];
   const finished = index === rounds.length;
-  const toyQuestion = canListen ? "Что это за игрушка? Скажи или выбери картинку." : "Что это за игрушка? Выбери картинку.";
+  const toyQuestion = canListen ? t("Что это за игрушка? Скажи или выбери картинку.", "What’s the toy? Say it in Russian or choose a picture.") : t("Что это за игрушка? Выбери картинку.", "What’s the toy? Choose a picture.");
   const question = actions
-    ? pictureMatched ? "Что делает мишка?" : ACTION_QUESTIONS[index]?.ask ?? ""
+    ? pictureMatched ? t("Что делает мишка?", "What’s the teddy doing?") : ACTION_QUESTIONS[index]?.ask ?? ""
     : toyQuestion;
 
   useEffect(() => {
@@ -113,7 +117,13 @@ function VoiceLesson({ actions }: { actions: boolean }) {
     setAnswered(false);
     setPictureMatched(false);
     setFeedback("");
-    void speak(next === rounds.length ? "Молодец! Спасибо за игру!" : actions ? ACTION_QUESTIONS[next].ask : toyQuestion);
+    if (next === rounds.length) {
+      void speak(t("Молодец! Спасибо за игру!", "Well done! Thanks for playing!"), voiceLocale);
+    } else if (actions) {
+      void speak(ACTION_QUESTIONS[next].ask, "ru-RU");
+    } else {
+      void speak(toyQuestion, voiceLocale);
+    }
   };
 
   const respond = (correct: boolean, phrase: string) => {
@@ -124,10 +134,10 @@ function VoiceLesson({ actions }: { actions: boolean }) {
       void speak(reply + " Нажми зелёную стрелку.");
     } else {
       const reply = actions && pictureMatched
-        ? "Попробуй ещё раз или нажми зелёную стрелку."
-        : "Попробуй ещё раз. Можно выбрать картинку.";
+        ? t("Попробуй ещё раз или нажми зелёную стрелку.", "Try again or tap the green arrow.")
+        : t("Попробуй ещё раз. Можно выбрать картинку.", "Try again. You can choose a picture.");
       setFeedback(reply);
-      void speak(reply);
+      void speak(reply, voiceLocale);
     }
   };
 
@@ -147,10 +157,10 @@ function VoiceLesson({ actions }: { actions: boolean }) {
       if (attempt.current !== current) return;
       const code = (error as { code?: string } | null)?.code;
       const unavailable = code === "PERMISSION_DENIED" || code === "LANGUAGE_UNAVAILABLE" || code === "UNAVAILABLE";
-      const fallback = actions ? "Нажми зелёную стрелку." : "Выбери картинку.";
-      const reply = (unavailable ? "Микрофон недоступен. " : "Я не расслышал. ") + fallback;
+      const fallback = actions ? t("Нажми зелёную стрелку.", "Tap the green arrow.") : t("Выбери картинку.", "Choose a picture.");
+      const reply = (unavailable ? t("Микрофон недоступен. ", "The microphone is unavailable. ") : t("Я не расслышал. ", "I didn’t catch that. ")) + fallback;
       setFeedback(reply);
-      if (code !== "CANCELLED") void speak(reply);
+      if (code !== "CANCELLED") void speak(reply, voiceLocale);
     } finally {
       if (attempt.current === current) setListening(false);
     }
@@ -172,30 +182,30 @@ function VoiceLesson({ actions }: { actions: boolean }) {
   return (
     <Card className="space-y-4 rounded-3xl p-3 text-center sm:space-y-5 sm:p-7">
       <header>
-        <p className="text-base font-semibold text-teal-800 sm:text-lg">Голосовой урок</p>
-        <h1 className="text-3xl font-extrabold leading-tight sm:text-4xl">{actions ? "Что делает мишка?" : "Мои игрушки"}</h1>
+        <p className="text-base font-semibold text-teal-800 sm:text-lg">{t("Голосовой урок", "Voice lesson")}</p>
+        <h1 className="text-3xl font-extrabold leading-tight sm:text-4xl">{actions ? t("Что делает мишка?", "What’s the teddy doing?") : t("Мои игрушки", "My toys")}</h1>
       </header>
       {!round && (
         <>
           <AnimatedFox size={242} />
-          <p className="text-xl font-semibold sm:text-2xl">{finished ? actions ? "Молодец! Ты узнал, что делает мишка." : "Молодец! Ты узнал все игрушки." : "Лисёнок задаст три вопроса."}</p>
-          <Button size="lg" className="h-auto min-h-14 w-full max-w-md whitespace-normal py-3 text-xl" onClick={() => goTo(0)}>{finished ? "Сыграть ещё раз" : "Начать урок"}</Button>
+          <p className="text-xl font-semibold sm:text-2xl">{finished ? actions ? t("Молодец! Ты узнал, что делает мишка.", "Well done! You found out what the teddy was doing.") : t("Молодец! Ты узнал все игрушки.", "Well done! You found all the toys.") : t("Лисёнок задаст три вопроса.", "Little Fox will ask three questions in Russian.")}</p>
+          <Button size="lg" className="h-auto min-h-14 w-full max-w-md whitespace-normal py-3 text-xl" onClick={() => goTo(0)}>{finished ? t("Сыграть ещё раз", "Play again") : t("Начать урок", "Start lesson")}</Button>
         </>
       )}
       {round && (
         <>
-          <p className="text-base font-semibold text-muted-foreground">{index + 1} из {rounds.length}</p>
+          <p className="text-base font-semibold text-muted-foreground">{index + 1} {t("из", "of")} {rounds.length}</p>
           {(!actions || pictureMatched) && (
             <img src={round.picture} alt={round.label}
               className="mx-auto aspect-square w-[clamp(12rem,36dvh,20rem)] max-w-full rounded-3xl object-cover" />
           )}
           <div className="mx-auto grid w-full max-w-md gap-2 min-[420px]:grid-flow-col min-[420px]:auto-cols-fr">
-            <Button variant="outline" className="h-auto min-h-14 whitespace-normal px-2 py-2 text-lg" disabled={listening} onClick={() => void speak(answered ? feedback : question)}>
-              <Volume2 className="mr-2 h-6 w-6 shrink-0" /> Послушать
+            <Button variant="outline" className="h-auto min-h-14 whitespace-normal px-2 py-2 text-lg" disabled={listening} onClick={() => void speak(answered ? feedback : question, answered || (actions && !pictureMatched) ? "ru-RU" : voiceLocale)}>
+              <Volume2 className="mr-2 h-6 w-6 shrink-0" /> {t("Послушать", "Listen")}
             </Button>
             {canListen && !answered && (!actions || pictureMatched) && (
               <Button className="h-auto min-h-14 whitespace-normal px-2 py-2 text-lg" onClick={() => void listen()} disabled={listening}>
-                <Mic className="mr-2 h-6 w-6 shrink-0" /> {listening ? "Слушаю…" : "Ответить голосом"}
+                <Mic className="mr-2 h-6 w-6 shrink-0" /> {listening ? t("Слушаю…", "Listening…") : t("Ответить голосом", "Say the answer")}
               </Button>
             )}
           </div>
@@ -211,7 +221,7 @@ function VoiceLesson({ actions }: { actions: boolean }) {
           )}
           {feedback && <p className="text-xl font-semibold sm:text-2xl" role="status">{feedback}</p>}
           {(answered || pictureMatched) && <Button disabled={listening} className="h-auto min-h-14 w-full max-w-md bg-emerald-700 py-3 text-xl text-white hover:bg-emerald-800" size="lg"
-            onClick={() => goTo(index + 1)}>Дальше <span aria-hidden="true" className="ml-2">→</span></Button>}
+            onClick={() => goTo(index + 1)}>{t("Дальше", "Next")} <span aria-hidden="true" className="ml-2">→</span></Button>}
         </>
       )}
     </Card>

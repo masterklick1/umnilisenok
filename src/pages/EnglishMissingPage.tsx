@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { speakEnglish } from "@/lib/sound";
@@ -55,13 +56,14 @@ const TASKS: MissingTask[] = [
 ];
 
 export default function EnglishMissingPage() {
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
 
-  const t = TASKS[index];
+  const task = TASKS[index];
 
   const speak = (text: string) => {
     void speakEnglish(text, 0.8);
@@ -71,9 +73,9 @@ export default function EnglishMissingPage() {
     if (selected !== null) return;
     setSelected(letter);
 
-    if (letter === t.correctLetter) {
+    if (letter === task.correctLetter) {
       setScore((prev) => prev + 1);
-      speak(t.fullWord);
+      speak(task.fullWord);
     } else {
       speak(letter);
     }
@@ -109,33 +111,33 @@ export default function EnglishMissingPage() {
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div>
-            <h1 className="text-3xl font-black text-emerald-600">Пропущенная буква</h1>
-            <p className="text-sm text-muted-foreground">Какая буква пропала?</p>
+            <h1 className="text-3xl font-black text-emerald-600">{t("Пропущенная буква", "Missing letter")}</h1>
+            <p className="text-sm text-muted-foreground">{t("Какая буква пропала?", "Which letter is missing?")}</p>
           </div>
         </div>
 
         {!isFinished ? (
           <Card className="p-6 bg-white border-2 border-emerald-200 rounded-3xl text-center shadow-lg space-y-6">
             <div className="flex justify-between items-center text-xs text-emerald-600 font-bold uppercase tracking-wider">
-              <span>Задание {index + 1} из {TASKS.length}</span>
-              <span>Очки: {score}</span>
+              <span>{t("Задание", "Task")} {index + 1} {t("из", "of")} {TASKS.length}</span>
+              <span>{t("Очки:", "Score:")} {score}</span>
             </div>
 
             <div className="space-y-3">
-              <div className="text-7xl">{t.emoji}</div>
+              <div className="text-7xl">{task.emoji}</div>
               <div className="text-3xl font-black tracking-widest text-slate-800">
                 {selected
-                  ? t.wordPattern.replace("_", selected)
-                  : t.wordPattern}
+                  ? task.wordPattern.replace("_", selected)
+                  : task.wordPattern}
               </div>
-              <p className="text-sm text-slate-500">{t.translation}</p>
+              {language === "ru" && <p className="text-sm text-slate-500">{task.translation}</p>}
             </div>
 
             <div className="grid grid-cols-3 gap-3 pt-2">
-              {t.options.map((opt) => {
+              {task.options.map((opt) => {
                 let btnStyle = "bg-slate-50 border-slate-200 text-slate-700 hover:bg-emerald-100";
                 if (selected) {
-                  if (opt === t.correctLetter) {
+                  if (opt === task.correctLetter) {
                     btnStyle = "bg-emerald-500 text-white border-emerald-600";
                   } else if (opt === selected) {
                     btnStyle = "bg-rose-500 text-white border-rose-600";
@@ -158,16 +160,16 @@ export default function EnglishMissingPage() {
           <Card className="p-8 bg-white border-2 border-emerald-200 rounded-3xl text-center shadow-lg space-y-6">
             <div className="text-6xl">🌟</div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800">Замечательно!</h2>
+              <h2 className="text-2xl font-black text-slate-800">{t("Замечательно!", "Wonderful!")}</h2>
               <p className="text-slate-600 mt-2">
-                Ты нашел <span className="font-bold text-emerald-600">{score}</span> из {TASKS.length} правильных букв!
+                {t("Ты нашел", "You found")} <span className="font-bold text-emerald-600">{score}</span> {t("из", "of")} {TASKS.length} {t("правильных букв!", "correct letters!")}
               </p>
             </div>
             <Button
               onClick={restart}
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-6 rounded-2xl text-lg flex items-center justify-center gap-2"
             >
-              <RotateCcw className="w-5 h-5" /> Играть снова
+              <RotateCcw className="w-5 h-5" /> {t("Играть снова", "Play again")}
             </Button>
           </Card>
         )}

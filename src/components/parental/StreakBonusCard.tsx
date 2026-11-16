@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +7,7 @@ type Row = { bonus_day: string; streak: number; stars: number };
 
 /** Бонусы за дни подряд — для родителя, обновляется в реальном времени. */
 export const StreakBonusCard = ({ childId }: { childId: string }) => {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<Row[]>([]);
 
   useEffect(() => {
@@ -35,20 +37,20 @@ export const StreakBonusCard = ({ childId }: { childId: string }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">🔥 Дни подряд и бонусы</CardTitle>
+        <CardTitle className="text-lg">{t("🔥 Дни подряд и бонусы", "🔥 Streaks and bonuses")}</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Сейчас: <b>{current}</b> дн. подряд · бонусов за 2 недели: <b>+{total} ⭐</b>
+          {t("Сейчас:", "Now:")} <b>{current}</b> {t("дн. подряд · бонусов за 2 недели:", "days in a row · bonuses in the last two weeks:")} <b>+{total} ⭐</b>
         </p>
-        <p className="text-xs text-muted-foreground">Со 2-го дня подряд: +2 ⭐ за каждый день серии (до +14 ⭐ в день). Звёзды тратятся в домике.</p>
+        <p className="text-xs text-muted-foreground">{t("Со 2-го дня подряд: +2 ⭐ за каждый день серии (до +14 ⭐ в день). Звёзды тратятся в домике.", "Starting on day two, earn two more stars per day of your streak, up to 14 stars a day. Spend them in your room.")}</p>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Бонусов пока нет.</p>
+          <p className="text-sm text-muted-foreground">{t("Бонусов пока нет.", "No bonuses yet.")}</p>
         ) : (
           <ul className="space-y-1 text-sm">
             {rows.map((r) => (
               <li key={r.bonus_day} className="flex justify-between">
-                <span>{new Date(r.bonus_day).toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" })} · {r.streak}-й день</span>
+                <span>{new Date(r.bonus_day).toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" })} · {r.streak}{t("-й день", "-day streak")}</span>
                 <span className="font-semibold">{r.stars > 0 ? `+${r.stars} ⭐` : "—"}</span>
               </li>
             ))}

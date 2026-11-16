@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 const EXEMPT = ["/auth", "/parent", "/settings", "/join", "/delete-account"];
 
 export function ScreenTimeGuard() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -54,11 +56,11 @@ export function ScreenTimeGuard() {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-background/95 p-6 text-center backdrop-blur">
       <div className="text-8xl animate-bounce-gentle">🦊💤</div>
-      <h2 className="text-3xl font-extrabold text-gradient">Время на сегодня закончилось!</h2>
+      <h2 className="text-3xl font-extrabold text-gradient">{t("Время на сегодня закончилось!", "Time’s up for today!")}</h2>
       <p className="max-w-sm text-lg text-muted-foreground">
-        Лисёнок устал и хочет отдохнуть. Поиграй с игрушками, а завтра продолжим учиться!
+        {t("Лисёнок устал и хочет отдохнуть. Поиграй с игрушками, а завтра продолжим учиться!", "Little Fox is ready for a break. Go play with your toys and come back tomorrow!")}
       </p>
-      <Button variant="outline" onClick={() => navigate("/settings")}>Для родителей</Button>
+      <Button variant="outline" onClick={() => navigate("/settings")}>{t("Для родителей", "For parents")}</Button>
     </div>
   );
 }

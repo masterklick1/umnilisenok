@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -72,6 +73,7 @@ const oddPuzzles = [
 ];
 
 const OddOneOut = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const { t } = useLanguage();
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * oddPuzzles.length));
   const [locked, setLocked] = useState<number | null>(null);
   const puzzle = oddPuzzles[idx];
@@ -89,8 +91,8 @@ const OddOneOut = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 
   return (
     <Card className="p-8 text-center">
-      <h3 className="text-2xl font-bold mb-2">Найди лишнее</h3>
-      <p className="text-muted-foreground mb-6">Что не подходит?</p>
+      <h3 className="text-2xl font-bold mb-2">{t("Найди лишнее", "Find the odd one out")}</h3>
+      <p className="text-muted-foreground mb-6">{t("Что не подходит?", "Which one doesn’t belong?")}</p>
       <div className="grid grid-cols-4 gap-4">
         {puzzle.items.map((emoji, i) => (
           <button
@@ -144,6 +146,7 @@ const sequencePuzzles = [
 ];
 
 const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const { t } = useLanguage();
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * sequencePuzzles.length));
   const [locked, setLocked] = useState<number | null>(null);
   const puzzle = sequencePuzzles[idx];
@@ -161,8 +164,8 @@ const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 
   return (
     <Card className="p-8 text-center">
-      <h3 className="text-2xl font-bold mb-2">Продолжи ряд</h3>
-      <p className="text-muted-foreground mb-6">Что идёт следующим?</p>
+      <h3 className="text-2xl font-bold mb-2">{t("Продолжи ряд", "Finish the pattern")}</h3>
+      <p className="text-muted-foreground mb-6">{t("Что идёт следующим?", "What comes next?")}</p>
       <div className="flex justify-center gap-2 mb-8 flex-wrap">
         {puzzle.seq.map((s, i) => (
           <div
@@ -195,6 +198,7 @@ const Sequence = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 const memoryPool = ["🐶", "🐱", "🐰", "🐻", "🐼", "🦁", "🦊", "🐯", "🐸", "🐵", "🐷", "🦄", "🐮", "🐔", "🦉", "🐢"];
 
 const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const { t } = useLanguage();
   const cards = useMemo(() => {
     const chosen = [...memoryPool].sort(() => Math.random() - 0.5).slice(0, 8);
     const pairs = [...chosen, ...chosen];
@@ -223,7 +227,7 @@ const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
   useEffect(() => {
     if (matched.length === cards.length && !reportedWin) {
       setReportedWin(true);
-      speak("Все пары найдены! Молодец!");
+      speak(t("Все пары найдены! Молодец!", "You found all the pairs! Well done!"));
     }
   }, [matched, cards.length, reportedWin]);
 
@@ -234,8 +238,8 @@ const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 
   return (
     <Card className="p-6 text-center">
-      <h3 className="text-2xl font-bold mb-2">Найди пару</h3>
-      <p className="text-muted-foreground mb-6">Открывай по две карточки</p>
+      <h3 className="text-2xl font-bold mb-2">{t("Найди пару", "Find a match")}</h3>
+      <p className="text-muted-foreground mb-6">{t("Открывай по две карточки", "Turn over two cards at a time")}</p>
       <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
         {cards.map((card, id) => {
           const isOpen = flipped.includes(id) || matched.includes(id);
@@ -264,6 +268,7 @@ const MemoryGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 const countEmojis = ["🍎", "⭐", "🎈", "🐰", "🌸", "🚗", "🍓", "🦋", "⚽", "🐥"];
 
 const CountGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
+  const { t } = useLanguage();
   const [round, setRound] = useState(0);
   const [locked, setLocked] = useState<number | null>(null);
   const data = useMemo(() => {
@@ -287,8 +292,8 @@ const CountGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 
   return (
     <Card className="p-8 text-center">
-      <h3 className="text-2xl font-bold mb-2">Сосчитай</h3>
-      <p className="text-muted-foreground mb-6">Сколько здесь предметов?</p>
+      <h3 className="text-2xl font-bold mb-2">{t("Сосчитай", "Count")}</h3>
+      <p className="text-muted-foreground mb-6">{t("Сколько здесь предметов?", "How many objects are there?")}</p>
       <div className="flex justify-center gap-2 mb-8 text-5xl flex-wrap max-w-lg mx-auto">
         {[...Array(data.count)].map((_, i) => (
           <span key={i} className="animate-bounce-gentle" style={{ animationDelay: `${i * 80}ms` }}>
@@ -315,6 +320,7 @@ const CountGame = ({ onAnswer }: { onAnswer: (correct: boolean) => void }) => {
 };
 
 export default function IntellectPage() {
+  const { t, label } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
@@ -328,11 +334,11 @@ export default function IntellectPage() {
       playJoy();
       addStars(1, null);
       logCorrectAnswer({ section: "intellect", mode });
-      toast({ title: "Правильно! 🎉", description: "+1 ⭐" });
+      toast({ title: t("Правильно! 🎉", "That’s right! 🎉"), description: "+1 ⭐" });
     } else {
-      speak("Попробуй ещё раз!");
+      speak(t("Попробуй ещё раз!", "Try again!"));
       logWrongAnswer({ section: "intellect", mode });
-      toast({ title: "Не верно 💪", description: "Попробуй ещё", variant: "destructive" });
+      toast({ title: t("Не верно 💪", "Try again 💪"), description: t("Попробуй ещё", "Try again"), variant: "destructive" });
     }
   };
 
@@ -342,38 +348,38 @@ export default function IntellectPage() {
         <div className="flex items-center justify-between mb-6">
           <Button variant="ghost" onClick={() => (mode ? setMode(null) : navigate("/"))}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Назад
+            {t("Назад", "Back")}
           </Button>
           {mode && (
             <div className="bg-card rounded-full px-4 py-2 shadow font-bold text-primary">
-              Очки: {score}
+              {t("Очки:", "Score:")} {score}
             </div>
           )}
         </div>
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">🧩</div>
-          <h1 className="text-4xl font-extrabold text-gradient mb-2">Интеллект</h1>
-          <p className="text-lg text-muted-foreground">Логика, внимание и память</p>
+          <h1 className="text-4xl font-extrabold text-gradient mb-2">{t("Интеллект", "Brain games")}</h1>
+          <p className="text-lg text-muted-foreground">{t("Логика, внимание и память", "Logic, focus and memory")}</p>
         </div>
 
         {!mode && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { m: "odd" as Mode, emoji: "🔍", title: "Найди лишнее", tag: "Внимание", grad: "from-amber-100 to-orange-100" },
-              { m: "sequence" as Mode, emoji: "➡️", title: "Продолжи ряд", tag: "Логика", grad: "from-sky-100 to-blue-100" },
-              { m: "memory" as Mode, emoji: "🧠", title: "Найди пару", tag: "Память", grad: "from-fuchsia-100 to-purple-100" },
-              { m: "count" as Mode, emoji: "🔢", title: "Сосчитай", tag: "Счёт", grad: "from-emerald-100 to-teal-100" },
+              { m: "odd" as Mode, emoji: "🔍", title: t("Найди лишнее", "Find the odd one out"), tag: t("Внимание", "Focus"), grad: "from-amber-100 to-orange-100" },
+              { m: "sequence" as Mode, emoji: "➡️", title: t("Продолжи ряд", "Finish the pattern"), tag: t("Логика", "Logic"), grad: "from-sky-100 to-blue-100" },
+              { m: "memory" as Mode, emoji: "🧠", title: t("Найди пару", "Find a match"), tag: t("Память", "Memory"), grad: "from-fuchsia-100 to-purple-100" },
+              { m: "count" as Mode, emoji: "🔢", title: t("Сосчитай", "Count"), tag: t("Счёт", "Counting"), grad: "from-emerald-100 to-teal-100" },
             ].map((g, i) => (
               <Card
-                key={g.title}
+                key={label(g.title)}
                 className={`group relative overflow-hidden p-6 text-center cursor-pointer rounded-3xl border-0 shadow-md card-glow animate-pop-in hover:scale-[1.05] transition-all duration-300 bg-gradient-to-br ${g.grad}`}
                 style={{ animationDelay: `${i * 60}ms` }}
                 onClick={() => setMode(g.m)}
               >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
                 <div className="relative z-10 text-5xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{g.emoji}</div>
-                <h3 className="relative z-10 text-lg font-extrabold">{g.title}</h3>
+                <h3 className="relative z-10 text-lg font-extrabold">{label(g.title)}</h3>
                 <p className="relative z-10 text-sm text-muted-foreground mt-1 font-medium">{g.tag}</p>
               </Card>
             ))}

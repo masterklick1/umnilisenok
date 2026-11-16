@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +6,7 @@ import { VirtualHome } from "@/components/virtual-home/VirtualHome";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 const VirtualHomePage = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   useActivityTracker();
 
@@ -15,9 +17,9 @@ const VirtualHomePage = () => {
           {/* Переходим на главную "/" вместо несуществующего "/app" */}
           <Button variant="ghost" size="sm" onClick={() => navigate("/", { replace: true })}>
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Назад
+            {t("Назад", "Back")}
           </Button>
-          <h1 className="text-lg font-bold">Мой домик</h1>
+          <h1 className="text-lg font-bold">{t("Мой домик", "My little house")}</h1>
           <span className="w-16" />
         </div>
         <VirtualHome />

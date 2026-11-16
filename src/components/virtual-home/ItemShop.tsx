@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { useVirtualHome, Pet, RoomItem } from "@/hooks/useVirtualHome";
 import { useUserProgress } from "@/hooks/useUserProgress";
@@ -12,6 +13,7 @@ import { RewardItems } from "./RewardItems";
 import { AchievementRewards } from "./AchievementRewards";
 
 export const ItemShop = () => {
+  const { t, label } = useLanguage();
   const { roomItems, pets, userRoomItems, userPets, buyItem, adoptPet, claimReward, refetch } = useVirtualHome();
   const { progress } = useUserProgress();
   const rewardItems = roomItems.filter((i) => i.unlock_subject);
@@ -67,8 +69,8 @@ export const ItemShop = () => {
       {/* Шапка магазина с балансом звёзд */}
       <div className="flex items-center justify-between bg-gradient-to-r from-amber-100 to-yellow-100 p-4 rounded-xl border border-yellow-200 shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-amber-900">Магазин товаров</h2>
-          <p className="text-sm text-amber-700">Украшай комнату и заводи новых питомцев</p>
+          <h2 className="text-xl font-bold text-amber-900">{t("Магазин товаров", "Shop")}</h2>
+          <p className="text-sm text-amber-700">{t("Украшай комнату и заводи новых питомцев", "Decorate your room and adopt pets")}</p>
         </div>
         <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-yellow-300">
           <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
@@ -81,15 +83,15 @@ export const ItemShop = () => {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="items" className="flex items-center gap-2">
             <ShoppingBag className="w-4 h-4" />
-            Мебель
+            {t("Мебель", "Furniture")}
           </TabsTrigger>
           <TabsTrigger value="pets" className="flex items-center gap-2">
             <Heart className="w-4 h-4 text-rose-500" />
-            Питомцы
+            {t("Питомцы", "Pets")}
           </TabsTrigger>
           <TabsTrigger value="rewards" className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-500" />
-            Награды
+            {t("Награды", "Rewards")}
           </TabsTrigger>
         </TabsList>
 
@@ -110,10 +112,10 @@ export const ItemShop = () => {
                 <Card key={item.id} className="flex flex-col justify-between">
                   <CardHeader className="pb-2">
                     <div className="text-4xl text-center my-2">{item.icon}</div>
-                    <CardTitle className="text-base text-center">{item.name}</CardTitle>
+                    <CardTitle className="text-base text-center">{label(item.name)}</CardTitle>
                     {item.description && (
                       <CardDescription className="text-xs text-center">
-                        {item.description}
+                        {label(item.description)}
                       </CardDescription>
                     )}
                   </CardHeader>
@@ -125,7 +127,7 @@ export const ItemShop = () => {
 
                     {purchased ? (
                       <Button variant="secondary" disabled className="w-full gap-1">
-                        <Check className="w-4 h-4 text-green-600" />Куплено
+                        <Check className="w-4 h-4 text-green-600" />{t("Куплено", "Owned")}
                       </Button>
                     ) : (
                       <Button
@@ -133,7 +135,7 @@ export const ItemShop = () => {
                         disabled={!canAfford || isSubmitting}
                         className="w-full"
                       >
-                        Купить
+                        {t("Купить", "Buy")}
                       </Button>
                     )}
                   </CardContent>
@@ -154,10 +156,10 @@ export const ItemShop = () => {
                 <Card key={pet.id} className="flex flex-col justify-between border-rose-100">
                   <CardHeader className="pb-2">
                     <div className="text-5xl text-center my-2">{pet.icon}</div>
-                    <CardTitle className="text-base text-center">{pet.species || pet.name}</CardTitle>
+                    <CardTitle className="text-base text-center">{label(pet.species || pet.name)}</CardTitle>
                     {countOwned > 0 && (
                       <CardDescription className="text-xs text-center text-rose-500 font-medium">
-                        У вас уже есть ({countOwned})
+                        {t("У вас уже есть (", "Already adopted (")}{countOwned})
                       </CardDescription>
                     )}
                   </CardHeader>
@@ -172,7 +174,7 @@ export const ItemShop = () => {
                       disabled={!canAfford || isSubmitting}
                       className="w-full bg-rose-500 hover:bg-rose-600 text-white"
                     >
-                      Завести питомца
+                      {t("Завести питомца", "Adopt a pet")}
                     </Button>
                   </CardContent>
                 </Card>
@@ -187,19 +189,19 @@ export const ItemShop = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <span>{selectedPet?.icon}</span> Новый питомец!
+              <span>{selectedPet?.icon}</span> {t("Новый питомец!", "A new pet!")}
             </DialogTitle>
             <DialogDescription>
-              Придумай имя для своего нового друга ({selectedPet?.species || selectedPet?.name}).
+              {t("Придумай имя для своего нового друга (", "Name your new friend (")}{label(selectedPet?.species || selectedPet?.name)}).
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="pet-name">Кличка питомца</Label>
+              <Label htmlFor="pet-name">{t("Кличка питомца", "Pet’s name")}</Label>
               <Input
                 id="pet-name"
-                placeholder="Например: Барсик, Дружок..."
+                placeholder={t("Например: Барсик, Дружок...", "For example, Biscuit or Buddy…")}
                 value={petName}
                 onChange={(e) => setPetName(e.target.value)}
                 maxLength={20}
@@ -213,14 +215,14 @@ export const ItemShop = () => {
               onClick={() => setIsPetModalOpen(false)}
               disabled={isSubmitting}
             >
-              Отмена
+              {t("Отмена", "Cancel")}
             </Button>
             <Button
               onClick={handleConfirmAdopt}
               disabled={!petName.trim() || isSubmitting}
               className="bg-rose-500 hover:bg-rose-600 text-white"
             >
-              Подтвердить ({selectedPet?.price_stars} ⭐)
+              {t("Подтвердить (", "Confirm (")}{selectedPet?.price_stars} ⭐)
             </Button>
           </DialogFooter>
         </DialogContent>

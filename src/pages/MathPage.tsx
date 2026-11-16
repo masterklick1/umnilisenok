@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -49,6 +50,7 @@ const levels = [
 ];
 
 export default function MathPage() {
+  const { t, label } = useLanguage();
   const navigate = useNavigate();
   const { logActivity } = useActivityTracker();
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
@@ -81,16 +83,16 @@ export default function MathPage() {
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Назад
+          {t("Назад", "Back")}
         </Button>
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">🔢</div>
           <h1 className="text-4xl font-extrabold text-gradient mb-2">
-            Математический мир
+            {t("Математический мир", "Math world")}
           </h1>
           <p className="text-lg text-muted-foreground">
-            Выбери свой уровень и начни приключение!
+            {t("Выбери свой уровень и начни приключение!", "Choose a level to start your adventure!")}
           </p>
         </div>
 
@@ -109,9 +111,9 @@ export default function MathPage() {
               <div className="relative z-10 text-6xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
                 {level.emoji}
               </div>
-              <div className="relative z-10 inline-block text-xs font-bold text-foreground/70 mb-2 px-3 py-1 rounded-full bg-card/70">{level.age}</div>
-              <h3 className="relative z-10 text-2xl font-extrabold mb-2">{level.title}</h3>
-              <p className="relative z-10 text-muted-foreground">{level.description}</p>
+              <div className="relative z-10 inline-block text-xs font-bold text-foreground/70 mb-2 px-3 py-1 rounded-full bg-card/70">{label(level.age)}</div>
+              <h3 className="relative z-10 text-2xl font-extrabold mb-2">{label(level.title)}</h3>
+              <p className="relative z-10 text-muted-foreground">{label(level.description)}</p>
             </Card>
           ))}
         </div>

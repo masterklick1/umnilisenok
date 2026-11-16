@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect } from "react";
 import { useVirtualHome } from "@/hooks/useVirtualHome";
 import { useUserProgress } from "@/hooks/useUserProgress";
@@ -52,6 +53,7 @@ const QUESTIONS: Question[] = [
 ];
 
 export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
+  const { t, label, language } = useLanguage();
   const { userPet, playWithPet } = useVirtualHome() as any;
   const { refetch: refetchProgress } = useUserProgress();
   const { toast } = useToast();
@@ -62,17 +64,18 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
   const [isAnswered, setIsAnswered] = useState<boolean>(false);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
 
-  const currentQuestion = QUESTIONS[currentQuestionIndex];
+  const question = QUESTIONS[currentQuestionIndex];
+  const currentQuestion = { ...question, text: label(question.text), options: question.options.map(label) };
 
   const speakText = (text: string) => {
-    void speak(text);
+    void speak(text, language === "en" ? "en-US" : "ru-RU");
   };
 
   useEffect(() => {
     if (currentQuestion && !isGameOver) {
       speakText(currentQuestion.text);
     }
-  }, [currentQuestionIndex, isGameOver]);
+  }, [currentQuestionIndex, isGameOver, language]);
 
   const handleSelectOption = (index: number) => {
     if (isAnswered) return;
@@ -84,16 +87,16 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
 
     if (isCorrect) {
       setScore((prev) => prev + 1);
-      speakText("Правильно! Молодец!");
+      speakText(t("Правильно! Молодец!", "That’s right! Well done!"));
       toast({
-        title: "Отлично! 🎉",
-        description: "Правильный ответ!",
+        title: t("Отлично! 🎉", "Well done! 🎉"),
+        description: t("Правильный ответ!", "Correct answer!"),
       });
     } else {
-      speakText("Ой, не совсем так. Давай дальше!");
+      speakText(t("Ой, не совсем так. Давай дальше!", "Almost! Let’s keep going."));
       toast({
-        title: "Не угадал 😅",
-        description: `Правильный ответ: ${currentQuestion.options[currentQuestion.correctIndex]}`,
+        title: t("Не угадал 😅", "Not quite 😅"),
+        description: t(`Правильный ответ: ${currentQuestion.options[currentQuestion.correctIndex]}`, `Correct answer: ${currentQuestion.options[currentQuestion.correctIndex]}`),
         variant: "destructive",
       });
     }
@@ -119,9 +122,9 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
       if (typeof refetchProgress === "function") {
         await refetchProgress();
       }
-      speakText(`Ура! Вы ответили правильно на ${finalScore} вопросов! ${userPet.pet_name} очень рад!`);
+      speakText(t(`Ура! Вы ответили правильно на ${finalScore} вопросов! ${userPet.pet_name} очень рад!`, `Hooray! You got ${finalScore} questions right. ${userPet.pet_name} is happy!`));
     } else {
-      speakText("Игра окончена. Попробуй ещё раз!");
+      speakText(t("Игра окончена. Попробуй ещё раз!", "Game over. Try again!"));
     }
   };
 
@@ -136,8 +139,8 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
   if (!userPet) {
     return (
       <Card className="text-center p-6">
-        <CardTitle>У вас пока нет питомца</CardTitle>
-        <CardDescription className="mt-2">Заведите питомца в магазине, чтобы играть с ним!</CardDescription>
+        <CardTitle>{t("У вас пока нет питомца", "You don’t have a pet yet")}</CardTitle>
+        <CardDescription className="mt-2">{t("Заведите питомца в магазине, чтобы играть с ним!", "Adopt a pet in the shop to play together!")}</CardDescription>
       </Card>
     );
   }
@@ -150,10 +153,10 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
             <span className="text-4xl">{userPet.pets?.icon || "🐾"}</span>
             <div>
               <CardTitle className="text-lg font-bold text-indigo-900">
-                Учись с {userPet.pet_name}
+                {t("Учись с", "Learn with")} {userPet.pet_name}
               </CardTitle>
               <CardDescription className="text-xs text-indigo-600">
-                Слушай вопрос и выбирай правильный ответ!
+                {t("Слушай вопрос и выбирай правильный ответ!", "Listen to the question and choose the right answer!")}
               </CardDescription>
             </div>
           </div>
@@ -176,7 +179,7 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
                 size="icon"
                 onClick={() => speakText(currentQuestion.text)}
                 className="shrink-0 bg-white hover:bg-indigo-100 text-indigo-600 border-indigo-200"
-                title="Озвучить ещё раз"
+                title={t("Озвучить ещё раз", "Listen again")}
               >
                 <Volume2 className="w-5 h-5" />
               </Button>
@@ -212,12 +215,12 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
             <div className="inline-flex p-4 bg-yellow-100 rounded-full text-amber-600 mb-2">
               <Trophy className="w-12 h-12" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-800">Отличная работа!</h3>
+            <h3 className="text-2xl font-bold text-gray-800">{t("Отличная работа!", "Great job!")}</h3>
             <p className="text-gray-600">
-              Ты ответил правильно на <span className="font-bold text-indigo-600">{score}</span> из {QUESTIONS.length} вопросов.
+              {t("Ты ответил правильно на", "You got")} <span className="font-bold text-indigo-600">{score}</span> {t("из", "of")} {QUESTIONS.length} {t("вопросов.", "questions.")}
             </p>
             <p className="text-sm text-emerald-600 font-medium">
-              {userPet.pet_name} стал счастливее и получил новые знания! ✨
+              {userPet.pet_name} {t("стал счастливее и получил новые знания! ✨", "is happier and learned something new! ✨")}
             </p>
 
             <div className="flex items-center justify-center gap-2 pt-2">
@@ -225,11 +228,11 @@ export const PetQuizGame = ({ onClose }: PetQuizGameProps) => {
                 onClick={handleRestart}
                 className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
               >
-                <RotateCcw className="w-4 h-4" /> Играть ещё раз
+                <RotateCcw className="w-4 h-4" /> {t("Играть ещё раз", "Play again")}
               </Button>
               {onClose && (
                 <Button variant="outline" onClick={onClose}>
-                  Завершить
+                  {t("Завершить", "End game")}
                 </Button>
               )}
             </div>

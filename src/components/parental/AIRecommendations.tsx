@@ -1,9 +1,10 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Brain, TrendingUp, TrendingDown, Sparkles, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 
 interface Analysis {
   strengths: string[];
@@ -25,6 +26,7 @@ export const AIRecommendations = ({
   onAnalyze,
   isAnalyzing,
 }: AIRecommendationsProps) => {
+  const { t, language } = useLanguage();
   return (
     <div className="space-y-4">
       <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10">
@@ -33,22 +35,22 @@ export const AIRecommendations = ({
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Brain className="w-6 h-6 text-purple-500" />
-                ИИ-Анализ для {childName}
+                {t("ИИ-Анализ для", "AI insights for")} {childName}
               </CardTitle>
               <CardDescription>
-                Персональные рекомендации на основе активности
+                {t("Персональные рекомендации на основе активности", "Personal suggestions based on activity")}
               </CardDescription>
             </div>
             <Button onClick={onAnalyze} disabled={isAnalyzing}>
               {isAnalyzing ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Анализ...
+                  {t("Анализ...", "Analyzing…")}
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Обновить анализ
+                  {t("Обновить анализ", "Update analysis")}
                 </>
               )}
             </Button>
@@ -63,7 +65,7 @@ export const AIRecommendations = ({
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2 text-green-600">
                 <TrendingUp className="w-5 h-5" />
-                Сильные стороны
+                {t("Сильные стороны", "Strengths")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -82,7 +84,7 @@ export const AIRecommendations = ({
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2 text-orange-600">
                 <TrendingDown className="w-5 h-5" />
-                Области для улучшения
+                {t("Области для улучшения", "What to work on")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -101,7 +103,7 @@ export const AIRecommendations = ({
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2 text-purple-600">
                 <Sparkles className="w-5 h-5" />
-                Рекомендации для родителей
+                {t("Рекомендации для родителей", "Suggestions for parents")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -110,10 +112,10 @@ export const AIRecommendations = ({
               </p>
               {analysis.last_analyzed_at && (
                 <p className="text-xs text-muted-foreground mt-4">
-                  Последний анализ:{" "}
+                  {t("Последний анализ:", "Last analysis:")}{" "}
                   {formatDistanceToNow(new Date(analysis.last_analyzed_at), {
                     addSuffix: true,
-                    locale: ru,
+                    locale: language === "en" ? enUS : ru,
                   })}
                 </p>
               )}
@@ -125,7 +127,7 @@ export const AIRecommendations = ({
           <CardContent className="py-8 text-center">
             <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">
-              Нажмите "Обновить анализ", чтобы получить персональные рекомендации от ИИ
+              {t("Нажмите \"Обновить анализ\", чтобы получить персональные рекомендации от ИИ", "Select “Update analysis” to get personalized AI suggestions")}
             </p>
           </CardContent>
         </Card>

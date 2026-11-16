@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,7 +12,7 @@ import {
   Layers,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 import {
   formatActivityDescription,
   getActivityLocationLabel,
@@ -58,6 +59,7 @@ export const ActivityMirror = ({
   activities,
   connectedViaInvite,
 }: ActivityMirrorProps) => {
+  const { t, language } = useLanguage();
   const currentPage = activities.find((a) => a.activity_type === "page_view")?.page_path;
   const recentCorrect = activities.filter((a) => a.activity_type === "answer_correct").length;
   const recentWrong = activities.filter((a) => a.activity_type === "answer_wrong").length;
@@ -70,15 +72,15 @@ export const ActivityMirror = ({
             <div>
               <h3 className="font-bold text-lg">{childName}</h3>
               <p className="text-sm text-muted-foreground">
-                Сейчас:{" "}
+                {t("Сейчас:", "Now:")}{" "}
                 <span className="font-medium text-foreground">
-                  {getPathLabel(currentPage || null) || "неизвестно"}
+                  {getPathLabel(currentPage || null, language) || t("неизвестно", "unknown")}
                 </span>
               </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-sm text-green-600 font-medium">Онлайн</span>
+              <span className="text-sm text-green-600 font-medium">{t("Онлайн", "Online")}</span>
             </div>
           </div>
 
@@ -86,13 +88,13 @@ export const ActivityMirror = ({
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
               <span className="text-sm">
-                <span className="font-bold text-green-600">{recentCorrect}</span> правильных
+                <span className="font-bold text-green-600">{recentCorrect}</span> {t("правильных", "correct")}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <XCircle className="w-5 h-5 text-red-500" />
               <span className="text-sm">
-                <span className="font-bold text-red-600">{recentWrong}</span> ошибок
+                <span className="font-bold text-red-600">{recentWrong}</span> {t("ошибок", "mistakes")}
               </span>
             </div>
           </div>
@@ -103,35 +105,32 @@ export const ActivityMirror = ({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Eye className="w-5 h-5" />
-            Лента активности
+            {t("Лента активности", "Activity feed")}
           </CardTitle>
           <CardDescription>
-            Что делает {childName} в реальном времени — простым языком, без технических данных
+            {t("Что делает", "What")} {childName} {t("в реальном времени — простым языком, без технических данных", "is doing in real time")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[400px] pr-4">
             {activities.length === 0 ? (
               <div className="text-center text-muted-foreground py-8 space-y-2">
-                <p>Пока нет активности от {childName}.</p>
+                <p>{t("Пока нет активности от", "No activity yet from")} {childName}.</p>
                 {connectedViaInvite ? (
                   <p className="text-xs max-w-sm mx-auto">
-                    Ребёнок играет на своём телефоне? Убедитесь, что выбрана карточка с меткой
-                    «📱 Свой телефон». Если в списке два одинаковых имени — выберите ту, где
-                    написано «Сейчас играет» или свежая «Активность».
+                    {t("Ребёнок играет на своём телефоне? Убедитесь, что выбрана карточка с меткой «📱 Свой телефон». Если в списке два одинаковых имени — выберите ту, где написано «Сейчас играет» или свежая «Активность».", "If your child is using their own phone, select the card marked “📱 Own phone.” If two cards have the same name, choose the one that shows recent activity.")}
                   </p>
                 ) : (
                   <p className="text-xs max-w-sm mx-auto">
-                    Этот аккаунт для игры на вашем телефоне. Если ребёнок на своём устройстве —
-                    выберите карточку с меткой «📱 Свой телефон».
+                    {t("Этот аккаунт для игры на вашем телефоне. Если ребёнок на своём устройстве — выберите карточку с меткой «📱 Свой телефон».", "This account is for playing on your phone. Select “📱 Own phone” if your child is on a different device.")}
                   </p>
                 )}
               </div>
             ) : (
               <div className="space-y-3">
                 {activities.map((activity) => {
-                  const description = formatActivityDescription(activity);
-                  const location = getActivityLocationLabel(activity);
+                  const description = formatActivityDescription(activity, language);
+                  const location = getActivityLocationLabel(activity, language);
 
                   return (
                     <div
@@ -142,7 +141,7 @@ export const ActivityMirror = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm">
-                            {getActivityTypeLabel(activity.activity_type)}
+                            {getActivityTypeLabel(activity.activity_type, language)}
                           </span>
                           {location && (
                             <Badge variant="outline" className="text-xs">
@@ -158,7 +157,7 @@ export const ActivityMirror = ({
                         <p className="text-xs text-muted-foreground mt-1">
                           {formatDistanceToNow(new Date(activity.created_at), {
                             addSuffix: true,
-                            locale: ru,
+                            locale: language === "en" ? enUS : ru,
                           })}
                         </p>
                       </div>

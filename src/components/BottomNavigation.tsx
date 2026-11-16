@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Home, Mic, Settings, House, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -6,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 
 export const BottomNavigation = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -15,8 +17,8 @@ export const BottomNavigation = () => {
   const handleVirtualHome = () => {
     if (isDemo) {
       toast({
-        title: "Комната после аккаунта 🏠",
-        description: "Демо — только уроки. Комната сохраняется в аккаунте ребёнка.",
+        title: t("Комната после аккаунта 🏠", "Sign up to unlock the room 🏠"),
+        description: t("Демо — только уроки. Комната сохраняется в аккаунте ребёнка.", "You can try lessons in the demo. The room is saved to a child’s account."),
       });
       return;
     }
@@ -31,6 +33,7 @@ export const BottomNavigation = () => {
       <Button
         size="icon"
         variant="outline"
+        aria-label={t("Главная", "Home")}
         onClick={() => navigate("/")}
         className={`w-12 h-12 rounded-xl bg-card shadow-lg border-2 transition-all ${
           isActive("/") 
@@ -44,6 +47,7 @@ export const BottomNavigation = () => {
       <Button
         size="icon"
         variant="outline"
+        aria-label={t("Комната", "My room")}
         onClick={handleVirtualHome}
         className={`w-12 h-12 rounded-xl bg-card shadow-lg border-2 transition-all ${
           isActive("/home") 
@@ -56,7 +60,7 @@ export const BottomNavigation = () => {
       
       <Button
         size="icon"
-        aria-label="Голосовой урок с Лисёнком"
+        aria-label={t("Голосовой урок с Лисёнком", "Voice lesson with Little Fox")}
         onClick={() => navigate("/voice-lesson")}
         className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 shadow-2xl hover:shadow-primary/50 hover:scale-105 transition-all duration-300"
       >
@@ -67,6 +71,7 @@ export const BottomNavigation = () => {
         <Button
           size="icon"
           variant="outline"
+          aria-label={t("Родительский кабинет", "Parent dashboard")}
           onClick={() => navigate("/parent")}
           className={`w-12 h-12 rounded-xl bg-card shadow-lg border-2 transition-all ${
             isActive("/parent") 
@@ -81,6 +86,7 @@ export const BottomNavigation = () => {
       <Button
         size="icon"
         variant="outline"
+        aria-label={t("Настройки", "Settings")}
         onClick={() => navigate("/settings")}
         className={`w-12 h-12 rounded-xl bg-card shadow-lg border-2 transition-all ${
           isActive("/settings")

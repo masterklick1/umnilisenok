@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,23 +24,27 @@ const Wrapper = ({
   score: number;
   total: number;
   onBack: () => void;
-}) => (
+}) => {
+  const { t } = useLanguage();
+  return (
   <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-background p-4">
     <div className="container mx-auto max-w-4xl">
       <div className="flex justify-between items-center mb-6">
         <Button variant="ghost" onClick={onBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Назад
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t("Назад", "Back")}
         </Button>
         <div className="text-lg font-semibold">
-          Счёт: {score} / {total}
+          {t("Счёт:", "Score:")} {score} / {total}
         </div>
       </div>
       <Card className="p-8 text-center">{children}</Card>
     </div>
   </div>
 );
+};
 
 export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const { addStars } = useUserProgress();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
@@ -51,19 +56,19 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   const reward = (msg: string) => {
     addStars(1, "math", true);
     setScore((s) => s + 1);
-    speak("Правильно!");
-    toast({ title: msg + " 🎉", description: "+1 ⭐ и 🎟️ билет!" });
+    speak(t("Правильно!", "That’s right!"), language === "en" ? "en-US" : "ru-RU");
+    toast({ title: msg + " 🎉", description: t("+1 ⭐ и 🎟️ билет!", "+1 ⭐ and a 🎟️ ticket!") });
   };
 
   const wrong = (correct: string) => {
-    speak("Подумай ещё раз!");
-    toast({ title: "Подумай ещё 💪", description: `Правильно: ${correct}`, variant: "destructive" });
+    speak(t("Подумай ещё раз!", "Think again!"), language === "en" ? "en-US" : "ru-RU");
+    toast({ title: t("Подумай ещё 💪", "Try again 💪"), description: t(`Правильно: ${correct}`, `Correct answer: ${correct}`), variant: "destructive" });
   };
 
   const handle = (ok: boolean, correct: string, ex: string) => {
     setTotal((t) => t + 1);
     if (ok) {
-      reward("Отлично");
+      reward(t("Отлично", "Excellent"));
       logCorrectAnswer({ section: "math", level: 4, exercise: ex });
     } else {
       wrong(correct);
@@ -73,12 +78,12 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
   };
 
   const exercises = [
-    { type: "count100" as ExerciseType, title: "Счёт до 100", description: "Чётные и нечётные", emoji: "💯" },
-    { type: "multiplication" as ExerciseType, title: "Умножение", description: "Группы одинаковых", emoji: "✖️" },
-    { type: "puzzles" as ExerciseType, title: "Головоломки", description: "Что дальше?", emoji: "🧩" },
-    { type: "spatial" as ExerciseType, title: "Пространство", description: "Зеркальные фигуры", emoji: "🎲" },
-    { type: "division" as ExerciseType, title: "Деление", description: "Раздели поровну", emoji: "➗" },
-    { type: "addbig" as ExerciseType, title: "Сложение до 100", description: "Складываем большие числа", emoji: "➕" },
+    { type: "count100" as ExerciseType, title: t("Счёт до 100", "Count to one hundred"), description: t("Чётные и нечётные", "Even and odd numbers"), emoji: "💯" },
+    { type: "multiplication" as ExerciseType, title: t("Умножение", "Multiplication"), description: t("Группы одинаковых", "Equal groups"), emoji: "✖️" },
+    { type: "puzzles" as ExerciseType, title: t("Головоломки", "Puzzles"), description: t("Что дальше?", "What comes next?"), emoji: "🧩" },
+    { type: "spatial" as ExerciseType, title: t("Пространство", "Spatial puzzles"), description: t("Зеркальные фигуры", "Mirror images"), emoji: "🎲" },
+    { type: "division" as ExerciseType, title: t("Деление", "Division"), description: t("Раздели поровну", "Share equally"), emoji: "➗" },
+    { type: "addbig" as ExerciseType, title: t("Сложение до 100", "Addition to one hundred"), description: t("Складываем большие числа", "Add larger numbers"), emoji: "➕" },
   ];
 
   const count100Data = useMemo(() => {
@@ -144,12 +149,12 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-background p-4">
         <div className="container mx-auto max-w-4xl">
           <Button variant="ghost" onClick={onBack} className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Выбрать уровень
+            <ArrowLeft className="mr-2 h-4 w-4" /> {t("Выбрать уровень", "Choose a level")}
           </Button>
           <div className="text-center mb-8">
             <div className="text-6xl mb-4 animate-bounce-gentle">🎓</div>
-            <h1 className="text-4xl font-bold mb-2">Мастер чисел</h1>
-            <p className="text-lg text-muted-foreground">6-7 лет</p>
+            <h1 className="text-4xl font-bold mb-2">{t("Мастер чисел", "Number master")}</h1>
+            <p className="text-lg text-muted-foreground">{t("6-7 лет", "Ages 6–7")}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {exercises.map((ex) => (
@@ -174,23 +179,23 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     const r = count100Data;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-xl font-semibold mb-3">Это число чётное или нечётное?</h2>
+        <h2 className="text-xl font-semibold mb-3">{t("Это число чётное или нечётное?", "Is this number even or odd?")}</h2>
         <div className="text-8xl font-bold text-primary mb-8">{r.n}</div>
         <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
           <Button
             size="lg"
             className="h-20 text-2xl"
-            onClick={() => handle(r.even, r.even ? "чётное" : "нечётное", "count100")}
+            onClick={() => handle(r.even, r.even ? t("чётное", "even") : t("нечётное", "odd"), "count100")}
           >
-            Чётное
+            {t("Чётное", "Even")}
           </Button>
           <Button
             size="lg"
             variant="outline"
             className="h-20 text-2xl"
-            onClick={() => handle(!r.even, r.even ? "чётное" : "нечётное", "count100")}
+            onClick={() => handle(!r.even, r.even ? t("чётное", "even") : t("нечётное", "odd"), "count100")}
           >
-            Нечётное
+            {t("Нечётное", "Odd")}
           </Button>
         </div>
       </Wrapper>
@@ -203,7 +208,7 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-xl font-semibold mb-4">
-          {r.a} групп(ы) по {r.b} = ?
+          {r.a} {t("групп(ы) по", "groups of")} {r.b} = ?
         </h2>
         <div className="flex flex-col items-center gap-2 mb-6">
           {[...Array(r.a)].map((_, i) => (
@@ -235,7 +240,7 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     const r = puzzlesData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-xl font-semibold mb-6">Какое число продолжит ряд?</h2>
+        <h2 className="text-xl font-semibold mb-6">{t("Какое число продолжит ряд?", "Which number comes next?")}</h2>
         <div className="flex justify-center gap-3 mb-8 text-4xl font-bold">
           {r.seq.map((n, i) => (
             <span key={i} className="px-3 py-2 bg-primary/10 rounded-lg">
@@ -265,13 +270,13 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     const r = spatialData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-xl font-semibold mb-4">Найди такую же фигуру в зеркале</h2>
+        <h2 className="text-xl font-semibold mb-4">{t("Найди такую же фигуру в зеркале", "Find the matching reflection")}</h2>
         <div className="flex justify-center items-center gap-4 mb-6">
           <span className="text-7xl">{r.target}</span>
           <span className="text-3xl text-muted-foreground">🪞</span>
           <span className="text-7xl scale-x-[-1] inline-block">{r.target}</span>
         </div>
-        <p className="text-muted-foreground mb-4">Найди фигуру, которую видишь в зеркале</p>
+        <p className="text-muted-foreground mb-4">{t("Найди фигуру, которую видишь в зеркале", "Find the shape you see in the mirror")}</p>
         <div className="grid grid-cols-4 gap-4 max-w-xl mx-auto">
           {r.opts.map((o, i) => (
             <Button
@@ -293,7 +298,7 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     const r = divisionData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-xl font-semibold mb-4">Раздели поровну</h2>
+        <h2 className="text-xl font-semibold mb-4">{t("Раздели поровну", "Share equally")}</h2>
         <div className="text-6xl font-bold text-primary mb-8">
           {r.c} ÷ {r.a} = ?
         </div>
@@ -318,7 +323,7 @@ export const Level4Exercises = ({ onBack }: Level4ExercisesProps) => {
     const r = addbigData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-xl font-semibold mb-4">Посчитай сумму</h2>
+        <h2 className="text-xl font-semibold mb-4">{t("Посчитай сумму", "Work out the sum")}</h2>
         <div className="text-6xl font-bold text-primary mb-8">
           {r.a} + {r.b} = ?
         </div>

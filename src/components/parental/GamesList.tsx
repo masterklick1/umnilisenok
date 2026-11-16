@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -95,20 +96,21 @@ const getGameName = (type: string) => {
   return GAMES.find((g) => g.id === type)?.name || type;
 };
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, label: (text: string) => string) => {
   switch (status) {
     case "active":
-      return <Badge className="bg-green-500">Активна</Badge>;
+      return <Badge className="bg-green-500">{label("Активна")}</Badge>;
     case "waiting":
-      return <Badge variant="secondary">Ожидание</Badge>;
+      return <Badge variant="secondary">{label("Ожидание")}</Badge>;
     case "finished":
-      return <Badge variant="outline">Завершена</Badge>;
+      return <Badge variant="outline">{label("Завершена")}</Badge>;
     default:
       return <Badge>{status}</Badge>;
   }
 };
 
 export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: GamesListProps) => {
+  const { t, label } = useLanguage();
   const [isCreating, setIsCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [chosenChild, setChosenChild] = useState<string | null>(selectedChild);
@@ -123,8 +125,8 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
 
     if (error || !session) {
       toast({
-        title: "Не удалось создать игру",
-        description: "Проверьте связь с интернетом и попробуйте ещё раз.",
+        title: t("Не удалось создать игру", "Couldn’t create a game"),
+        description: t("Проверьте связь с интернетом и попробуйте ещё раз.", "Check your internet connection and try again."),
         variant: "destructive",
       });
       return;
@@ -132,8 +134,8 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
 
     setDialogOpen(false);
     toast({
-      title: "Игра создана 🎮",
-      description: "Приглашение отправлено ребёнку на его телефон.",
+      title: t("Игра создана 🎮", "Game created 🎮"),
+      description: t("Приглашение отправлено ребёнку на его телефон.", "The invitation was sent to your child’s phone."),
     });
     navigate(`/games/${(session as { id: string }).id}`);
   };
@@ -146,23 +148,23 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Gamepad2 className="w-5 h-5" />
-          Совместные игры
+          {t("Совместные игры", "Play together")}
         </h2>
         
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button disabled={children.length === 0}>
               <Plus className="w-4 h-4 mr-2" />
-              Новая игра
+              {t("Новая игра", "New game")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Создать игру</DialogTitle>
+              <DialogTitle>{t("Создать игру", "Create game")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium mb-2">Выберите ребёнка:</h4>
+                <h4 className="font-medium mb-2">{t("Выберите ребёнка:", "Choose a child")}</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {children.map((child) => (
                     <Button
@@ -172,14 +174,14 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
                       onClick={() => setChosenChild(child.child_id)}
                     >
                       <span className="text-xl mr-2">{child.avatar_url || "👶"}</span>
-                      {child.first_name || "Ребёнок"}
+                      {child.first_name || t("Ребёнок", "Child")}
                     </Button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <h4 className="font-medium mb-2">Выберите игру:</h4>
+                <h4 className="font-medium mb-2">{t("Выберите игру:", "Choose a game")}</h4>
                 <div className="space-y-2">
                   {GAMES.map((game) => (
                     <Button
@@ -191,8 +193,8 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
                     >
                       <span className="text-2xl mr-3">{game.icon}</span>
                       <div className="text-left">
-                        <div className="font-medium">{game.name}</div>
-                        <div className="text-xs text-muted-foreground">{game.description}</div>
+                        <div className="font-medium">{label(game.name)}</div>
+                        <div className="text-xs text-muted-foreground">{label(game.description)}</div>
                       </div>
                     </Button>
                   ))}
@@ -207,7 +209,7 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
       {activeSessions.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Активные игры</CardTitle>
+            <CardTitle className="text-lg">{t("Активные игры", "Active games")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -222,13 +224,13 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{child?.avatar_url || "👶"}</span>
                       <div>
-                        <div className="font-medium">{getGameName(session.game_type)}</div>
+                        <div className="font-medium">{label(getGameName(session.game_type))}</div>
                         <div className="text-sm text-muted-foreground">
-                          с {child?.first_name || "Ребёнок"}
+                          с {child?.first_name || t("Ребёнок", "Child")}
                         </div>
                       </div>
                     </div>
-                    {getStatusBadge(session.status)}
+                    {getStatusBadge(session.status, label)}
                   </div>
                 );
               })}
@@ -241,7 +243,7 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
       {finishedSessions.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">История игр</CardTitle>
+            <CardTitle className="text-lg">{t("История игр", "Game history")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -256,15 +258,15 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
                       <span className="text-xl opacity-60">{child?.avatar_url || "👶"}</span>
                       <div>
                         <div className="font-medium text-muted-foreground">
-                          {getGameName(session.game_type)}
+                          {label(getGameName(session.game_type))}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          с {child?.first_name || "Ребёнок"}
+                          с {child?.first_name || t("Ребёнок", "Child")}
                         </div>
                       </div>
                     </div>
                     <Badge variant="outline">
-                      {session.winner_id === session.child_id ? "Победил ребёнок" : "Победил родитель"}
+                      {session.winner_id === session.child_id ? t("Победил ребёнок", "Child won") : t("Победил родитель", "Parent won")}
                     </Badge>
                   </div>
                 );
@@ -279,7 +281,7 @@ export const GamesList = ({ children, sessions, onCreateGame, selectedChild }: G
           <CardContent className="py-8 text-center">
             <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              Сначала добавьте ребёнка на вкладке "Дети"
+              {t("Сначала добавьте ребёнка на вкладке \"Дети\"", "Add a child in the Children tab first")}
             </p>
           </CardContent>
         </Card>

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useCallback } from "react";
 
 interface TicTacToeProps {
@@ -39,6 +40,7 @@ export const TicTacToe = ({
   myId,
   opponentId,
 }: TicTacToeProps) => {
+  const { t } = useLanguage();
   const handleCellClick = useCallback(
     (index: number) => {
       if (!isMyTurn || gameState.board[index]) return;
@@ -66,7 +68,7 @@ export const TicTacToe = ({
     <div className="flex flex-col items-center gap-4">
       <div className="text-center mb-2">
         <p className="text-sm text-muted-foreground">
-          Вы играете за: <span className="font-bold text-2xl">{mySymbol}</span>
+          {t("Вы играете за:", "You play as:")} <span className="font-bold text-2xl">{mySymbol}</span>
         </p>
       </div>
 

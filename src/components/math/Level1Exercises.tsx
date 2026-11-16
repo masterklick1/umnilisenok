@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,24 +32,28 @@ const Wrapper = ({
   score: number;
   total: number;
   onBack: () => void;
-}) => (
+}) => {
+  const { t } = useLanguage();
+  return (
   <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-background p-4">
     <div className="container mx-auto max-w-4xl">
       <div className="flex justify-between items-center mb-6">
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Назад
+          {t("Назад", "Back")}
         </Button>
         <div className="text-lg font-semibold">
-          Счёт: {score} / {total}
+          {t("Счёт:", "Score:")} {score} / {total}
         </div>
       </div>
       <Card className="p-8 text-center">{children}</Card>
     </div>
   </div>
 );
+};
 
 export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const { addStars } = useUserProgress();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
@@ -80,22 +85,22 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   const reward = (msg: string) => {
     addStars(1, "math", true); // Передаем true для получения билета 🎟️
     setScore((s) => s + 1);
-    speak("Правильно! Молодец!");
-    toast({ title: msg + " 🎉", description: "+1 ⭐ и +1 🎟️ билет" });
+    speak(t("Правильно! Молодец!", "That’s right! Well done!"), language === "en" ? "en-US" : "ru-RU");
+    toast({ title: msg + " 🎉", description: t("+1 ⭐ и +1 🎟️ билет", "+1 ⭐ and +1 🎟️ ticket") });
   };
 
   const wrong = (correct: string) => {
-    speak("Попробуй ещё раз!");
-    toast({ title: "Попробуй ещё! 💪", description: `Правильно: ${correct}`, variant: "destructive" });
+    speak(t("Попробуй ещё раз!", "Try again!"), language === "en" ? "en-US" : "ru-RU");
+    toast({ title: t("Попробуй ещё! 💪", "Try again! 💪"), description: t(`Правильно: ${correct}`, `Correct answer: ${correct}`), variant: "destructive" });
   };
 
   const exercises = [
-    { type: "count" as ExerciseType, title: "Кормление животных", description: "Посчитай и покорми всех!", emoji: "🍎" },
-    { type: "shapes" as ExerciseType, title: "Найди пару", description: "Найди одинаковые фигуры", emoji: "🔷" },
-    { type: "sort" as ExerciseType, title: "Сортировка", description: "От маленького к большому", emoji: "📦" },
-    { type: "compare" as ExerciseType, title: "Больше-меньше", description: "Где больше фруктов?", emoji: "🍊" },
-    { type: "colors" as ExerciseType, title: "Цвета", description: "Найди такой же цвет", emoji: "🎨" },
-    { type: "bigsmall" as ExerciseType, title: "Большой-маленький", description: "Найди по размеру", emoji: "🔍" },
+    { type: "count" as ExerciseType, title: t("Кормление животных", "Feed the animals"), description: t("Посчитай и покорми всех!", "Count and feed them all!"), emoji: "🍎" },
+    { type: "shapes" as ExerciseType, title: t("Найди пару", "Find a match"), description: t("Найди одинаковые фигуры", "Find matching shapes"), emoji: "🔷" },
+    { type: "sort" as ExerciseType, title: t("Сортировка", "Sort by size"), description: t("От маленького к большому", "From smallest to biggest"), emoji: "📦" },
+    { type: "compare" as ExerciseType, title: t("Больше-меньше", "More or fewer"), description: t("Где больше фруктов?", "Which group has more fruit?"), emoji: "🍊" },
+    { type: "colors" as ExerciseType, title: t("Цвета", "Colors"), description: t("Найди такой же цвет", "Find the matching color"), emoji: "🎨" },
+    { type: "bigsmall" as ExerciseType, title: t("Большой-маленький", "Big or small"), description: t("Найди по размеру", "Find the right size"), emoji: "🔍" },
   ];
 
   // Генерация вариантов выбора
@@ -122,12 +127,12 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
   const colorData = useMemo(() => {
     const palette = [
-      { name: "красный", emoji: "🔴" },
-      { name: "синий", emoji: "🔵" },
-      { name: "жёлтый", emoji: "🟡" },
-      { name: "зелёный", emoji: "🟢" },
-      { name: "оранжевый", emoji: "🟠" },
-      { name: "фиолетовый", emoji: "🟣" },
+      { name: t("красный", "red"), emoji: "🔴" },
+      { name: t("синий", "blue"), emoji: "🔵" },
+      { name: t("жёлтый", "yellow"), emoji: "🟡" },
+      { name: t("зелёный", "green"), emoji: "🟢" },
+      { name: t("оранжевый", "orange"), emoji: "🟠" },
+      { name: t("фиолетовый", "purple"), emoji: "🟣" },
     ];
     const target = palette[Math.floor(Math.random() * palette.length)];
     const opts = [...palette].sort(() => Math.random() - 0.5).slice(0, 4);
@@ -149,12 +154,12 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
         <div className="container mx-auto max-w-4xl">
           <Button variant="ghost" onClick={onBack} className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Выбрать уровень
+            {t("Выбрать уровень", "Choose a level")}
           </Button>
           <div className="text-center mb-8">
             <div className="text-6xl mb-4 animate-bounce-gentle">🐣</div>
-            <h1 className="text-4xl font-bold mb-2">Малыш-математик</h1>
-            <p className="text-lg text-muted-foreground">3-4 года</p>
+            <h1 className="text-4xl font-bold mb-2">{t("Малыш-математик", "Little mathematician")}</h1>
+            <p className="text-lg text-muted-foreground">{t("3-4 года", "Ages 3–4")}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {exercises.map((ex) => (
@@ -179,7 +184,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     const animal = ["🐰", "🐶", "🐱", "🐼", "🐨"][feedingAnimals % 5];
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-4">Посчитай животных и покорми их! 🍎</h2>
+        <h2 className="text-2xl font-bold mb-4">{t("Посчитай животных и покорми их! 🍎", "Count the animals and feed them! 🍎")}</h2>
         <div className="flex justify-center gap-3 mb-8 text-6xl flex-wrap">
           {Array(feedingAnimals)
             .fill(animal)
@@ -189,7 +194,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
               </span>
             ))}
         </div>
-        <p className="text-xl mb-6">Сколько яблок нужно?</p>
+        <p className="text-xl mb-6">{t("Сколько яблок нужно?", "How many apples do they need?")}</p>
         <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
           {[1, 2, 3, 4, 5].map((n) => (
             <Button
@@ -200,7 +205,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                 setSelectedCount(n);
                 setTotal((t) => t + 1);
                 if (n === feedingAnimals) {
-                  reward("Отлично");
+                  reward(t("Отлично", "Excellent"));
                   logCorrectAnswer({ section: "math", level: 1, exercise: "counting", answer: n });
                 } else {
                   wrong(String(feedingAnimals));
@@ -227,7 +232,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
   if (currentExercise === "shapes") {
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Найди такую же фигуру</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Найди такую же фигуру", "Find the matching shape")}</h2>
         <div className="text-8xl mb-8">{EMOJI_MAP[currentShape]}</div>
         <div className="grid grid-cols-4 gap-4 max-w-2xl mx-auto">
           {allShapesOptions.map((s, i) => (
@@ -238,7 +243,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
               onClick={() => {
                 setTotal((t) => t + 1);
                 if (s === currentShape) {
-                  reward("Правильно");
+                  reward(t("Правильно", "Correct"));
                   logCorrectAnswer({ section: "math", level: 1, exercise: "shapes", shape: s });
                 } else {
                   wrong(EMOJI_MAP[currentShape]);
@@ -264,8 +269,8 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-2">Разложи от маленького к большому</h2>
-        <p className="text-muted-foreground mb-6">Нажми сначала на самый маленький</p>
+        <h2 className="text-2xl font-bold mb-2">{t("Разложи от маленького к большому", "Sort from smallest to biggest")}</h2>
+        <p className="text-muted-foreground mb-6">{t("Нажми сначала на самый маленький", "Tap the smallest one first")}</p>
         <div className="flex justify-center gap-6 items-end mb-6 min-h-[160px]">
           {sortSizes.map((s, idx) => {
             const clickedIdx = sortClicked.indexOf(s.size);
@@ -278,7 +283,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                     const next = [...sortClicked, s.size];
                     setSortClicked(next);
                     if (next.length === 3) {
-                      reward("Молодец");
+                      reward(t("Молодец", "Well done"));
                       setTotal((t) => t + 1);
                       logCorrectAnswer({ section: "math", level: 1, exercise: "sort" });
                       setTimeout(() => {
@@ -288,7 +293,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                     }
                   } else {
                     setTotal((t) => t + 1);
-                    wrong("сначала меньший");
+                    wrong(t("сначала меньший", "start with the smaller one"));
                     logWrongAnswer({ section: "math", level: 1, exercise: "sort" });
                     setSortClicked([]);
                   }
@@ -312,10 +317,10 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     const pick = (side: "a" | "b") => {
       setTotal((t) => t + 1);
       if (side === round.bigger) {
-        reward("Точно");
+        reward(t("Точно", "Exactly"));
         logCorrectAnswer({ section: "math", level: 1, exercise: "compare" });
       } else {
-        wrong(`Группа ${round.bigger === "a" ? "слева" : "справа"}`);
+        wrong(t(`Группа ${round.bigger === "a" ? "слева" : "справа"}`, `The group on the ${round.bigger === "a" ? "left" : "right"}`));
         logWrongAnswer({ section: "math", level: 1, exercise: "compare" });
       }
       setTimeout(() => setCompareRound((r) => r + 1), 1200);
@@ -323,7 +328,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
 
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Где фруктов больше?</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Где фруктов больше?", "Which group has more fruit?")}</h2>
         <div className="grid grid-cols-2 gap-4">
           {(["a", "b"] as const).map((side) => (
             <button
@@ -338,7 +343,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
                     <span key={i}>{f}</span>
                   ))}
               </div>
-              <div className="text-sm text-muted-foreground mt-3">Нажми, если здесь больше</div>
+              <div className="text-sm text-muted-foreground mt-3">{t("Нажми, если здесь больше", "Tap here if this group has more")}</div>
             </button>
           ))}
         </div>
@@ -352,7 +357,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-4">
-          Найди цвет: <span className="text-primary">{r.target.name}</span>
+          {t("Найди цвет:", "Find the color:")} <span className="text-primary">{r.target.name}</span>
         </h2>
         <div className="text-8xl mb-8">{r.target.emoji}</div>
         <div className="grid grid-cols-4 gap-4 max-w-md mx-auto">
@@ -365,7 +370,7 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
               onClick={() => {
                 setTotal((t) => t + 1);
                 if (o.name === r.target.name) {
-                  reward("Верно");
+                  reward(t("Верно", "Correct"));
                   logCorrectAnswer({ section: "math", level: 1, exercise: "colors", color: o.name });
                 } else {
                   wrong(r.target.name);
@@ -392,17 +397,17 @@ export const Level1Exercises = ({ onBack }: Level1ExercisesProps) => {
       const pickedBig = side === bigSide;
       const ok = pickedBig === r.askBig;
       if (ok) {
-        reward("Правильно");
+        reward(t("Правильно", "Correct"));
         logCorrectAnswer({ section: "math", level: 1, exercise: "bigsmall" });
       } else {
-        wrong(r.askBig ? "большой" : "маленький");
+        wrong(r.askBig ? t("большой", "big") : t("маленький", "small"));
         logWrongAnswer({ section: "math", level: 1, exercise: "bigsmall" });
       }
       setTimeout(() => setBigRound((x) => x + 1), 1200);
     };
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-8">Нажми {r.askBig ? "БОЛЬШОЙ" : "МАЛЕНЬКИЙ"}</h2>
+        <h2 className="text-2xl font-bold mb-8">{t("Нажми", "Tap")} {r.askBig ? t("БОЛЬШОЙ", "BIG") : t("МАЛЕНЬКИЙ", "SMALL")}</h2>
         <div className="grid grid-cols-2 gap-6 items-center max-w-md mx-auto">
           {(["left", "right"] as const).map((side, i) => (
             <button

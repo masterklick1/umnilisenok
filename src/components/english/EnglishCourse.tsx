@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Headphones, Lock, RotateCcw, Volume2 } from "lucide-react";
 import { z } from "zod";
@@ -41,6 +42,7 @@ function questionFor(run: Run) {
 }
 
 export function EnglishCourse({ learner }: { learner: string }) {
+  const { t } = useLanguage();
   // The expanded course keeps the original lesson order and storage key.
   const storageKey = `fox-english-animals-v1:${learner}`;
   const [course, setCourse] = useState(() => loadCourse(storageKey));
@@ -122,38 +124,38 @@ export function EnglishCourse({ learner }: { learner: string }) {
     return (
       <Card className="space-y-5 rounded-3xl border-teal-200 p-4 text-center sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2 text-left">
-          <Button variant="ghost" onClick={goToRoute}><ArrowLeft className="mr-2 h-4 w-4" /> К маршруту</Button>
-          <span className="text-sm font-semibold text-muted-foreground">{run.review ? "Повторение" : lesson.title}</span>
+          <Button variant="ghost" onClick={goToRoute}><ArrowLeft className="mr-2 h-4 w-4" /> {t("К маршруту", "Back to the course")}</Button>
+          <span className="text-sm font-semibold text-muted-foreground">{run.review ? t("Повторение", "Review") : lesson.title}</span>
         </div>
-        <div role="progressbar" aria-label="Прогресс урока" aria-valuemin={0} aria-valuemax={run.order.length}
+        <div role="progressbar" aria-label={t("Прогресс урока", "Lesson progress")} aria-valuemin={0} aria-valuemax={run.order.length}
           aria-valuenow={run.step + Number(run.solved)} className="h-2 overflow-hidden rounded-full bg-teal-100">
           <div className="h-full rounded-full bg-teal-600" style={{ width: `${(run.step + Number(run.solved)) / run.order.length * 100}%` }} />
         </div>
         {done ? (
           <div className="space-y-3">
-            <h2 className="text-2xl font-extrabold">{run.review ? "Повторение завершено!" : "Урок пройден!"}</h2>
+            <h2 className="text-2xl font-extrabold">{run.review ? t("Повторение завершено!", "Review complete!") : t("Урок пройден!", "Lesson complete!")}</h2>
             {run.missed.length > 0 && (
               <Button size="lg" variant="outline" onClick={() => start(run.lesson, run.missed)}>
-                <RotateCcw className="mr-2 h-5 w-5" /> Повторить сложные слова
+                <RotateCcw className="mr-2 h-5 w-5" /> {t("Повторить сложные слова", "Review tricky words")}
               </Button>
             )}
             {completed < LESSONS.length && (
-              <Button size="lg" className="mx-auto flex" onClick={() => start(completed)}>Следующий урок <ArrowRight className="ml-2 h-5 w-5" /></Button>
+              <Button size="lg" className="mx-auto flex" onClick={() => start(completed)}>{t("Следующий урок", "Next lesson")} <ArrowRight className="ml-2 h-5 w-5" /></Button>
             )}
-            {completed === LESSONS.length && <p className="font-semibold text-teal-800">Все уроки курса пройдены!</p>}
+            {completed === LESSONS.length && <p className="font-semibold text-teal-800">{t("Все уроки курса пройдены!", "You’ve finished the course!")}</p>}
           </div>
         ) : (
           <>
-            <h2 className="text-2xl font-extrabold">{run.solved && lesson.repeat ? "Повтори за Лисёнком" : "Послушай и выбери"}</h2>
+            <h2 className="text-2xl font-extrabold">{run.solved && lesson.repeat ? t("Повтори за Лисёнком", "Repeat after Little Fox") : t("Послушай и выбери", "Listen and choose")}</h2>
             <Button size="lg" variant="outline" className="min-h-14 text-lg"
               onClick={() => void speakEnglish(run.solved ? answer : questionFor(run))}>
-              <Volume2 className="mr-2 h-6 w-6" /> Послушать ещё
+              <Volume2 className="mr-2 h-6 w-6" /> {t("Послушать ещё", "Listen again")}
             </Button>
             <div className="mx-auto grid max-w-lg grid-cols-3 gap-2 sm:gap-4">
               {choices.map((index) => {
                 const word = lesson.words[index];
                 return (
-                  <button type="button" key={word.word} aria-label={word.translation}
+                  <button type="button" key={word.word} aria-label={t(word.translation, word.word)}
                     disabled={run.solved || run.wrong.includes(index)} onClick={() => choose(index)}
                     className={`aspect-square min-w-0 rounded-2xl border-2 focus-visible:outline focus-visible:outline-primary ${word.emoji.startsWith("●") ? "text-lg tracking-wide text-teal-800 sm:text-3xl" : "text-4xl sm:text-6xl"} ${
                       run.solved && index === target ? "border-green-600 bg-green-50" : "border-teal-100 bg-teal-50 enabled:hover:border-teal-500 disabled:opacity-40"
@@ -166,10 +168,10 @@ export function EnglishCourse({ learner }: { learner: string }) {
             {run.solved && (
               <div className="space-y-3">
                 <p role="status" lang="en" className="text-xl font-bold text-teal-800">{answer}</p>
-                <Button size="lg" className="min-h-14 w-full max-w-xs text-lg" onClick={advance}>Дальше <ArrowRight className="ml-2 h-5 w-5" /></Button>
+                <Button size="lg" className="min-h-14 w-full max-w-xs text-lg" onClick={advance}>{t("Дальше", "Next")} <ArrowRight className="ml-2 h-5 w-5" /></Button>
               </div>
             )}
-            {!run.solved && run.wrong.length > 0 && <p role="status" className="font-semibold">Послушай ещё раз и попробуй выбрать другую картинку.</p>}
+            {!run.solved && run.wrong.length > 0 && <p role="status" className="font-semibold">{t("Послушай ещё раз и попробуй выбрать другую картинку.", "Listen again and try another picture.")}</p>}
           </>
         )}
       </Card>
@@ -179,36 +181,36 @@ export function EnglishCourse({ learner }: { learner: string }) {
   return (
     <Card className="overflow-hidden rounded-3xl border-teal-200">
       <div className="space-y-3 bg-teal-950 p-5 text-white sm:p-6">
-        <div className="flex items-center gap-2 text-sm font-semibold text-teal-200"><Headphones className="h-4 w-4" /> Маршрут английского</div>
-        <h2 className="text-2xl font-extrabold sm:text-3xl">Английский по шагам</h2>
+        <div className="flex items-center gap-2 text-sm font-semibold text-teal-200"><Headphones className="h-4 w-4" /> {t("Маршрут английского", "English course")}</div>
+        <h2 className="text-2xl font-extrabold sm:text-3xl">{t("Английский по шагам", "English step by step")}</h2>
         <p className="text-sm text-teal-100">Пройдено {completed} из {LESSONS.length}</p>
         {run && !done ? (
           <Button className="min-h-12 bg-lime-300 font-bold text-teal-950 hover:bg-lime-200" onClick={() => openLesson(run.lesson)}>
-            Продолжить урок <ArrowRight className="ml-2 h-5 w-5" />
+            {t("Продолжить урок", "Continue lesson")} <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         ) : completed < LESSONS.length ? (
           <Button className="min-h-12 bg-lime-300 font-bold text-teal-950 hover:bg-lime-200" onClick={() => openLesson(completed)}>
-            {completed ? "Продолжить урок" : "Начать курс"} <ArrowRight className="ml-2 h-5 w-5" />
+            {completed ? t("Продолжить урок", "Continue lesson") : t("Начать курс", "Start the course")} <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         ) : null}
         {run && done && run.missed.length > 0 && (
           <Button variant="outline" className="min-h-12 bg-transparent text-white hover:bg-teal-800 hover:text-white" onClick={() => start(run.lesson, run.missed)}>
-            <RotateCcw className="mr-2 h-4 w-4" /> Повторить сложные слова
+            <RotateCcw className="mr-2 h-4 w-4" /> {t("Повторить сложные слова", "Review tricky words")}
           </Button>
         )}
       </div>
       <div className="space-y-2 border-b border-teal-100 bg-teal-50 p-4 sm:p-5">
-        <label htmlFor="english-course-unit" className="block text-sm font-semibold text-teal-950">Темы курса</label>
+        <label htmlFor="english-course-unit" className="block text-sm font-semibold text-teal-950">{t("Темы курса", "Course topics")}</label>
         <select id="english-course-unit" value={unitIndex} onChange={(event) => setSelectedUnitIndex(Number(event.target.value))}
           className="min-h-12 w-full rounded-xl border border-teal-200 bg-white px-3 text-base font-semibold text-teal-950">
           {UNITS.map((item, index) => {
             const count = Math.max(0, Math.min(item.size, completed - item.firstLesson));
-            return <option key={item.label} value={index}>{item.icon} {item.label} · {count}/{item.size}</option>;
+            return <option key={item.label} value={index}>{item.icon} {t(item.label, item.title)} · {count}/{item.size}</option>;
           })}
         </select>
       </div>
       <ol className="space-y-2 bg-white p-4 sm:p-5" start={unit.firstLesson + 1}>
-        {LESSONS.slice(unit.firstLesson, unit.firstLesson + unit.size).map(({ title, description }, offset) => {
+        {LESSONS.slice(unit.firstLesson, unit.firstLesson + unit.size).map(({ title, description, descriptionEn }, offset) => {
           const index = unit.firstLesson + offset;
           return (
             <li key={index}>
@@ -219,7 +221,7 @@ export function EnglishCourse({ learner }: { learner: string }) {
                 </span>
                 <span>
                   <span lang="en" className="block font-bold">{title}</span>
-                  <span className="block text-sm text-slate-600">{description}{index < completed ? " · пройден" : ""}</span>
+                  <span className="block text-sm text-slate-600">{t(description, descriptionEn)}{index < completed ? t(" · пройден", " · completed") : ""}</span>
                 </span>
               </button>
             </li>

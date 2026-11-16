@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +27,7 @@ const CATEGORIES = [
 
 /** Кнопка и форма обратной связи для родителей. */
 export function FeedbackDialog() {
+  const { t, label } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -38,8 +40,8 @@ export function FeedbackDialog() {
     const text = message.trim();
     if (text.length < 3) {
       toast({
-        title: "Напишите сообщение",
-        description: "Расскажите, что случилось или что хотелось бы улучшить.",
+        title: t("Напишите сообщение", "Write a message"),
+        description: t("Расскажите, что случилось или что хотелось бы улучшить.", "Tell us what happened or what you’d like us to improve."),
         variant: "destructive",
       });
       return;
@@ -54,8 +56,8 @@ export function FeedbackDialog() {
 
     if (error) {
       toast({
-        title: "Не удалось отправить",
-        description: "Проверьте интернет и попробуйте ещё раз.",
+        title: t("Не удалось отправить", "Couldn’t send the message"),
+        description: t("Проверьте интернет и попробуйте ещё раз.", "Check your internet connection and try again."),
         variant: "destructive",
       });
       return;
@@ -72,21 +74,20 @@ export function FeedbackDialog() {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1">
           <MessageSquareHeart className="w-4 h-4" />
-          <span className="hidden sm:inline">Обратная связь</span>
+          <span className="hidden sm:inline">{t("Обратная связь", "Feedback")}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Обратная связь</DialogTitle>
+          <DialogTitle>{t("Обратная связь", "Feedback")}</DialogTitle>
           <DialogDescription>
-            Ваше сообщение получит команда разработчиков «Умного Лисёнка». Мы читаем каждое
-            обращение и учитываем пожелания в следующих обновлениях.
+            {t("Ваше сообщение получит команда разработчиков «Умного Лисёнка». Мы читаем каждое обращение и учитываем пожелания в следующих обновлениях.", "Your message goes to the Clever Little Fox team. We read every message as we work on future updates.")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>О чём хотите написать?</Label>
+            <Label>{t("О чём хотите написать?", "What’s your feedback about?")}</Label>
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map((c) => (
                 <button
@@ -100,20 +101,20 @@ export function FeedbackDialog() {
                   }`}
                 >
                   <span className="mr-1">{c.emoji}</span>
-                  {c.label}
+                  {label(c.label)}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="feedback-text">Ваше сообщение</Label>
+            <Label htmlFor="feedback-text">{t("Ваше сообщение", "Your message")}</Label>
             <Textarea
               id="feedback-text"
               value={message}
               maxLength={2000}
               rows={5}
-              placeholder="Например: хотелось бы больше заданий по чтению для 5 лет…"
+              placeholder={t("Например: хотелось бы больше заданий по чтению для 5 лет…", "For example, we’d love more reading activities for five-year-olds…")}
               onChange={(e) => setMessage(e.target.value)}
             />
             <div className="text-xs text-muted-foreground text-right">{message.length}/2000</div>
@@ -122,17 +123,17 @@ export function FeedbackDialog() {
           <div className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground flex items-start gap-2">
             <Mail className="w-4 h-4 mt-0.5 shrink-0" />
             <span>
-              Нужен быстрый ответ? Напишите напрямую:{" "}
+              {t("Нужен быстрый ответ? Напишите напрямую:", "Need a quick reply? Email us at")}{" "}
               <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary underline">
                 {SUPPORT_EMAIL}
               </a>
-              . Ответ придёт на вашу почту {user?.email ?? ""}.
+              {t(". Ответ придёт на вашу почту", ". We’ll reply by email.")} {user?.email ?? ""}.
             </span>
           </div>
 
           <Button onClick={submit} disabled={sending} className="w-full gap-2">
             <Send className="w-4 h-4" />
-            {sending ? "Отправляем…" : "Отправить"}
+            {sending ? t("Отправляем…", "Sending…") : t("Отправить", "Send")}
           </Button>
         </div>
       </DialogContent>
@@ -142,15 +143,13 @@ export function FeedbackDialog() {
         <DialogContent className="sm:max-w-sm text-center">
           <div className="text-6xl">🦊</div>
           <DialogHeader className="items-center space-y-2">
-            <DialogTitle className="text-2xl">Спасибо за отзыв!</DialogTitle>
+            <DialogTitle className="text-2xl">{t("Спасибо за отзыв!", "Thanks for your feedback!")}</DialogTitle>
             <DialogDescription className="text-base">
-              Вы помогаете сделать «Умного Лисёнка» лучше. Мы уже читаем ваше
-              сообщение и обязательно его учтём. Если оставили почту — ответим
-              вам на неё.
+              {t("Вы помогаете сделать «Умного Лисёнка» лучше. Мы уже читаем ваше сообщение и обязательно его учтём. Если оставили почту — ответим вам на неё.", "Your feedback helps improve Clever Little Fox. If you left your email address, we’ll reply there.")}
             </DialogDescription>
           </DialogHeader>
           <Button onClick={() => setSentOpen(false)} className="w-full">
-            Хорошо
+            {t("Хорошо", "OK")}
           </Button>
         </DialogContent>
       </Dialog>

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,6 +57,7 @@ const floorStyle = (icon?: string) => {
 };
 
 export const ChildRoomViewer = ({ childId, childName }: Props) => {
+  const { t, label } = useLanguage();
   const [items, setItems] = useState<UserRoomItem[]>([]);
   const [pet, setPet] = useState<UserPet | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,10 +124,10 @@ export const ChildRoomViewer = ({ childId, childName }: Props) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">🏠 Комната: {childName}</h3>
+        <h3 className="text-lg font-semibold">{t("🏠 Комната:", "🏠 Room:")} {childName}</h3>
         <span className={`flex items-center gap-1 text-xs ${pulse ? "text-primary" : "text-muted-foreground"} transition-colors`}>
           <Wifi className={`w-4 h-4 ${pulse ? "animate-pulse" : ""}`} />
-          {pulse ? "Обновление…" : "В реальном времени"}
+          {pulse ? t("Обновление…", "Updating…") : t("В реальном времени", "Live")}
         </span>
       </div>
 
@@ -160,7 +162,7 @@ export const ChildRoomViewer = ({ childId, childName }: Props) => {
                   gridColumn: item.position_x + 1,
                   gridRow: item.position_y + 1,
                 }}
-                title={item.room_items.name}
+                title={label(item.room_items.name)}
               >
                 {item.room_items.icon}
               </div>
@@ -182,20 +184,20 @@ export const ChildRoomViewer = ({ childId, childName }: Props) => {
       <div className="grid grid-cols-2 gap-3">
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-2">Размещено / в инвентаре</p>
+            <p className="text-xs text-muted-foreground mb-2">{t("Размещено / в инвентаре", "In the room / in inventory")}</p>
             <p className="text-2xl font-bold">{placed.length} / {inventory.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-2">Питомец</p>
+            <p className="text-xs text-muted-foreground mb-2">{t("Питомец", "Pet")}</p>
             {pet ? (
               <p className="text-sm">
                 <span className="text-2xl mr-2">{pet.pets.icon}</span>
                 {pet.pet_name} · ❤️{pet.happiness}% 🍎{pet.hunger}% ⚡{pet.energy}%
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground">Питомца нет</p>
+              <p className="text-sm text-muted-foreground">{t("Питомца нет", "No pet yet")}</p>
             )}
           </CardContent>
         </Card>
@@ -204,12 +206,12 @@ export const ChildRoomViewer = ({ childId, childName }: Props) => {
       {inventory.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-2">В инвентаре, не размещено:</p>
+            <p className="text-xs text-muted-foreground mb-2">{t("В инвентаре, не размещено:", "Items in inventory")}</p>
             <div className="flex flex-wrap gap-2">
               {inventory.map((i) => (
                 <div key={i.id} className="px-2 py-1 bg-muted rounded text-sm flex items-center gap-1">
                   <span className="text-lg">{i.room_items.icon}</span>
-                  <span className="text-xs">{i.room_items.name}</span>
+                  <span className="text-xs">{label(i.room_items.name)}</span>
                 </div>
               ))}
             </div>

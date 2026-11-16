@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +8,7 @@ type Row = { subject: string; item: string; times_correct: number };
 
 /** Всё пройденное ребёнком по предметам (кроме «Чтения», у него своя карточка). */
 export const LearningProgressCard = ({ childId }: { childId: string }) => {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {
@@ -35,11 +37,11 @@ export const LearningProgressCard = ({ childId }: { childId: string }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">🎓 Пройдено по предметам</CardTitle>
+        <CardTitle className="text-lg">{t("🎓 Пройдено по предметам", "🎓 Learning by subject")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {!rows ? (
-          <p className="text-sm text-muted-foreground">Загрузка…</p>
+          <p className="text-sm text-muted-foreground">{t("Загрузка…", "Loading…")}</p>
         ) : (
           subjects.map((s) => {
             const items = rows.filter((r) => r.subject === s);
@@ -50,11 +52,11 @@ export const LearningProgressCard = ({ childId }: { childId: string }) => {
                   <span>{items.length}</span>
                 </div>
                 {items.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Пока ничего</p>
+                  <p className="text-xs text-muted-foreground">{t("Пока ничего", "Nothing yet")}</p>
                 ) : (
                   <div className="flex flex-wrap gap-1">
                     {items.map((r) => (
-                      <span key={r.item} className="text-xs font-bold bg-secondary rounded-full px-2 py-0.5" title={`Верно: ${r.times_correct} раз`}>
+                      <span key={r.item} className="text-xs font-bold bg-secondary rounded-full px-2 py-0.5" title={t(`Верно: ${r.times_correct} раз`, `Correct ${r.times_correct} times`)}>
                         {r.item}
                       </span>
                     ))}

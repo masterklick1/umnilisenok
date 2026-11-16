@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera } from "@capacitor/camera";
@@ -9,7 +10,7 @@ import { createPageVoice, getPageVoiceChoices, pagePassages, pageVoiceSamples, t
 
 const languageKey = "page-reader-language";
 const voiceKey = (lang: PageLanguage) => `page-reader-voice-${lang}`;
-const blurryMessage = "Не получилось прочитать страницу. Поднеси камеру ближе и попробуй ещё раз.";
+
 
 function stopCamera(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
@@ -29,6 +30,8 @@ function toPagePhoto(source: CanvasImageSource, width: number, height: number) {
 }
 
 export default function PageReaderPage() {
+  const { t, language: appLanguage } = useLanguage();
+  const blurryMessage = t("Не получилось прочитать страницу. Поднеси камеру ближе и попробуй ещё раз.", "I couldn’t read the page. Move the camera closer and try again.");
   const navigate = useNavigate();
   const [language, setLanguage] = useState<PageLanguage>(() => localStorage.getItem(languageKey) === "en" ? "en" : "ru");
   const [status, setStatus] = useState<"ready" | "opening" | "camera" | "scanning">("ready");
@@ -142,8 +145,8 @@ export default function PageReaderPage() {
       voice = await createPageVoice(language, localStorage.getItem(voiceKey(language)) ?? "");
       if (controller.signal.aborted) return;
       if (!voice) {
-        const name = language === "ru" ? "русский" : "английский";
-        setMessage(`Скачай ${name} голос для чтения без интернета в настройках устройства.`);
+        const name = language === "ru" ? t("русский", "Russian") : t("английский", "English");
+        setMessage(t(`Скачай ${name} голос для чтения без интернета в настройках устройства.`, `Download a voice for ${name} in your device settings to listen offline.`));
         return;
       }
       const passages = pagePassages(content, voice.passageLimit);
@@ -157,7 +160,7 @@ export default function PageReaderPage() {
         setPaused(false);
       }
     } catch {
-      if (!controller.signal.aborted) setMessage("Не удалось включить голос. Попробуй выбрать другой голос.");
+      if (!controller.signal.aborted) setMessage(t("Не удалось включить голос. Попробуй выбрать другой голос.", "I couldn’t play that voice. Try choosing another one."));
     } finally {
       if (playback.current === run && !controller.signal.aborted) {
         playback.current = null;
@@ -174,11 +177,11 @@ export default function PageReaderPage() {
       if (controller.signal.aborted) return;
       controller.abort();
       setStatus("ready");
-      setMessage("Распознавание заняло слишком много времени. Попробуй ещё раз.");
+      setMessage(t("Распознавание заняло слишком много времени. Попробуй ещё раз.", "Reading the page took too long. Try again."));
     }, 60_000);
     try {
       if (photo.size > 20 * 1024 * 1024) {
-        setMessage("Фото слишком большое. Сделай новый снимок страницы.");
+        setMessage(t("Фото слишком большое. Сделай новый снимок страницы.", "The photo is too large. Take another picture of the page."));
         return;
       }
       if (resize && typeof createImageBitmap === "function") {
@@ -200,10 +203,10 @@ export default function PageReaderPage() {
         if (isSoundEnabled()) void readPage(recognized, true);
       } else {
         setMessage(blurryMessage);
-        void speak(blurryMessage);
+        void speak(blurryMessage, appLanguage === "en" ? "en-US" : "ru-RU");
       }
     } catch {
-      if (!controller.signal.aborted) setMessage("Не удалось обработать фото. Попробуй снять страницу ещё раз.");
+      if (!controller.signal.aborted) setMessage(t("Не удалось обработать фото. Попробуй снять страницу ещё раз.", "I couldn’t read this photo. Try taking another picture."));
     } finally {
       clearTimeout(timeout);
       if (!controller.signal.aborted) setStatus("ready");
@@ -229,7 +232,7 @@ export default function PageReaderPage() {
       if (controller.signal.aborted) return;
       setCameraFallback(true);
       setStatus("ready");
-      setMessage(native ? "Открой камеру телефона или выбери фото." : "Камера недоступна. Проверь разрешение или выбери фото.");
+      setMessage(native ? t("Открой камеру телефона или выбери фото.", "Open your phone’s camera or choose a photo.") : t("Камера недоступна. Проверь разрешение или выбери фото.", "The camera is unavailable. Check its permissions or choose a photo."));
     }
   }
 
@@ -246,7 +249,7 @@ export default function PageReaderPage() {
     } catch {
       if (!controller.signal.aborted) {
         closeCamera();
-        setMessage("Не удалось сделать снимок. Открой камеру ещё раз.");
+        setMessage(t("Не удалось сделать снимок. Открой камеру ещё раз.", "I couldn’t take the photo. Open the camera and try again."));
       }
     }
   }
@@ -273,7 +276,7 @@ export default function PageReaderPage() {
     } catch {
       if (!controller.signal.aborted) {
         setStatus("ready");
-        setMessage("Камера закрылась. Попробуй ещё раз или выбери фото.");
+        setMessage(t("Камера закрылась. Попробуй ещё раз или выбери фото.", "The camera closed. Try again or choose a photo."));
       }
     } finally {
       systemCameraOpen.current = false;
@@ -284,14 +287,14 @@ export default function PageReaderPage() {
     <main className="min-h-screen bg-gradient-to-b from-orange-50 via-background to-background p-4 dark:from-background">
       <div className="mx-auto max-w-xl space-y-5">
         <Button variant="ghost" onClick={() => navigate("/tales")}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> К сказкам
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t("К сказкам", "Back to stories")}
         </Button>
         <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Лисёнок, прочитай мне</h1>
-          <p className="text-muted-foreground">Сфотографируй страницу книги, и Лисёнок прочитает её вслух.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{t("Лисёнок, прочитай мне", "Little Fox, read to me")}</h1>
+          <p className="text-muted-foreground">{t("Сфотографируй страницу книги, и Лисёнок прочитает её вслух.", "Take a picture of a book page and Little Fox will read it aloud.")}</p>
         </div>
 
-        <div role="group" aria-label="Язык страницы" className="grid grid-cols-2 gap-2">
+        <div role="group" aria-label={t("Язык страницы", "Page language")} className="grid grid-cols-2 gap-2">
           {(["ru", "en"] as const).map((choice) => (
             <Button key={choice} variant={language === choice ? "default" : "outline"}
               disabled={status !== "ready"} aria-pressed={language === choice}
@@ -302,26 +305,26 @@ export default function PageReaderPage() {
                 setLanguage(choice);
                 localStorage.setItem(languageKey, choice);
               }}>
-              {choice === "ru" ? "Русский" : "English"}
+              {choice === "ru" ? t("Русский", "Russian") : t("Английский", "English")}
             </Button>
           ))}
         </div>
 
         {status === "ready" && (
           <details key={language} className="rounded-xl border bg-card p-3">
-            <summary className="cursor-pointer font-medium">Голос Лисёнка</summary>
+            <summary className="cursor-pointer font-medium">{t("Голос Лисёнка", "Little Fox’s voice")}</summary>
             <div className="mt-3 space-y-2">
               {voiceChoices && voiceChoices.length > 1 && (
-                <select aria-label="Голос рассказчика"
+                <select aria-label={t("Голос рассказчика", "Narrator voice")}
                   className="h-11 w-full rounded-lg border bg-background px-3"
                   defaultValue={localStorage.getItem(voiceKey(language)) ?? ""}
                   onChange={(event) => {
                     stopPlayback();
                     localStorage.setItem(voiceKey(language), event.currentTarget.value);
                   }}>
-                  <option value="">Выбирать автоматически</option>
+                  <option value="">{t("Выбирать автоматически", "Choose automatically")}</option>
                   {voiceChoices.map(({ id, lang }, index) => (
-                    <option key={id} value={id}>Голос {index + 1} ({lang})</option>
+                    <option key={id} value={id}>{t("Голос", "Voice")} {index + 1} ({lang})</option>
                   ))}
                 </select>
               )}
@@ -330,7 +333,7 @@ export default function PageReaderPage() {
                 else void readPage(pageVoiceSamples[language], false, true);
               }}>
                 <Volume2 className="mr-2 h-4 w-4" />
-                {playing === "preview" ? "Остановить пример" : "Послушать пример"}
+                {playing === "preview" ? t("Остановить пример", "Stop sample") : t("Послушать пример", "Play a sample")}
               </Button>
             </div>
           </details>
@@ -343,23 +346,23 @@ export default function PageReaderPage() {
                 className="mx-auto max-h-[55vh] w-full object-contain" />
               <div aria-hidden="true" className="pointer-events-none absolute inset-[7%] rounded-xl border-2 border-white/90 shadow-[0_0_0_50px_rgba(0,0,0,.25)]" />
             </div>
-            <p className="text-center text-sm text-muted-foreground">Помести одну страницу целиком в рамку.</p>
+            <p className="text-center text-sm text-muted-foreground">{t("Помести одну страницу целиком в рамку.", "Fit one whole page inside the frame.")}</p>
             <Button disabled={!cameraReady} className="h-14 w-full rounded-xl text-lg" onClick={() => void capture()}>
-              <CameraIcon className="mr-2 h-5 w-5" /> Сфотографировать
+              <CameraIcon className="mr-2 h-5 w-5" /> {t("Сфотографировать", "Take a photo")}
             </Button>
           </section>
         )}
 
-        {status === "opening" && <p role="status" className="text-center">Открываем камеру…</p>}
+        {status === "opening" && <p role="status" className="text-center">{t("Открываем камеру…", "Opening the camera…")}</p>}
         {status === "scanning" && (
           <div className="space-y-2 rounded-2xl border bg-card p-5 text-center" role="status">
-            <p>Лисёнок разбирает буквы…</p>
-            <progress className="w-full accent-primary" aria-label="Распознавание страницы"
+            <p>{t("Лисёнок разбирает буквы…", "Little Fox is reading the letters…")}</p>
+            <progress className="w-full accent-primary" aria-label={t("Распознавание страницы", "Reading the page")}
               max={1} value={progress > 0 ? progress : undefined} />
           </div>
         )}
         {status !== "ready" && (
-          <Button variant="ghost" className="w-full" onClick={closeCamera}>Отмена</Button>
+          <Button variant="ghost" className="w-full" onClick={closeCamera}>{t("Отмена", "Cancel")}</Button>
         )}
 
         {message && <p role="status" className="rounded-xl bg-muted p-3 text-center">{message}</p>}
@@ -372,10 +375,10 @@ export default function PageReaderPage() {
                 else void readPage(text);
               }}>
                 {playing === "page" ? <Pause className="mr-2 h-5 w-5" /> : <Play className="mr-2 h-5 w-5" />}
-                {playing === "page" ? "Пауза" : paused ? "Продолжить" : "Читать"}
+                {playing === "page" ? t("Пауза", "Pause") : paused ? t("Продолжить", "Continue") : t("Читать", "Read aloud")}
               </Button>
               <Button variant="outline" className="h-12 rounded-xl" onClick={() => void readPage(text, true)}>
-                <RotateCcw className="mr-2 h-4 w-4" /> С начала
+                <RotateCcw className="mr-2 h-4 w-4" /> {t("С начала", "Start over")}
               </Button>
             </div>
             <p lang={language} className="whitespace-pre-wrap break-words rounded-2xl border bg-card p-5 text-lg leading-relaxed">{text}</p>
@@ -385,11 +388,11 @@ export default function PageReaderPage() {
         {status === "ready" && (
           <div className="space-y-2">
             <Button className="h-14 w-full rounded-xl text-lg" onClick={() => void openCamera()}>
-              <CameraIcon className="mr-2 h-5 w-5" /> {text ? "Следующая страница" : "Открыть камеру"}
+              <CameraIcon className="mr-2 h-5 w-5" /> {text ? t("Следующая страница", "Next page") : t("Открыть камеру", "Open camera")}
             </Button>
             {cameraFallback && native && (
               <Button variant="outline" className="h-12 w-full rounded-xl" onClick={() => void usePhoneCamera()}>
-                Камера телефона
+                {t("Камера телефона", "Phone camera")}
               </Button>
             )}
             <input ref={imageInput} type="file" accept="image/*" hidden onChange={(event) => {
@@ -398,7 +401,7 @@ export default function PageReaderPage() {
               if (photo) void scan(photo, beginOperation(), true);
             }} />
             <Button variant="ghost" className="h-12 w-full" onClick={() => imageInput.current?.click()}>
-              <ImagePlus className="mr-2 h-5 w-5" /> Выбрать фото
+              <ImagePlus className="mr-2 h-5 w-5" /> {t("Выбрать фото", "Choose a photo")}
             </Button>
           </div>
         )}

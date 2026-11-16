@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ type Activity = {
 };
 
 export function ToysLessonReport({ childId, activities }: { childId: string; activities: Activity[] }) {
+  const { t } = useLanguage();
   const recent = activities
     .filter((activity) => activity.child_id === childId && activity.activity_type === TOYS_LESSON_EVENT)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
@@ -23,16 +25,16 @@ export function ToysLessonReport({ childId, activities }: { childId: string; act
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Русский через игру · Мои игрушки</CardTitle>
+        <CardTitle className="text-lg">{t("Русский через игру · Мои игрушки", "Russian through play · My toys")}</CardTitle>
         {Number.isFinite(date.getTime()) && (
           <p className="text-sm text-muted-foreground">{format(date, "d MMMM, HH:mm", { locale: ru })}</p>
         )}
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
-        {recognized && <p><strong>Нашёл по просьбе</strong> · {recognized}</p>}
-        {practice && <p><strong>Стоит повторить</strong> · {practice}</p>}
+        {recognized && <p><strong>{t("Нашёл по просьбе", "Found when asked")}</strong> · {recognized}</p>}
+        {practice && <p><strong>{t("Стоит повторить", "Practice again")}</strong> · {practice}</p>}
         <div className="rounded-xl bg-muted p-3">
-          <p className="font-semibold">Игра дома</p>
+          <p className="font-semibold">{t("Игра дома", "Play at home")}</p>
           <p className="mt-1">{TOYS_HOME_GAME}</p>
         </div>
       </CardContent>

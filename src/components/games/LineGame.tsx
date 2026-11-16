@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useCallback } from "react";
 
 /** Универсальная игра «N в ряд»: 4 в ряд (с падением фишек) и Гомоку 5 в ряд. */
@@ -39,6 +40,7 @@ const wins = (board: (string | null)[], rows: number, cols: number, need: number
 };
 
 export const LineGame = ({ type, gameState, isMyTurn, mySymbol, onMove, myId }: Props) => {
+  const { t } = useLanguage();
   const { rows, cols, need, gravity } = LINE_GAMES[type];
   const board = gameState.board?.length === rows * cols ? gameState.board : Array(rows * cols).fill(null);
 
@@ -63,7 +65,7 @@ export const LineGame = ({ type, gameState, isMyTurn, mySymbol, onMove, myId }: 
   return (
     <div className="flex flex-col items-center gap-3">
       <p className="text-sm text-muted-foreground">
-        Ваши фишки: <span className="text-2xl">{piece(mySymbol)}</span> · Собери {need} в ряд!
+        {t("Ваши фишки:", "Your pieces:")} <span className="text-2xl">{piece(mySymbol)}</span> {t("· Собери", "· Make a line of")} {need} {t("в ряд!", "pieces!")}
         {gravity && " Нажми на столбик — фишка упадёт вниз."}
       </p>
       <div className="grid gap-1 p-2 rounded-xl bg-primary/20" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>

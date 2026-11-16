@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Undo2 } from "lucide-react";
@@ -18,6 +19,7 @@ interface PlacedSticker {
 }
 
 export const StickerBoard = () => {
+  const { t } = useLanguage();
   const boardRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState(STICKERS[0]);
   const [placed, setPlaced] = useState<PlacedSticker[]>([]);
@@ -43,14 +45,14 @@ export const StickerBoard = () => {
   const handleUndo = () => setPlaced((prev) => prev.slice(0, -1));
   const handleClear = () => {
     setPlaced([]);
-    toast.success("Полотно очищено!");
+    toast.success(t("Полотно очищено!", "Canvas cleared!"));
   };
 
   return (
     <div className="flex flex-col gap-5 items-center">
       <div className="text-center">
-        <h3 className="text-2xl font-extrabold mb-1">Наклейки</h3>
-        <p className="text-muted-foreground">Выбери наклейку и нажимай на полотно!</p>
+        <h3 className="text-2xl font-extrabold mb-1">{t("Наклейки", "Stickers")}</h3>
+        <p className="text-muted-foreground">{t("Выбери наклейку и нажимай на полотно!", "Choose a sticker and tap the canvas!")}</p>
       </div>
 
       {/* Sticker palette */}
@@ -79,7 +81,7 @@ export const StickerBoard = () => {
       >
         {placed.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/60 text-lg font-medium pointer-events-none">
-            Нажми сюда, чтобы поставить {selected}
+            {t("Нажми сюда, чтобы поставить", "Tap to place")} {selected}
           </div>
         )}
         {placed.map((p) => (
@@ -96,11 +98,11 @@ export const StickerBoard = () => {
       <div className="flex gap-3">
         <Button size="lg" variant="outline" onClick={handleUndo} disabled={placed.length === 0}>
           <Undo2 className="w-5 h-5 mr-2" />
-          Отменить
+          {t("Отменить", "Cancel")}
         </Button>
         <Button size="lg" variant="destructive" onClick={handleClear} disabled={placed.length === 0}>
           <Trash2 className="w-5 h-5 mr-2" />
-          Очистить
+          {t("Очистить", "Clear")}
         </Button>
       </div>
     </div>

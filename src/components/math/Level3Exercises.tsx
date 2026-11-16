@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,23 +24,27 @@ const Wrapper = ({
   score: number;
   total: number;
   onBack: () => void;
-}) => (
+}) => {
+  const { t } = useLanguage();
+  return (
   <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-background p-4">
     <div className="container mx-auto max-w-4xl">
       <div className="flex justify-between items-center mb-6">
         <Button variant="ghost" onClick={onBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Назад
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t("Назад", "Back")}
         </Button>
         <div className="text-lg font-semibold">
-          Счёт: {score} / {total}
+          {t("Счёт:", "Score:")} {score} / {total}
         </div>
       </div>
       <Card className="p-8 text-center">{children}</Card>
     </div>
   </div>
 );
+};
 
 export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const { addStars } = useUserProgress();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
@@ -51,19 +56,19 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   const reward = (msg: string) => {
     addStars(1, "math", true);
     setScore((s) => s + 1);
-    speak("Правильно!");
-    toast({ title: msg + " 🎉", description: "+1 ⭐ и 🎟️ билет!" });
+    speak(t("Правильно!", "That’s right!"), language === "en" ? "en-US" : "ru-RU");
+    toast({ title: msg + " 🎉", description: t("+1 ⭐ и 🎟️ билет!", "+1 ⭐ and a 🎟️ ticket!") });
   };
 
   const wrong = (correct: string) => {
-    speak("Попробуй ещё раз!");
-    toast({ title: "Подумай ещё 💪", description: `Правильно: ${correct}`, variant: "destructive" });
+    speak(t("Попробуй ещё раз!", "Try again!"), language === "en" ? "en-US" : "ru-RU");
+    toast({ title: t("Подумай ещё 💪", "Try again 💪"), description: t(`Правильно: ${correct}`, `Correct answer: ${correct}`), variant: "destructive" });
   };
 
   const handle = (ok: boolean, correct: string, ex: string) => {
     setTotal((t) => t + 1);
     if (ok) {
-      reward("Молодец");
+      reward(t("Молодец", "Well done"));
       logCorrectAnswer({ section: "math", level: 3, exercise: ex });
     } else {
       wrong(correct);
@@ -73,12 +78,12 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   };
 
   const exercises = [
-    { type: "count20" as ExerciseType, title: "Счёт до 20", description: "Десятки и единицы", emoji: "🔢" },
-    { type: "problems" as ExerciseType, title: "Решаем задачи", description: "Сложение и вычитание", emoji: "📝" },
-    { type: "measurement" as ExerciseType, title: "Измеряем", description: "Длина и размер", emoji: "📏" },
-    { type: "charts" as ExerciseType, title: "Графики", description: "Простые диаграммы", emoji: "📊" },
-    { type: "doubles" as ExerciseType, title: "Удвоение", description: "Сколько станет вдвое?", emoji: "✖️" },
-    { type: "missing" as ExerciseType, title: "Найди пропуск", description: "Какого числа не хватает?", emoji: "❓" },
+    { type: "count20" as ExerciseType, title: t("Счёт до 20", "Count to twenty"), description: t("Десятки и единицы", "Tens and ones"), emoji: "🔢" },
+    { type: "problems" as ExerciseType, title: t("Решаем задачи", "Solve word problems"), description: t("Сложение и вычитание", "Addition and subtraction"), emoji: "📝" },
+    { type: "measurement" as ExerciseType, title: t("Измеряем", "Measuring"), description: t("Длина и размер", "Length and size"), emoji: "📏" },
+    { type: "charts" as ExerciseType, title: t("Графики", "Graphs"), description: t("Простые диаграммы", "Simple charts"), emoji: "📊" },
+    { type: "doubles" as ExerciseType, title: t("Удвоение", "Doubling"), description: t("Сколько станет вдвое?", "What’s twice the number?"), emoji: "✖️" },
+    { type: "missing" as ExerciseType, title: t("Найди пропуск", "Find the missing number"), description: t("Какого числа не хватает?", "What number is missing?"), emoji: "❓" },
   ];
 
   const count20Data = useMemo(() => {
@@ -97,14 +102,14 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
     const b = Math.floor(Math.random() * 5) + 1;
     const add = Math.random() > 0.5;
     const subjects = [
-      { name: "морковок у зайки", emoji: "🥕" },
-      { name: "яблок в корзинке", emoji: "🍎" },
-      { name: "цветов в саду", emoji: "🌸" },
+      { name: t("морковок у зайки", "carrots for the bunny"), emoji: "🥕" },
+      { name: t("яблок в корзинке", "apples in the basket"), emoji: "🍎" },
+      { name: t("цветов в саду", "flowers in the garden"), emoji: "🌸" },
     ];
     const s = subjects[Math.floor(Math.random() * subjects.length)];
     const story = add
-      ? `Было ${a} ${s.name}, добавили ещё ${b}. Сколько стало?`
-      : `Было ${a + b} ${s.name}, ${b} забрали. Сколько осталось?`;
+      ? t(`Было ${a} ${s.name}, добавили ещё ${b}. Сколько стало?`, `There were ${a} ${s.name}. We added ${b} more. How many are there now?`)
+      : t(`Было ${a + b} ${s.name}, ${b} забрали. Сколько осталось?`, `There were ${a + b} ${s.name}. We took ${b} away. How many are left?`);
     const ans = add ? a + b : a;
     const opts = new Set<number>([ans]);
     while (opts.size < 4) opts.add(Math.max(1, ans + Math.floor(Math.random() * 5) - 2));
@@ -114,9 +119,9 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
   const measurementData = useMemo(() => {
     if (currentExercise !== "measurement") return null;
     const modes = [
-      { q: "Что длиннее?", items: [{ e: "🚂", v: 5 }, { e: "🚗", v: 2 }, { e: "✏️", v: 1 }] },
-      { q: "Что тяжелее?", items: [{ e: "🐘", v: 5 }, { e: "🐈", v: 2 }, { e: "🐭", v: 1 }] },
-      { q: "Что выше?", items: [{ e: "🌳", v: 5 }, { e: "🌷", v: 2 }, { e: "🍄", v: 1 }] },
+      { q: t("Что длиннее?", "Which is longer?"), items: [{ e: "🚂", v: 5 }, { e: "🚗", v: 2 }, { e: "✏️", v: 1 }] },
+      { q: t("Что тяжелее?", "Which is heavier?"), items: [{ e: "🐘", v: 5 }, { e: "🐈", v: 2 }, { e: "🐭", v: 1 }] },
+      { q: t("Что выше?", "Which is taller?"), items: [{ e: "🌳", v: 5 }, { e: "🌷", v: 2 }, { e: "🍄", v: 1 }] },
     ];
     const m = modes[Math.floor(Math.random() * modes.length)];
     const shuffled = [...m.items].sort(() => Math.random() - 0.5);
@@ -156,12 +161,12 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-background p-4">
         <div className="container mx-auto max-w-4xl">
           <Button variant="ghost" onClick={onBack} className="mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Выбрать уровень
+            <ArrowLeft className="mr-2 h-4 w-4" /> {t("Выбрать уровень", "Choose a level")}
           </Button>
           <div className="text-center mb-8">
             <div className="text-6xl mb-4 animate-bounce-gentle">🧮</div>
-            <h1 className="text-4xl font-bold mb-2">Умный математик</h1>
-            <p className="text-lg text-muted-foreground">5-6 лет</p>
+            <h1 className="text-4xl font-bold mb-2">{t("Умный математик", "Budding mathematician")}</h1>
+            <p className="text-lg text-muted-foreground">{t("5-6 лет", "Ages 5–6")}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {exercises.map((ex) => (
@@ -186,7 +191,7 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
     const r = count20Data;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Сколько здесь?</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Сколько здесь?", "How many are there?")}</h2>
         <div className="flex flex-col items-center gap-3 mb-6">
           {r.tens > 0 && (
             <div className="flex gap-1 flex-wrap justify-center">
@@ -233,7 +238,7 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
         <div className="text-6xl mb-4">{r.s.emoji}</div>
         <h2 className="text-xl font-semibold mb-2">{r.story}</h2>
         <Button size="sm" variant="outline" onClick={() => speak(r.story)} className="mb-6">
-          🔊 Повторить
+          {t("🔊 Повторить", "🔊 Listen again")}
         </Button>
         <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
           {r.opts.map((o) => (
@@ -278,7 +283,7 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
     const r = chartsData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Чего больше всего?</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Чего больше всего?", "Which has the most?")}</h2>
         <div className="flex justify-center gap-6 items-end mb-6 h-48">
           {r.labels.map((l, i) => (
             <div key={i} className="flex flex-col items-center gap-2">
@@ -309,7 +314,7 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
     const r = doublesData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Удвой число!</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Удвой число!", "Double the number!")}</h2>
         <div className="text-6xl font-bold text-primary mb-8">
           {r.n} + {r.n} = ?
         </div>
@@ -334,7 +339,7 @@ export const Level3Exercises = ({ onBack }: Level3ExercisesProps) => {
     const r = missingData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Какого числа не хватает?</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Какого числа не хватает?", "What number is missing?")}</h2>
         <div className="text-5xl font-bold text-primary mb-8">
           {r.a} + ❓ = {r.c}
         </div>

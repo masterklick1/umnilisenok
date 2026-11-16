@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import AnimatedFox from "@/components/AnimatedFox";
 import { UserWelcome } from "@/components/UserWelcome";
 import { SubjectCard } from "@/components/SubjectCard";
@@ -20,18 +21,20 @@ import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { useIsWatch } from "@/hooks/useIsWatch";
 import { WatchHome } from "@/components/child/WatchHome";
 import { loadReadingSession } from "@/lib/reading-session";
-import { READING_LEVEL_TITLES } from "@/lib/reading-items";
+import { getReadingLevelTitle } from "@/lib/reading-items";
 import { getActivityChildId } from "@/lib/activity-log";
 import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
 import { SchoolModeGuard } from "@/components/child/SchoolModeGuard";
 
 export const MainApp = () => {
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, isDemo, signOut } = useAuth();
   const { progress, loading } = useUserProgress();
   const { isChild, isParent, loading: roleLoading } = useUserRole();
   const [childName, setChildName] = useState<string>("");
+  const displayName = isDemo ? t("Демо", "Demo") : childName;
   const [parentPlayMode, setParentPlayMode] = useState(false);
   const isWatch = useIsWatch();
   const readingSession = loadReadingSession(isChild ? user?.id ?? null : getActivityChildId(user?.id));
@@ -80,9 +83,9 @@ export const MainApp = () => {
     if (!user?.id) return;
 
     const gameTypeName: Record<string, string> = {
-      tic_tac_toe: "Крестики-нолики",
-      checkers: "Шашки",
-      chess: "Шахматы",
+      tic_tac_toe: t("Крестики-нолики", "Tic-tac-toe"),
+      checkers: t("Шашки", "Checkers"),
+      chess: t("Шахматы", "Chess"),
     };
 
     const channel = supabase
@@ -98,12 +101,12 @@ export const MainApp = () => {
         (payload) => {
           const game = payload.new as { id: string; game_type: string };
           toast({
-            title: "🎮 Папа/мама зовёт играть!",
-            description: gameTypeName[game.game_type] || "Игра",
+            title: t("🎮 Папа/мама зовёт играть!", "🎮 Your parent wants to play!"),
+            description: gameTypeName[game.game_type] || t("Игра", "Game"),
             duration: 15000,
             action: (
-              <ToastAction altText="Играть" onClick={() => navigate(`/games/${game.id}`)}>
-                Играть
+              <ToastAction altText={t("Играть", "Play")} onClick={() => navigate(`/games/${game.id}`)}>
+                {t("Играть", "Play")}
               </ToastAction>
             ),
           });
@@ -114,14 +117,7 @@ export const MainApp = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, toast, navigate]);
-
-  const handleSubjectClick = (subject: string) => {
-    toast({
-      title: "Раздел в разработке 🚧",
-      description: `Скоро здесь появятся уроки по теме "${subject}"`,
-    });
-  };
+  }, [user?.id, toast, navigate, t]);
 
   const handleBackToParent = () => {
     sessionStorage.removeItem("activeChildId");
@@ -162,12 +158,12 @@ export const MainApp = () => {
             <ScoreDisplay score={progress?.stars || 0} />
             <div className="bg-card rounded-full px-4 py-2 shadow-md">
               <span className="text-sm font-bold text-primary">
-                Уровень {progress?.level || 1}
+                {t("Уровень", "Level")} {progress?.level || 1}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <UserAvatar fallback={childName?.[0]?.toUpperCase() || "👤"} />
+            <UserAvatar fallback={displayName?.[0]?.toUpperCase() || "👤"} />
             {parentPlayMode && (
               <Button
                 variant="outline"
@@ -176,24 +172,24 @@ export const MainApp = () => {
                 className="gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
-                К родителям
+                {t("К родителям", "Back to parents")}
               </Button>
             )}
           </div>
         </div>
 
         {/* Welcome Message */}
-        <UserWelcome name={childName} />
+        <UserWelcome name={displayName} />
 
         {isDemo && (
           <div className="mb-6 rounded-2xl border border-primary/20 bg-card/90 p-4 text-center shadow-md">
-            <p className="font-bold text-primary">Демо-режим</p>
+            <p className="font-bold text-primary">{t("Демо-режим", "Demo mode")}</p>
             <p className="text-sm text-muted-foreground">
-              Можно заниматься без регистрации. Для родительского кабинета войдите или создайте аккаунт.
+              {t("Можно заниматься без регистрации. Для родительского кабинета войдите или создайте аккаунт.", "Try the lessons without an account. Sign in or sign up to open the parent dashboard.")}
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => void openDemoAuth("login")}>Войти</Button>
-              <Button size="sm" variant="secondary" onClick={() => void openDemoAuth("register")}>Зарегистрироваться</Button>
+              <Button size="sm" variant="outline" onClick={() => void openDemoAuth("login")}>{t("Войти", "Sign in")}</Button>
+              <Button size="sm" variant="secondary" onClick={() => void openDemoAuth("register")}>{t("Зарегистрироваться", "Sign up")}</Button>
             </div>
           </div>
         )}
@@ -216,10 +212,10 @@ export const MainApp = () => {
             <BookOpenText className="h-7 w-7 shrink-0" aria-hidden="true" />
             <span className="min-w-0 whitespace-normal">
               <span className="block text-lg font-bold">
-                {hasUnfinishedReading ? "Продолжить занятие" : "Начать чтение"}
+                {hasUnfinishedReading ? t("Продолжить занятие", "Continue reading") : t("Начать чтение", "Start reading")}
               </span>
               <span className="block text-sm font-normal">
-                {hasUnfinishedReading ? READING_LEVEL_TITLES[readingSession.level] : "Буквы, слоги и первые слова"}
+                {hasUnfinishedReading ? getReadingLevelTitle(readingSession.level, language) : t("Буквы, слоги и первые слова", "Letters, syllables and first words")}
               </span>
             </span>
           </Button>
@@ -232,15 +228,15 @@ export const MainApp = () => {
           >
             <span className="text-3xl" aria-hidden="true">🧸</span>
             <span className="min-w-0 whitespace-normal">
-              <span className="block text-lg font-bold">Русский через игру</span>
-              <span className="block text-sm font-normal">Мои игрушки · послушай и покажи</span>
+              <span className="block text-lg font-bold">{t("Русский через игру", "Russian through play")}</span>
+              <span className="block text-sm font-normal">{t("Мои игрушки · послушай и покажи", "My toys · listen and point")}</span>
             </span>
           </Button>
 
           <SubjectCard
             icon={<Calculator className="w-8 h-8 text-blue-600" />}
-            title="Математика"
-            subtitle="Цифры и счёт 1-10"
+            title={t("Математика", "Math")}
+            subtitle={t("Цифры и счёт 1-10", "Numbers and counting to 10")}
             onClick={() => navigate("/math")}
             bgColor="bg-gradient-to-br from-blue-100 to-cyan-100"
             decorativeElements="1+1"
@@ -248,8 +244,8 @@ export const MainApp = () => {
           
           <SubjectCard
             icon={<BookOpen className="w-8 h-8 text-rose-600" />}
-            title="Азбука"
-            subtitle="Учим буквы"
+            title={t("Азбука", "Russian alphabet")}
+            subtitle={t("Учим буквы", "Learn Russian letters")}
             onClick={() => navigate("/alphabet")}
             bgColor="bg-gradient-to-br from-rose-100 to-orange-100"
             decorativeElements="АБВ"
@@ -257,8 +253,8 @@ export const MainApp = () => {
 
           <SubjectCard
             icon={<BookOpenText className="w-8 h-8 text-amber-600" />}
-            title="Сказки"
-            subtitle="Слушаем и отвечаем"
+            title={t("Сказки", "Stories")}
+            subtitle={t("Слушаем и отвечаем", "Listen and answer")}
             onClick={() => navigate("/tales")}
             bgColor="bg-gradient-to-br from-amber-100 to-yellow-100"
             decorativeElements="📖"
@@ -267,8 +263,8 @@ export const MainApp = () => {
           
           <SubjectCard
             icon={<Leaf className="w-8 h-8 text-green-600" />}
-            title="Мир вокруг"
-            subtitle="Природа и животные"
+            title={t("Мир вокруг", "World around us")}
+            subtitle={t("Природа и животные", "Nature and animals")}
             onClick={() => navigate("/world")}
             bgColor="bg-gradient-to-br from-green-100 to-emerald-100"
             decorativeElements="🌿"
@@ -276,8 +272,8 @@ export const MainApp = () => {
           
           <SubjectCard
             icon={<Palette className="w-8 h-8 text-purple-600" />}
-            title="Творчество"
-            subtitle="Рисуем и красим"
+            title={t("Творчество", "Arts and crafts")}
+            subtitle={t("Рисуем и красим", "Draw and color")}
             onClick={() => navigate("/creativity")}
             bgColor="bg-gradient-to-br from-purple-100 to-pink-100"
             decorativeElements="🎨"
@@ -285,8 +281,8 @@ export const MainApp = () => {
           
           <SubjectCard
             icon={<Brain className="w-8 h-8 text-amber-600" />}
-            title="Интеллект"
-            subtitle="Пазлы и логика"
+            title={t("Интеллект", "Brain games")}
+            subtitle={t("Пазлы и логика", "Puzzles and logic")}
             onClick={() => navigate("/intellect")}
             bgColor="bg-gradient-to-br from-amber-100 to-yellow-100"
             decorativeElements="🧩"
@@ -295,7 +291,7 @@ export const MainApp = () => {
           <SubjectCard
             icon={<Globe className="w-8 h-8 text-indigo-600" />}
             title="English"
-            subtitle="Первые слова и алфавит"
+            subtitle={t("Первые слова и алфавит", "First words and the alphabet")}
             onClick={() => navigate("/english")}
             bgColor="bg-gradient-to-br from-indigo-100 to-sky-100"
             decorativeElements="ABC"

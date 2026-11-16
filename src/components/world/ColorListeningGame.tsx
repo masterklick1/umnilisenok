@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ const toyLabel = ({ toy, color }: Choice) => toy === "ball"
   ? `${COLORS[color].ball} мяч`
   : `${COLORS[color].car} машинку`;
 
-const promptFor = (target: Choice) => `${target.toy === "ball" ? "Покажи" : "Дай"} ${toyLabel(target)}`;
+
 
 function ToyPicture({ toy, color }: Choice) {
   const paint = COLORS[color].className;
@@ -46,6 +47,13 @@ function ToyPicture({ toy, color }: Choice) {
 }
 
 export function ColorListeningGame({ onBack }: { onBack: () => void }) {
+  const { t, language } = useLanguage();
+  const labelFor = (target: Choice) => t(toyLabel(target), `${target.color} ${target.toy}`);
+  const promptFor = (target: Choice) => t(
+    `${target.toy === "ball" ? "Покажи" : "Дай"} ${toyLabel(target)}`,
+    `Show me the ${labelFor(target)}`,
+  );
+  const speakPrompt = (text: string) => speak(text, language === "en" ? "en-US" : "ru-RU");
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
   const [index, setIndex] = useState(0);
   const [feedback, setFeedback] = useState<"ready" | "retry" | "correct" | "shown">("ready");
@@ -63,16 +71,16 @@ export function ColorListeningGame({ onBack }: { onBack: () => void }) {
       setScore((value) => value + 1);
       setFeedback("correct");
       void logCorrectAnswer({ ...details, item: expected });
-      void speak("Правильно! Молодец!");
+      void speakPrompt(t("Правильно! Молодец!", "That’s right! Well done!"));
       return;
     }
     void logWrongAnswer(details);
     if (feedback === "ready") {
       setFeedback("retry");
-      void speak(`Попробуй ещё раз. ${promptFor(round.target)}.`);
+      void speakPrompt(t(`Попробуй ещё раз. ${promptFor(round.target)}.`, `Try again. ${promptFor(round.target)}.`));
     } else {
       setFeedback("shown");
-      void speak(promptFor(round.target));
+      void speakPrompt(promptFor(round.target));
     }
   };
 
@@ -80,17 +88,17 @@ export function ColorListeningGame({ onBack }: { onBack: () => void }) {
     setIndex(nextIndex);
     setFeedback("ready");
     const next = ROUNDS[nextIndex];
-    void speak(next ? promptFor(next.target) : "Спасибо за игру!");
+    void speakPrompt(next ? promptFor(next.target) : t("Спасибо за игру!", "Thanks for playing!"));
   };
 
   if (!round) {
     return (
       <Card className="mx-auto max-w-xl space-y-4 rounded-3xl p-6 text-center sm:p-8">
-        <h2 className="text-2xl font-bold">Спасибо за игру!</h2>
-        <p>Ты нашёл {score} из {ROUNDS.length} игрушек.</p>
+        <h2 className="text-2xl font-bold">{t("Спасибо за игру!", "Thanks for playing!")}</h2>
+        <p>{t("Ты нашёл", "You found")} {score} {t("из", "of")} {ROUNDS.length} {t("игрушек.", "toys.")}</p>
         <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={() => { setScore(0); goTo(0); }}>Сыграть ещё раз</Button>
-          <Button variant="outline" onClick={onBack}>К цветам</Button>
+          <Button onClick={() => { setScore(0); goTo(0); }}>{t("Сыграть ещё раз", "Play again")}</Button>
+          <Button variant="outline" onClick={onBack}>{t("К цветам", "Back to colors")}</Button>
         </div>
       </Card>
     );
@@ -105,12 +113,12 @@ export function ColorListeningGame({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
-      <Button variant="outline" onClick={onBack}>← К цветам</Button>
+      <Button variant="outline" onClick={onBack}>{t("← К цветам", "← Back to colors")}</Button>
       <Card className="space-y-4 rounded-3xl p-4 text-center sm:p-8">
-        <p className="text-sm font-semibold text-muted-foreground">Задание {index + 1} из {ROUNDS.length}</p>
-        <h2 className="text-2xl font-bold">Послушай и покажи</h2>
-        <Button size="lg" onClick={() => void speak(prompt)}>
-          <Volume2 className="mr-2 h-5 w-5" /> Послушать задание
+        <p className="text-sm font-semibold text-muted-foreground">{t("Задание", "Task")} {index + 1} {t("из", "of")} {ROUNDS.length}</p>
+        <h2 className="text-2xl font-bold">{t("Послушай и покажи", "Listen and point")}</h2>
+        <Button size="lg" onClick={() => void speakPrompt(prompt)}>
+          <Volume2 className="mr-2 h-5 w-5" /> {t("Послушать задание", "Listen to the task")}
         </Button>
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
           {options.map((choice) => {
@@ -126,17 +134,17 @@ export function ColorListeningGame({ onBack }: { onBack: () => void }) {
           })}
         </div>
         <Button variant="ghost" aria-expanded={showText} onClick={() => setShowText((value) => !value)}>
-          {showText ? "Скрыть текст задания" : "Показать текст задания"}
+          {showText ? t("Скрыть текст задания", "Hide the words") : t("Показать текст задания", "Show the words")}
         </Button>
         {showText && <p className="text-lg font-semibold">{prompt}</p>}
         {feedback !== "ready" && (
           <p role="status" className="font-semibold">
-            {feedback === "retry" && "Попробуй ещё раз."}
-            {feedback === "correct" && "Правильно! Молодец!"}
-            {feedback === "shown" && `Вот нужная игрушка. ${prompt}.`}
+            {feedback === "retry" && t("Попробуй ещё раз.", "Try again.")}
+            {feedback === "correct" && t("Правильно! Молодец!", "That’s right! Well done!")}
+            {feedback === "shown" && t(`Вот нужная игрушка. ${prompt}.`, `Here’s the toy. ${prompt}.`)}
           </p>
         )}
-        {locked && <Button onClick={() => goTo(index + 1)}>{index + 1 === ROUNDS.length ? "Посмотреть итог" : "Дальше"}</Button>}
+        {locked && <Button onClick={() => goTo(index + 1)}>{index + 1 === ROUNDS.length ? t("Посмотреть итог", "See results") : t("Дальше", "Next")}</Button>}
       </Card>
     </div>
   );

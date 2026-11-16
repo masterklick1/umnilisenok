@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { recordLearned } from "@/lib/learning-progress";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -41,6 +42,7 @@ const WORDS_DATABASE: WordTask[] = [
 ];
 
 export default function EnglishWordBuilderPage() {
+  const { t, label, language } = useLanguage();
   const navigate = useNavigate();
   const { logCorrectAnswer, logWrongAnswer, logClick } = useActivityTracker();
 
@@ -157,8 +159,8 @@ export default function EnglishWordBuilderPage() {
               <ArrowLeft className="w-6 h-6" />
             </Button>
             <div>
-              <h1 className="text-2xl font-black text-amber-600">Собери слово</h1>
-              <p className="text-xs text-muted-foreground">Уровень {currentIndex + 1} из {WORDS_DATABASE.length}</p>
+              <h1 className="text-2xl font-black text-amber-600">{t("Собери слово", "Build a word")}</h1>
+              <p className="text-xs text-muted-foreground">{t("Уровень", "Level")} {currentIndex + 1} {t("из", "of")} {WORDS_DATABASE.length}</p>
             </div>
           </div>
           <div className="flex items-center gap-1 bg-white px-3 py-1.5 rounded-full shadow-sm font-black text-amber-500 border border-amber-200">
@@ -171,7 +173,7 @@ export default function EnglishWordBuilderPage() {
             <div className="space-y-2">
               <div className="text-8xl animate-bounce">{currentTask.emoji}</div>
               <div className="flex items-center justify-center gap-2">
-                <span className="text-lg font-bold text-slate-700">{currentTask.translation}</span>
+                {language === "ru" && <span className="text-lg font-bold text-slate-700">{currentTask.translation}</span>}
                 <Button
                   size="icon"
                   variant="ghost"
@@ -182,13 +184,13 @@ export default function EnglishWordBuilderPage() {
                 </Button>
               </div>
               <span className="inline-block text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-semibold">
-                {currentTask.category}
+                {label(currentTask.category)}
               </span>
             </div>
 
             <div className="flex justify-center gap-2 flex-wrap min-h-[64px] items-center p-3 bg-amber-50/50 rounded-2xl border-2 border-dashed border-amber-200">
               {builtLetters.length === 0 && !isSuccess && (
-                <p className="text-xs text-amber-400 font-semibold">Нажимай на буквы внизу 👇</p>
+                <p className="text-xs text-amber-400 font-semibold">{t("Нажимай на буквы внизу 👇", "Tap the letters below 👇")}</p>
               )}
               {builtLetters.map((item) => (
                 <button
@@ -229,7 +231,7 @@ export default function EnglishWordBuilderPage() {
                   className="text-xs text-amber-600 gap-1"
                 >
                   <Lightbulb className="w-4 h-4" />
-                  {showHint ? `Подсказка: ${currentTask.word}` : "Нужна подсказка?"}
+                  {showHint ? t(`Подсказка: ${currentTask.word}`, `Hint: ${currentTask.word}`) : t("Нужна подсказка?", "Need a hint?")}
                 </Button>
               </div>
             </div>
@@ -240,9 +242,9 @@ export default function EnglishWordBuilderPage() {
               <Trophy className="w-10 h-10" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800">Ты просто супер! 🎉</h2>
+              <h2 className="text-2xl font-black text-slate-800">{t("Ты просто супер! 🎉", "Well done! 🎉")}</h2>
               <p className="text-slate-600 mt-2">
-                Ты собрал все <span className="font-bold text-amber-600">{WORDS_DATABASE.length}</span> слов и заработал{" "}
+                {t("Ты собрал все", "You built all")} <span className="font-bold text-amber-600">{WORDS_DATABASE.length}</span> {t("слов и заработал", "words and earned")}{" "}
                 <span className="font-bold text-amber-500">{earnedStars} ⭐</span>!
               </p>
             </div>
@@ -250,7 +252,7 @@ export default function EnglishWordBuilderPage() {
               onClick={restartGame}
               className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-6 rounded-2xl text-lg flex items-center justify-center gap-2"
             >
-              <RotateCcw className="w-5 h-5" /> Пройти ещё раз
+              <RotateCcw className="w-5 h-5" /> {t("Пройти ещё раз", "Play again")}
             </Button>
           </Card>
         )}

@@ -1,3 +1,5 @@
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -69,6 +71,7 @@ import {
 import { Input } from "@/components/ui/input";
 
 export default function ParentDashboard() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
   const {
@@ -161,16 +164,16 @@ export default function ParentDashboard() {
     const result = await subscribeToPushDetailed(user.id);
     await refreshPushStatus();
     const failureMessages = {
-      unsupported: "Этот браузер не поддерживает push-уведомления. Откройте сайт в Chrome или Safari.",
-      blocked: "Уведомления заблокированы. Разрешите их в настройках браузера для этого сайта.",
-      "service-worker": "Не удалось запустить службу уведомлений. Обновите страницу и попробуйте снова.",
-      subscription: "Разрешение получено, но браузер не создал подписку. Обновите страницу и попробуйте снова.",
-      save: "Разрешение получено, но подписка не сохранилась. Проверьте интернет и попробуйте снова.",
+      unsupported: t("Этот браузер не поддерживает push-уведомления. Откройте сайт в Chrome или Safari.", "This browser doesn’t support push notifications. Open the site in Chrome or Safari."),
+      blocked: t("Уведомления заблокированы. Разрешите их в настройках браузера для этого сайта.", "Notifications are blocked. Allow notifications for this site in your browser settings."),
+      "service-worker": t("Не удалось запустить службу уведомлений. Обновите страницу и попробуйте снова.", "We couldn’t start the notification service. Refresh the page and try again."),
+      subscription: t("Разрешение получено, но браузер не создал подписку. Обновите страницу и попробуйте снова.", "The browser allowed notifications but couldn’t subscribe. Refresh the page and try again."),
+      save: t("Разрешение получено, но подписка не сохранилась. Проверьте интернет и попробуйте снова.", "The subscription couldn’t be saved. Check your internet connection and try again."),
     } as const;
-    let description = "Вы будете получать оповещения о геозоне даже вне приложения.";
+    let description = t("Вы будете получать оповещения о геозоне даже вне приложения.", "You’ll receive safe zone alerts even when the app is closed.");
     if (result.ok === false) description = failureMessages[result.reason];
     toast({
-      title: result.ok ? "Уведомления включены" : "Не удалось включить уведомления",
+      title: result.ok ? t("Уведомления включены", "Notifications enabled") : t("Не удалось включить уведомления", "Couldn’t enable notifications"),
       description,
       variant: result.ok ? "default" : "destructive",
     });
@@ -179,7 +182,7 @@ export default function ParentDashboard() {
   const disablePush = async () => {
     await unsubscribeFromPush();
     await refreshPushStatus();
-    toast({ title: "Уведомления отключены на этом устройстве" });
+    toast({ title: t("Уведомления отключены на этом устройстве", "Notifications are off on this device") });
   };
 
   const resyncPush = async () => {
@@ -187,7 +190,7 @@ export default function ParentDashboard() {
     const ok = await subscribeToPush(user.id);
     await refreshPushStatus();
     toast({
-      title: ok ? "Подписка обновлена" : "Не удалось обновить подписку",
+      title: ok ? t("Подписка обновлена", "Subscription updated") : t("Не удалось обновить подписку", "Couldn’t update the subscription"),
       variant: ok ? "default" : "destructive",
     });
   };
@@ -208,12 +211,12 @@ export default function ParentDashboard() {
           const child = children.find((c) => c.child_id === a.child_id);
           toast({
             title: "🚨 SOS!",
-            description: `${child?.first_name || "Ребёнок"} нажал кнопку помощи`,
+            description: t(`${child?.first_name || "Ребёнок"} нажал кнопку помощи`, `${child?.first_name || "Your child"} pressed the help button`),
             variant: "destructive",
             duration: 60000,
             action: (
-              <ToastAction altText="Открыть" onClick={() => setSelectedChild(a.child_id)}>
-                Открыть
+              <ToastAction altText={t("Открыть", "Open")} onClick={() => setSelectedChild(a.child_id)}>
+                {t("Открыть", "Open")}
               </ToastAction>
             ),
           });
@@ -232,25 +235,25 @@ export default function ParentDashboard() {
           };
           if (!childIds.includes(ev.child_id)) return;
           const child = children.find((c) => c.child_id === ev.child_id);
-          const name = child?.first_name || "Ребёнок";
+          const name = child?.first_name || t("Ребёнок", "Child");
           const isExit = ev.event_type === "exit";
           const isGoingHome = ev.status_hint === "going_home";
           let title: string;
           if (!isExit) {
-            title = ev.place_name ? `✅ ${name} в ${ev.place_name}` : `✅ ${name} в зоне`;
+            title = ev.place_name ? t(`✅ ${name} в ${ev.place_name}`, `✅ ${name} is at ${ev.place_name}`) : t(`✅ ${name} в зоне`, `✅ ${name} is in the safe zone`);
           } else if (isGoingHome) {
-            title = `🏠 ${name} идёт домой`;
+            title = t(`🏠 ${name} идёт домой`, `🏠 ${name} is heading home`);
           } else {
-            title = ev.place_name ? `⚠️ ${name} вышел из «${ev.place_name}»` : `⚠️ ${name} вышел из зоны`;
+            title = ev.place_name ? t(`⚠️ ${name} вышел из «${ev.place_name}»`, `⚠️ ${name} left ${ev.place_name}`) : t(`⚠️ ${name} вышел из зоны`, `⚠️ ${name} left the safe zone`);
           }
           toast({
             title,
-            description: ev.distance_m ? `${Math.round(ev.distance_m)} м от центра` : undefined,
+            description: ev.distance_m ? t(`${Math.round(ev.distance_m)} м от центра`, `${Math.round(ev.distance_m)} m from the center`) : undefined,
             variant: isExit ? "destructive" : "default",
             duration: 30000,
             action: (
-              <ToastAction altText="Открыть" onClick={() => setSelectedChild(ev.child_id)}>
-                Открыть
+              <ToastAction altText={t("Открыть", "Open")} onClick={() => setSelectedChild(ev.child_id)}>
+                {t("Открыть", "Open")}
               </ToastAction>
             ),
           });
@@ -276,16 +279,16 @@ export default function ParentDashboard() {
           if (!shouldNotify(notifPrefs, r.request_type, r.status)) return;
           const child = children.find((c) => c.child_id === r.child_id);
           const typeLabel =
-            r.request_type === "photo" ? "фото" : r.request_type === "audio" ? "звук" : "локацию";
+            r.request_type === "photo" ? t("фото", "photo") : r.request_type === "audio" ? t("звук", "audio") : t("локацию", "location");
           const ok = r.status === "fulfilled";
           toast({
-            title: ok ? `✅ Получен ответ: ${typeLabel}` : `❌ Ошибка запроса: ${typeLabel}`,
-            description: `${child?.first_name || "Ребёнок"}${ok ? " прислал данные" : " не смог выполнить запрос"}`,
+            title: ok ? t(`✅ Получен ответ: ${typeLabel}`, `✅ Received: ${typeLabel}`) : t(`❌ Ошибка запроса: ${typeLabel}`, `❌ Request failed: ${typeLabel}`),
+            description: t(`${child?.first_name || "Ребёнок"}${ok ? " прислал данные" : " не смог выполнить запрос"}`, `${child?.first_name || "Your child"}${ok ? " sent a response" : " couldn’t complete the request"}`),
             variant: ok ? "default" : "destructive",
             duration: 20000,
             action: (
-              <ToastAction altText="Открыть" onClick={() => setSelectedChild(r.child_id)}>
-                Открыть
+              <ToastAction altText={t("Открыть", "Open")} onClick={() => setSelectedChild(r.child_id)}>
+                {t("Открыть", "Open")}
               </ToastAction>
             ),
           });
@@ -296,7 +299,7 @@ export default function ParentDashboard() {
     return () => {
       void channel.unsubscribe();
     };
-  }, [children, setSelectedChild, toast, notifPrefs]);
+  }, [children, setSelectedChild, toast, notifPrefs, t]);
 
   // Таймаут ответов
   useEffect(() => {
@@ -322,15 +325,15 @@ export default function ParentDashboard() {
         notified.add(r.id);
         const child = children.find((c) => c.child_id === r.child_id);
         const typeLabel =
-          r.request_type === "photo" ? "фото" : r.request_type === "audio" ? "звук" : "локацию";
+          r.request_type === "photo" ? t("фото", "photo") : r.request_type === "audio" ? t("звук", "audio") : t("локацию", "location");
         toast({
-          title: `⏱ Нет ответа: ${typeLabel}`,
-          description: `${child?.first_name || "Ребёнок"} не ответил за ${notifPrefs.timeoutMinutes} мин`,
+          title: t(`⏱ Нет ответа: ${typeLabel}`, `⏱ No response: ${typeLabel}`),
+          description: t(`${child?.first_name || "Ребёнок"} не ответил за ${notifPrefs.timeoutMinutes} мин`, `${child?.first_name || "Your child"} didn’t respond within ${notifPrefs.timeoutMinutes} min`),
           variant: "destructive",
           duration: 30000,
           action: (
-            <ToastAction altText="Открыть" onClick={() => setSelectedChild(r.child_id)}>
-              Открыть
+            <ToastAction altText={t("Открыть", "Open")} onClick={() => setSelectedChild(r.child_id)}>
+              {t("Открыть", "Open")}
             </ToastAction>
           ),
         });
@@ -340,7 +343,7 @@ export default function ParentDashboard() {
     check();
     const interval = window.setInterval(check, 30 * 1000);
     return () => window.clearInterval(interval);
-  }, [children, notifPrefs, setSelectedChild, toast]);
+  }, [children, notifPrefs, setSelectedChild, toast, t]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -401,8 +404,8 @@ export default function ParentDashboard() {
           <CardContent className="pt-6 space-y-4">
             <div className="text-center">
               <Lock className="w-10 h-10 mx-auto mb-2 text-primary" />
-              <h2 className="text-xl font-bold">Родительский PIN</h2>
-              <p className="text-sm text-muted-foreground">Введи 4-значный PIN для доступа</p>
+              <h2 className="text-xl font-bold">{t("Родительский PIN", "Parent PIN")}</h2>
+              <p className="text-sm text-muted-foreground">{t("Введи 4-значный PIN для доступа", "Enter your 4-digit PIN")}</p>
             </div>
             <Input
               type="password"
@@ -417,16 +420,16 @@ export default function ParentDashboard() {
               onKeyDown={(e) => e.key === "Enter" && pinInput.length === 4 && submitParentPin()}
               className="text-center text-2xl tracking-widest"
             />
-            {pinError && <p className="text-sm text-destructive text-center">Неверный PIN</p>}
+            {pinError && <p className="text-sm text-destructive text-center">{t("Неверный PIN", "Incorrect PIN")}</p>}
             <Button
               className="w-full"
               disabled={pinInput.length !== 4 || pinChecking}
               onClick={submitParentPin}
             >
-              {pinChecking ? "Проверяем…" : "Войти"}
+              {pinChecking ? t("Проверяем…", "Checking…") : t("Войти", "Sign in")}
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => navigate("/")}>
-              Назад
+              {t("Назад", "Back")}
             </Button>
           </CardContent>
         </Card>
@@ -461,7 +464,7 @@ export default function ParentDashboard() {
             <Button variant="ghost" size="icon" onClick={() => navigate("/auth")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-2xl font-bold text-foreground">Родительский кабинет</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("Родительский кабинет", "Parent dashboard")}</h1>
           </div>
           <div className="flex items-center gap-1">
             {(pushPerm === "default" ||
@@ -470,7 +473,7 @@ export default function ParentDashboard() {
               <Button variant="outline" size="sm" onClick={enablePush} className="gap-1">
                 <Bell className="w-4 h-4" />
                 <span className="hidden sm:inline">
-                  {pushPerm === "granted" ? "Подключить уведомления" : "Включить уведомления"}
+                  {pushPerm === "granted" ? t("Подключить уведомления", "Set up notifications") : t("Включить уведомления", "Enable notifications")}
                 </span>
               </Button>
             )}
@@ -479,22 +482,24 @@ export default function ParentDashboard() {
               pushStatus.matchesCurrentUser && (
               <Button variant="ghost" size="sm" disabled className="gap-1 text-muted-foreground">
                 <Bell className="w-4 h-4 text-primary" />
-                <span className="hidden sm:inline">Уведомления вкл.</span>
+                <span className="hidden sm:inline">{t("Уведомления вкл.", "Notifications on")}</span>
               </Button>
             )}
             {pushPerm === "denied" && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <BellOff className="w-4 h-4" />
-                <span className="hidden sm:inline">Заблокировано в браузере</span>
+                <span className="hidden sm:inline">{t("Заблокировано в браузере", "Blocked by browser")}</span>
               </span>
             )}
             <FeedbackDialog />
             <Button variant="ghost" onClick={handleSignOut}>
               <LogOut className="w-5 h-5 mr-2" />
-              Выйти
+              {t("Выйти", "Sign out")}
             </Button>
           </div>
         </div>
+
+        <div className="mb-6 flex justify-start"><LanguageSwitcher /></div>
 
         {/* Push subscription status card */}
         {pushPerm !== "unsupported" && (
@@ -509,38 +514,38 @@ export default function ParentDashboard() {
                 <div className="min-w-0">
                   <div className="text-sm font-medium">
                     {pushStatus?.subscribed && pushStatus?.matchesCurrentUser
-                      ? "Подписка активна на этом устройстве"
+                      ? t("Подписка активна на этом устройстве", "Notifications are active on this device")
                       : pushStatus?.subscribed
-                      ? "Подписка есть, но привязана к другому аккаунту"
+                      ? t("Подписка есть, но привязана к другому аккаунту", "This device is subscribed under a different account")
                       : pushPerm === "denied"
-                      ? "Уведомления заблокированы в браузере"
-                      : "Не подписаны"}
+                      ? t("Уведомления заблокированы в браузере", "Notifications are blocked in this browser")
+                      : t("Не подписаны", "Not subscribed")}
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {pushStatus?.lastSyncedAt
-                      ? `Синхронизировано: ${new Date(pushStatus.lastSyncedAt).toLocaleString("ru-RU")}`
-                      : "Нет данных о синхронизации"}
+                      ? t(`Синхронизировано: ${new Date(pushStatus.lastSyncedAt).toLocaleString("ru-RU")}`, `Synced: ${new Date(pushStatus.lastSyncedAt).toLocaleString("en-US")}`)
+                      : t("Нет данных о синхронизации", "No sync information")}
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="ghost" onClick={refreshPushStatus} className="gap-1">
                   <RefreshCw className="w-4 h-4" />
-                  <span className="hidden sm:inline">Обновить</span>
+                  <span className="hidden sm:inline">{t("Обновить", "Refresh")}</span>
                 </Button>
                 {pushStatus?.subscribed ? (
                   <>
                     <Button size="sm" variant="outline" onClick={resyncPush}>
-                      Пересинхронизировать
+                      {t("Пересинхронизировать", "Sync again")}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={disablePush} className="text-destructive">
-                      Отписаться
+                      {t("Отписаться", "Unsubscribe")}
                     </Button>
                   </>
                 ) : (
                   pushPerm !== "denied" && (
                     <Button size="sm" onClick={enablePush} className="gap-1">
-                      <Bell className="w-4 h-4" /> Подписаться
+                      <Bell className="w-4 h-4" /> {t("Подписаться", "Subscribe")}
                     </Button>
                   )
                 )}
@@ -551,7 +556,7 @@ export default function ParentDashboard() {
 
         {selectedChildData && (
           <SelectedChildBar
-            childName={selectedChildData.first_name || "Ребёнок"}
+            childName={selectedChildData.first_name || t("Ребёнок", "Child")}
             connectedViaInvite={selectedChildData.connected_via_invite}
             lastActivityAt={selectedChildData.last_activity_at}
             onOpenSafety={() => setActiveTab("safety")}
@@ -564,39 +569,39 @@ export default function ParentDashboard() {
           <TabsList className="flex w-full h-auto overflow-x-auto p-1 gap-1 justify-start no-scrollbar">
             <TabsTrigger value="children" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]">
               <Users className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">Дети</span>
+              <span className="text-[10px] leading-tight">{t("Дети", "Children")}</span>
             </TabsTrigger>
             <TabsTrigger value="invite" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]">
               <Link2 className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">Код</span>
+              <span className="text-[10px] leading-tight">{t("Код", "Linking code")}</span>
             </TabsTrigger>
             <TabsTrigger value="safety" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <Shield className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">Защита</span>
+              <span className="text-[10px] leading-tight">{t("Защита", "Safety")}</span>
             </TabsTrigger>
             <TabsTrigger value="mirror" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <Eye className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">Зеркало</span>
+              <span className="text-[10px] leading-tight">{t("Зеркало", "Monitor")}</span>
             </TabsTrigger>
             <TabsTrigger value="room" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <House className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">Домик</span>
+              <span className="text-[10px] leading-tight">{t("Домик", "Room")}</span>
             </TabsTrigger>
             <TabsTrigger value="garden" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <Sprout className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">Садик</span>
+              <span className="text-[10px] leading-tight">{t("Садик", "Garden")}</span>
             </TabsTrigger>
             <TabsTrigger value="activity" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <CalendarDays className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">Активность</span>
+              <span className="text-[10px] leading-tight">{t("Активность", "Activity")}</span>
             </TabsTrigger>
             <TabsTrigger value="analysis" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]" disabled={!selectedChild}>
               <Brain className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">ИИ</span>
+              <span className="text-[10px] leading-tight">{t("ИИ", "AI")}</span>
             </TabsTrigger>
             <TabsTrigger value="games" className="flex-shrink-0 flex-col gap-0.5 py-2 px-2.5 min-w-[3.5rem]">
               <Gamepad2 className="w-4 h-4" />
-              <span className="text-[10px] leading-tight">Игры</span>
+              <span className="text-[10px] leading-tight">{t("Игры", "Games")}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -609,9 +614,9 @@ export default function ParentDashboard() {
             {children.length === 0 ? (
               <>
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">Аккаунты детей</h2>
+                  <h2 className="text-lg font-semibold">{t("Аккаунты детей", "Child accounts")}</h2>
                   <Button onClick={() => setShowCreateForm(!showCreateForm)}>
-                    {showCreateForm ? "Отмена" : "Добавить ребёнка"}
+                    {showCreateForm ? t("Отмена", "Cancel") : t("Добавить ребёнка", "Add a child")}
                   </Button>
                 </div>
                 {showCreateForm && (
@@ -626,7 +631,7 @@ export default function ParentDashboard() {
                   <CardContent className="py-8 text-center">
                     <div className="text-5xl mb-4">👶</div>
                     <p className="text-muted-foreground">
-                      Добавьте аккаунт ребёнка или привяжите телефон через вкладку «Код»
+                      {t("Добавьте аккаунт ребёнка или привяжите телефон через вкладку «Код»", "Add a child account or link a phone from the Linking code tab")}
                     </p>
                   </CardContent>
                 </Card>
@@ -637,14 +642,13 @@ export default function ParentDashboard() {
                   <section className="space-y-4">
                     <Card className="border-green-200 bg-green-50/50">
                       <CardContent className="py-4 px-4">
-                        <p className="text-sm font-medium">📱 На своём телефоне</p>
+                        <p className="text-sm font-medium">{t("📱 На своём телефоне", "📱 On their own phone")}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Ребёнок играет на своём устройстве. Следите через «Зеркало» и «Защита» —
-                          карта и активность обновляются с его телефона.
+                          {t("Ребёнок играет на своём устройстве. Следите через «Зеркало» и «Защита» — карта и активность обновляются с его телефона.", "Your child plays on their own device. See their location and activity in Monitor and Safety.")}
                         </p>
                       </CardContent>
                     </Card>
-                    <h2 className="text-lg font-semibold">Дети на своём телефоне</h2>
+                    <h2 className="text-lg font-semibold">{t("Дети на своём телефоне", "Children on their own phones")}</h2>
                     <div className="grid gap-4 md:grid-cols-2">{renderChildCards(ownPhoneChildren)}</div>
                   </section>
                 )}
@@ -652,18 +656,17 @@ export default function ParentDashboard() {
                 <section className="space-y-4">
                   <Card className="border-primary/20 bg-primary/5">
                     <CardContent className="py-4 px-4">
-                      <p className="text-sm font-medium">💻 На этом устройстве</p>
+                      <p className="text-sm font-medium">{t("💻 На этом устройстве", "💻 On this device")}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Вы остаётесь залогинены как родитель. «Играть здесь» — ребёнок занимается на
-                        вашем телефоне, вы возвращаетесь в кабинет одной кнопкой.
+                        {t("Вы остаётесь залогинены как родитель. «Играть здесь» — ребёнок занимается на вашем телефоне, вы возвращаетесь в кабинет одной кнопкой.", "You stay signed in as a parent. Select “Play here” to let your child use this device and return to the dashboard when they finish.")}
                       </p>
                     </CardContent>
                   </Card>
 
                   <div className="flex justify-between items-center">
-                    <h2 className="text-lg font-semibold">Дети на этом телефоне</h2>
+                    <h2 className="text-lg font-semibold">{t("Дети на этом телефоне", "Children on this phone")}</h2>
                     <Button onClick={() => setShowCreateForm(!showCreateForm)}>
-                      {showCreateForm ? "Отмена" : "Добавить ребёнка"}
+                      {showCreateForm ? t("Отмена", "Cancel") : t("Добавить ребёнка", "Add a child")}
                     </Button>
                   </div>
 
@@ -679,8 +682,7 @@ export default function ParentDashboard() {
                   {thisDeviceChildren.length === 0 ? (
                     <Card>
                       <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                        Нет локальных аккаунтов — нажмите «Добавить ребёнка» или привяжите телефон
-                        ребёнка через вкладку «Код».
+                        {t("Нет локальных аккаунтов — нажмите «Добавить ребёнка» или привяжите телефон ребёнка через вкладку «Код».", "Select “Add a child” or link your child’s phone from the Linking code tab.")}
                       </CardContent>
                     </Card>
                   ) : (
@@ -698,29 +700,27 @@ export default function ParentDashboard() {
                 {selectedChildData.connected_via_invite && (
                   <Card className="border-green-200 bg-green-50/50">
                     <CardContent className="py-3 px-4 text-sm">
-                      <p className="font-medium">📱 {selectedChildData.first_name} на своём телефоне</p>
+                      <p className="font-medium">📱 {selectedChildData.first_name} {t("на своём телефоне", "on their own phone")}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Карта обновляется автоматически. Поставьте зону «Садик», «Школа» или своё
-                        место — получите уведомление, если ребёнок выйдет. Кнопка «Где сейчас?» —
-                        мгновенная проверка.
+                        {t("Карта обновляется автоматически. Поставьте зону «Садик», «Школа» или своё место — получите уведомление, если ребёнок выйдет. Кнопка «Где сейчас?» — мгновенная проверка.", "The map updates automatically. Set a safe zone for preschool, school or another place to get an alert when your child leaves. Use the location button to check now.")}
                       </p>
                     </CardContent>
                   </Card>
                 )}
                 <SafetyPanel
                   childId={selectedChildData.child_id}
-                  childName={selectedChildData.first_name || "Ребёнок"}
+                  childName={selectedChildData.first_name || t("Ребёнок", "Child")}
                 />
                 <MonitoringPanel
                   childId={selectedChildData.child_id}
-                  childName={selectedChildData.first_name || "Ребёнок"}
+                  childName={selectedChildData.first_name || t("Ребёнок", "Child")}
                 />
                 <MonitoringNotificationSettings />
               </>
             ) : (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <p className="text-muted-foreground">Выберите ребёнка</p>
+                  <p className="text-muted-foreground">{t("Выберите ребёнка", "Select a child")}</p>
                 </CardContent>
               </Card>
             )}
@@ -734,7 +734,7 @@ export default function ParentDashboard() {
                 <ReadingProgressCard childId={selectedChildData.child_id} activities={childActivities} />
                 <LearningProgressCard childId={selectedChildData.child_id} />
                 <ActivityMirror
-                  childName={selectedChildData.first_name || "Ребёнок"}
+                  childName={selectedChildData.first_name || t("Ребёнок", "Child")}
                   activities={childActivities}
                   connectedViaInvite={selectedChildData.connected_via_invite}
                 />
@@ -743,11 +743,10 @@ export default function ParentDashboard() {
               <Card>
                 <CardContent className="py-8 text-center space-y-2">
                   <p className="text-muted-foreground">
-                    Выберите ребёнка на вкладке «Дети»
+                    {t("Выберите ребёнка на вкладке «Дети»", "Select a child in the Children tab")}
                   </p>
                   <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                    Если ребёнок на своём телефоне — выберите карточку с меткой «📱 Свой
-                    телефон» и зелёной отметкой «Сейчас играет».
+                    {t("Если ребёнок на своём телефоне — выберите карточку с меткой «📱 Свой телефон» и зелёной отметкой «Сейчас играет».", "For a child on their own phone, select their card with the phone icon and green activity indicator.")}
                   </p>
                 </CardContent>
               </Card>
@@ -758,16 +757,16 @@ export default function ParentDashboard() {
           <TabsContent value="room">
             {selectedChildData ? (
               <div className="space-y-4">
-                <GiftSender childId={selectedChildData.child_id} childName={selectedChildData.first_name || "Ребёнок"} />
+                <GiftSender childId={selectedChildData.child_id} childName={selectedChildData.first_name || t("Ребёнок", "Child")} />
                 <ChildRoomViewer
                   childId={selectedChildData.child_id}
-                  childName={selectedChildData.first_name || "Ребёнок"}
+                  childName={selectedChildData.first_name || t("Ребёнок", "Child")}
                 />
               </div>
             ) : (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <p className="text-muted-foreground">Выберите ребёнка на вкладке "Дети"</p>
+                  <p className="text-muted-foreground">{t("Выберите ребёнка на вкладке \"Дети\"", "Select a child in the Children tab")}</p>
                 </CardContent>
               </Card>
             )}
@@ -775,25 +774,25 @@ export default function ParentDashboard() {
 
           <TabsContent value="garden">
             {selectedChildData ? (
-              <GardenPanel childId={selectedChildData.child_id} childName={selectedChildData.first_name || "Ребёнок"} />
+              <GardenPanel childId={selectedChildData.child_id} childName={selectedChildData.first_name || t("Ребёнок", "Child")} />
             ) : (
-              <p className="text-center text-muted-foreground py-8">Выберите ребёнка на вкладке «Дети»</p>
+              <p className="text-center text-muted-foreground py-8">{t("Выберите ребёнка на вкладке «Дети»", "Select a child in the Children tab")}</p>
             )}
           </TabsContent>
 
           {/* AI Analysis Tab */}
           <TabsContent value="activity">
             {selectedChildData ? (
-              <AttendancePanel childId={selectedChildData.child_id} childName={selectedChildData.first_name || "Ребёнок"} />
+              <AttendancePanel childId={selectedChildData.child_id} childName={selectedChildData.first_name || t("Ребёнок", "Child")} />
             ) : (
-              <p className="text-center text-muted-foreground py-8">Выберите ребёнка на вкладке «Дети»</p>
+              <p className="text-center text-muted-foreground py-8">{t("Выберите ребёнка на вкладке «Дети»", "Select a child in the Children tab")}</p>
             )}
           </TabsContent>
 
           <TabsContent value="analysis">
             {selectedChildData ? (
               <AIRecommendations
-                childName={selectedChildData.first_name || "Ребёнок"}
+                childName={selectedChildData.first_name || t("Ребёнок", "Child")}
                 analysis={childAnalysis}
                 onAnalyze={() => analyzeChild(selectedChild!)}
                 isAnalyzing={analyzingChild}
@@ -802,7 +801,7 @@ export default function ParentDashboard() {
               <Card>
                 <CardContent className="py-8 text-center">
                   <p className="text-muted-foreground">
-                    Выберите ребёнка на вкладке "Дети"
+                    {t("Выберите ребёнка на вкладке \"Дети\"", "Select a child in the Children tab")}
                   </p>
                 </CardContent>
               </Card>

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ type Item = { id: string; name: string; icon: string; category: string };
 type Gift = { id: string; title: string; created_at: string; opened_at: string | null };
 
 export const GiftSender = ({ childId, childName }: { childId: string; childName: string }) => {
+  const { t, label, language } = useLanguage();
   const { toast } = useToast();
   const [items, setItems] = useState<Item[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
@@ -35,37 +37,37 @@ export const GiftSender = ({ childId, childName }: { childId: string; childName:
   const send = async () => {
     setBusy(true);
     const names = items.filter((i) => picked.includes(i.id)).map((i) => i.name);
-    const title = names.length > 1 ? `Набор: ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}` : names[0];
+    const title = names.length > 1 ? t(`Набор: ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}`, `Set: ${names.slice(0, 3).join(", ")}${names.length > 3 ? "…" : ""}`) : names[0];
     const { data } = await supabase.rpc("send_parent_gift", { _child_id: childId, _item_ids: picked, _title: title, _message: message.trim() || null });
     setBusy(false);
-    if (data) { toast({ title: "🎁 Подарок положен в домик!" }); setPicked([]); setMessage(""); }
-    else toast({ title: "Не удалось отправить подарок", variant: "destructive" });
+    if (data) { toast({ title: t("🎁 Подарок положен в домик!", "🎁 Gift delivered to the room!") }); setPicked([]); setMessage(""); }
+    else toast({ title: t("Не удалось отправить подарок", "Couldn’t send the gift"), variant: "destructive" });
   };
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-lg">🎁 Подарок в домик для {childName}</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-lg">{t("🎁 Подарок в домик для", "🎁 Send a gift to")} {childName}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">Выберите мебель или игрушки (до 10). Ребёнок найдёт коробку в домике и откроет её.</p>
+        <p className="text-sm text-muted-foreground">{t("Выберите мебель или игрушки (до 10). Ребёнок найдёт коробку в домике и откроет её.", "Pick up to ten toys or pieces of furniture. Your child will find a gift box in their room.")}</p>
         <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-64 overflow-y-auto">
           {items.map((i) => (
-            <button key={i.id} onClick={() => toggle(i.id)} title={i.name}
+            <button key={i.id} onClick={() => toggle(i.id)} title={label(i.name)}
               className={`p-2 rounded-xl border-2 flex flex-col items-center ${picked.includes(i.id) ? "border-primary bg-primary/10" : "border-border"}`}>
               <span className="text-2xl">{i.icon}</span>
-              <span className="text-[10px] truncate max-w-full">{i.name}</span>
+              <span className="text-[10px] truncate max-w-full">{label(i.name)}</span>
             </button>
           ))}
         </div>
-        <Input placeholder="Записка, например: Молодец! Люблю тебя ❤️" value={message} maxLength={200} onChange={(e) => setMessage(e.target.value)} />
-        <Button className="w-full" disabled={!picked.length || busy} onClick={send}>Положить подарок ({picked.length})</Button>
+        <Input placeholder={t("Записка, например: Молодец! Люблю тебя ❤️", "Add a note, such as “Well done! I love you ❤️”")} value={message} maxLength={200} onChange={(e) => setMessage(e.target.value)} />
+        <Button className="w-full" disabled={!picked.length || busy} onClick={send}>{t("Положить подарок (", "Send gift (")}{picked.length})</Button>
         {gifts.length > 0 && (
           <div className="space-y-1 pt-2">
-            <p className="text-sm font-medium">Отправленные:</p>
+            <p className="text-sm font-medium">{t("Отправленные:", "Sent gifts:")}</p>
             {gifts.map((g) => (
               <div key={g.id} className="flex justify-between text-xs">
                 <span className="truncate">{g.title}</span>
                 <span className={g.opened_at ? "text-primary" : "text-muted-foreground"}>
-                  {g.opened_at ? `открыт ${new Date(g.opened_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : "ждёт в домике"}
+                  {g.opened_at ? `открыт ${new Date(g.opened_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : t("ждёт в домике", "waiting in the room")}
                 </span>
               </div>
             ))}

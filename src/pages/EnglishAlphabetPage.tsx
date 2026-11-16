@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { speak as speakTTS } from "@/lib/sound";
 import { recordLearned } from "@/lib/learning-progress";
 import { useState } from "react";
@@ -44,6 +45,7 @@ const ALPHABET: LetterItem[] = [
 ];
 
 export default function EnglishAlphabetPage() {
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [selectedLetter, setSelectedLetter] = useState<LetterItem>(ALPHABET[0]);
 
@@ -54,7 +56,7 @@ export default function EnglishAlphabetPage() {
   const handleSelect = (item: LetterItem) => {
     setSelectedLetter(item);
     speak(`${item.letter}. ${item.word}`);
-    void recordLearned("english", `Буква ${item.letter}`);
+    void recordLearned("english", t(`Буква ${item.letter}`, `Letter ${item.letter}`));
   };
 
   return (
@@ -72,7 +74,7 @@ export default function EnglishAlphabetPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-black text-rose-600">English Alphabet</h1>
-            <p className="text-sm text-muted-foreground">Нажимай на буквы и учи слова!</p>
+            <p className="text-sm text-muted-foreground">{t("Нажимай на буквы и учи слова!", "Tap the letters and learn words!")}</p>
           </div>
         </div>
 
@@ -84,14 +86,14 @@ export default function EnglishAlphabetPage() {
           <div className="text-6xl">{selectedLetter.emoji}</div>
           <div>
             <div className="text-2xl font-bold text-slate-800">{selectedLetter.word}</div>
-            <div className="text-sm text-slate-500">{selectedLetter.translation}</div>
+            {language === "ru" && <div className="text-sm text-slate-500">{selectedLetter.translation}</div>}
           </div>
           <Button
             onClick={() => speak(`${selectedLetter.letter}. ${selectedLetter.word}`)}
             className="bg-rose-500 hover:bg-rose-600 text-white rounded-full px-6 py-2 flex items-center gap-2 shadow-md"
           >
             <Volume2 className="w-5 h-5" />
-            Озвучить
+            {t("Озвучить", "Read aloud")}
           </Button>
         </Card>
 

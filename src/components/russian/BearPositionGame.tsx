@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ function Scene({ position }: { position: Position }) {
 }
 
 export function BearPositionGame({ onBack }: { onBack: () => void }) {
+  const { t, language } = useLanguage();
   const [index, setIndex] = useState(0);
   const [wrong, setWrong] = useState<Position[]>([]);
   const [correct, setCorrect] = useState(false);
@@ -46,7 +48,9 @@ export function BearPositionGame({ onBack }: { onBack: () => void }) {
     setWrong([]);
     setCorrect(false);
     setShowText(false);
-    void speak(ROUNDS[next]?.prompt ?? "Спасибо за игру!");
+    const nextRound = ROUNDS[next];
+    if (nextRound) void speak(nextRound.prompt, "ru-RU");
+    else void speak(t("Спасибо за игру!", "Thanks for playing!"), language === "en" ? "en-US" : "ru-RU");
   };
 
   const pick = (position: Position) => {
@@ -63,12 +67,12 @@ export function BearPositionGame({ onBack }: { onBack: () => void }) {
 
   return (
     <Card className="space-y-4 rounded-3xl p-4 text-center sm:p-8">
-      <h2 className="text-2xl font-extrabold">Где мишка?</h2>
+      <h2 className="text-2xl font-extrabold">{t("Где мишка?", "Where’s the teddy?")}</h2>
       {round ? (
         <>
-          <p className="text-sm font-semibold text-muted-foreground">Задание {index + 1} из {ROUNDS.length}</p>
+          <p className="text-sm font-semibold text-muted-foreground">{t("Задание", "Task")} {index + 1} {t("из", "of")} {ROUNDS.length}</p>
           <Button onClick={() => void speak(round.prompt)}>
-            <Volume2 className="mr-2 h-5 w-5" /> Послушать задание
+            <Volume2 className="mr-2 h-5 w-5" /> {t("Послушать задание", "Listen to the task")}
           </Button>
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {round.choices.map((position) => (
@@ -92,9 +96,9 @@ export function BearPositionGame({ onBack }: { onBack: () => void }) {
             </p>
           ) : (
             <>
-              {wrong.length > 0 && <p role="status">Попробуй ещё раз.</p>}
+              {wrong.length > 0 && <p role="status">{t("Попробуй ещё раз.", "Try again.")}</p>}
               <Button variant="ghost" aria-expanded={showText} onClick={() => setShowText((value) => !value)}>
-                {showText ? "Скрыть текст задания" : "Показать текст задания"}
+                {showText ? t("Скрыть текст задания", "Hide the words") : t("Показать текст задания", "Show the words")}
               </Button>
               {showText && <p className="font-semibold">{round.prompt}</p>}
             </>
@@ -102,17 +106,17 @@ export function BearPositionGame({ onBack }: { onBack: () => void }) {
         </>
       ) : (
         <>
-          <p>Ты нашёл мишку в {score} из {ROUNDS.length} заданий.</p>
+          <p>{t("Ты нашёл мишку в", "You found the teddy in")} {score} {t("из", "of")} {ROUNDS.length} {t("заданий.", "tasks.")}</p>
           <div className="rounded-2xl bg-teal-50 p-4 text-left text-teal-950">
-            <h3 className="font-bold">Игра дома</h3>
-            <p className="mt-1 text-sm">Посади мишку на стул, поставь под стул и рядом со стулом. Потом поменяйтесь ролями: пусть ребёнок попросит тебя поставить мишку.</p>
+            <h3 className="font-bold">{t("Игра дома", "Play at home")}</h3>
+            <p className="mt-1 text-sm">{t("Посади мишку на стул, поставь под стул и рядом со стулом. Потом поменяйтесь ролями: пусть ребёнок попросит тебя поставить мишку.", "Put the teddy on, under and beside a chair. Then swap roles and have your child tell you where to put it.")}</p>
           </div>
         </>
       )}
       <div className="flex flex-wrap justify-center gap-2">
-        <Button variant="outline" onClick={onBack}>К игрушкам</Button>
-        {round && locked && <Button onClick={() => goTo(index + 1)}>{index + 1 === ROUNDS.length ? "Посмотреть итог" : "Дальше"}</Button>}
-        {!round && <Button onClick={() => { setScore(0); goTo(0); }}>Сыграть ещё раз</Button>}
+        <Button variant="outline" onClick={onBack}>{t("К игрушкам", "Back to toys")}</Button>
+        {round && locked && <Button onClick={() => goTo(index + 1)}>{index + 1 === ROUNDS.length ? t("Посмотреть итог", "See results") : t("Дальше", "Next")}</Button>}
+        {!round && <Button onClick={() => { setScore(0); goTo(0); }}>{t("Сыграть ещё раз", "Play again")}</Button>}
       </div>
     </Card>
   );

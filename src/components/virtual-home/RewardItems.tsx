@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RoomItem, UserRoomItem } from "@/hooks/useVirtualHome";
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export const RewardItems = ({ items, owned, onClaim }: Props) => {
+  const { t, label } = useLanguage();
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -38,7 +40,7 @@ export const RewardItems = ({ items, owned, onClaim }: Props) => {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Эти вещи нельзя купить — их можно только заслужить учёбой! 🦊
+        {t("Эти вещи нельзя купить — их можно только заслужить учёбой! 🦊", "Earn these rewards by finishing learning activities! 🦊")}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {items.map((item) => {
@@ -49,18 +51,18 @@ export const RewardItems = ({ items, owned, onClaim }: Props) => {
           return (
             <Card key={item.id} className="p-4 flex flex-col items-center gap-2 text-center">
               <div className={`text-5xl ${ready || isOwned ? "" : "grayscale opacity-50"}`}>{item.icon}</div>
-              <p className="font-bold">{item.name}</p>
+              <p className="font-bold">{label(item.name)}</p>
               <p className="text-xs text-muted-foreground">{SUBJECT_NAMES[item.unlock_subject ?? ""]}</p>
-              <p className="text-xs text-muted-foreground">{item.description}</p>
+              <p className="text-xs text-muted-foreground">{label(item.description)}</p>
               {!isOwned && (
                 <div className="w-full space-y-1">
                   <Progress value={Math.min(100, (have / need) * 100)} />
-                  <p className="text-xs font-medium">{Math.min(have, need)} из {need}</p>
+                  <p className="text-xs font-medium">{Math.min(have, need)} {t("из", "of")} {need}</p>
                 </div>
               )}
               {isOwned ? (
                 <Button variant="secondary" disabled className="w-full gap-1">
-                  <Check className="w-4 h-4" /> В комнате
+                  <Check className="w-4 h-4" /> {t("В комнате", "In the room")}
                 </Button>
               ) : ready ? (
                 <Button
@@ -72,11 +74,11 @@ export const RewardItems = ({ items, owned, onClaim }: Props) => {
                     setBusy(null);
                   }}
                 >
-                  🎁 Забрать
+                  {t("🎁 Забрать", "🎁 Claim")}
                 </Button>
               ) : (
                 <Button variant="outline" disabled className="w-full gap-1">
-                  <Lock className="w-4 h-4" /> Закрыто
+                  <Lock className="w-4 h-4" /> {t("Закрыто", "Locked")}
                 </Button>
               )}
             </Card>

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Star, Trophy, Flame, Smartphone, Shield, Eye, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 
 interface ChildCardProps {
   child: {
@@ -45,6 +46,7 @@ export const ChildCard = ({
   onOpenMirror,
   onDeleteChild,
 }: ChildCardProps) => {
+  const { t, language } = useLanguage();
   const isRecentlyActive =
     child.last_activity_at &&
     Date.now() - new Date(child.last_activity_at).getTime() < 5 * 60 * 1000;
@@ -61,7 +63,7 @@ export const ChildCard = ({
           <AlertDialogTrigger asChild>
             <button
               type="button"
-              aria-label="Удалить аккаунт ребёнка"
+              aria-label={t("Удалить аккаунт ребёнка", "Delete the child’s account")}
               onClick={(e) => e.stopPropagation()}
               className="absolute top-2 right-2 z-10 h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
@@ -71,20 +73,19 @@ export const ChildCard = ({
           <AlertDialogContent onClick={(e) => e.stopPropagation()}>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                Удалить аккаунт «{child.first_name || "Ребёнок"}»?
+                {t("Удалить аккаунт «", "Delete the account “")}{child.first_name || t("Ребёнок", "Child")}»?
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Аккаунт ребёнка, весь прогресс, история геолокации, сохранённые места и другие
-                данные будут удалены безвозвратно. Отменить это действие нельзя.
+                {t("Аккаунт ребёнка, весь прогресс, история геолокации, сохранённые места и другие данные будут удалены безвозвратно. Отменить это действие нельзя.", "This permanently deletes the child’s account, learning progress, location history, saved places and other data.")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogCancel>{t("Отмена", "Cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={onDeleteChild}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Удалить безвозвратно
+                {t("Удалить безвозвратно", "Delete permanently")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -96,24 +97,24 @@ export const ChildCard = ({
           <div className="text-5xl">{child.avatar_url || "👶"}</div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-lg">{child.first_name || "Ребёнок"}</h3>
+              <h3 className="font-bold text-lg">{child.first_name || t("Ребёнок", "Child")}</h3>
               {child.connected_via_invite ? (
                 <Badge variant="secondary" className="text-xs">
-                  📱 Свой телефон
+                  {t("📱 Свой телефон", "📱 Own phone")}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-xs">
-                  💻 Это устройство
+                  {t("💻 Это устройство", "💻 This device")}
                 </Badge>
               )}
               {isRecentlyActive && (
-                <Badge className="text-xs bg-green-500 hover:bg-green-500">Сейчас играет</Badge>
+                <Badge className="text-xs bg-green-500 hover:bg-green-500">{t("Сейчас играет", "Playing now")}</Badge>
               )}
             </div>
             <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
               <span className="flex items-center gap-1">
                 <Trophy className="w-4 h-4 text-primary" />
-                Ур. {child.level}
+                {t("Ур.", "Level")} {child.level}
               </span>
               <span className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-accent fill-accent" />
@@ -126,14 +127,14 @@ export const ChildCard = ({
             </div>
             {child.last_activity_at ? (
               <p className="text-xs text-muted-foreground mt-1">
-                Активность:{" "}
+                {t("Активность:", "Activity:")}{" "}
                 {formatDistanceToNow(new Date(child.last_activity_at), {
                   addSuffix: true,
-                  locale: ru,
+                  locale: language === "en" ? enUS : ru,
                 })}
               </p>
             ) : (
-              <p className="text-xs text-muted-foreground mt-1">Ещё не играл(а)</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("Ещё не играл(а)", "Hasn’t played yet")}</p>
             )}
           </div>
         </div>
@@ -150,7 +151,7 @@ export const ChildCard = ({
               }}
             >
               <Shield className="w-4 h-4" />
-              Защита
+              {t("Защита", "Safety")}
             </Button>
             <Button
               variant="outline"
@@ -162,7 +163,7 @@ export const ChildCard = ({
               }}
             >
               <Eye className="w-4 h-4" />
-              Зеркало
+              {t("Зеркало", "Monitor")}
             </Button>
           </div>
         ) : (
@@ -177,7 +178,7 @@ export const ChildCard = ({
               }}
             >
               <Smartphone className="w-4 h-4 mr-1" />
-              Играть здесь
+              {t("Играть здесь", "Play here")}
             </Button>
           </div>
         )}

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ interface GameSession {
 }
 
 export default function GamePage() {
+  const { t } = useLanguage();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -47,8 +49,8 @@ export default function GamePage() {
     if (error) {
       console.error("Error fetching game:", error);
       toast({
-        title: "Ошибка",
-        description: "Игра не найдена",
+        title: t("Ошибка", "Error"),
+        description: t("Игра не найдена", "Game not found"),
         variant: "destructive",
       });
       navigate(homePath);
@@ -67,7 +69,7 @@ export default function GamePage() {
       .single();
     
     if (profile) {
-      setOpponentName(`${profile.avatar_url || "👤"} ${profile.first_name || "Игрок"}`);
+      setOpponentName(t(`${profile.avatar_url || "👤"} ${profile.first_name || "Игрок"}`, `${profile.avatar_url || "👤"} ${profile.first_name || "Player"}`));
     }
   }, [id, user?.id, navigate, toast]);
 
@@ -165,18 +167,18 @@ export default function GamePage() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-bold">
-            {session.game_type === "tic_tac_toe" && "Крестики-нолики"}
-            {session.game_type === "checkers" && "Шашки"}
-            {session.game_type === "chess" && "Шахматы"}
-            {session.game_type === "connect_four" && "4 в ряд"}
-            {session.game_type === "gomoku" && "5 в ряд"}
+            {session.game_type === "tic_tac_toe" && t("Крестики-нолики", "Tic-tac-toe")}
+            {session.game_type === "checkers" && t("Шашки", "Checkers")}
+            {session.game_type === "chess" && t("Шахматы", "Chess")}
+            {session.game_type === "connect_four" && t("4 в ряд", "Four in a row")}
+            {session.game_type === "gomoku" && t("5 в ряд", "Five in a row")}
           </h1>
           {session.status !== "finished" ? (
-            <Button variant="outline" size="sm" onClick={endGame}>Завершить</Button>
+            <Button variant="outline" size="sm" onClick={endGame}>{t("Завершить", "End game")}</Button>
           ) : (
             <Button variant="outline" size="sm" onClick={resetGame}>
               <RotateCcw className="w-4 h-4 mr-2" />
-              Ещё раз
+              {t("Ещё раз", "Play again")}
             </Button>
           )}
         </div>
@@ -185,17 +187,17 @@ export default function GamePage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Противник</p>
+                <p className="text-sm text-muted-foreground">{t("Противник", "Opponent")}</p>
                 <p className="font-medium">{opponentName}</p>
               </div>
               <div className="text-right">
                 {session.status === "finished" ? (
                   <p className="font-bold text-lg">
-                    {!session.winner_id ? "🤝 Ничья!" : session.winner_id === user?.id ? "🎉 Победа!" : "😢 Поражение"}
+                    {!session.winner_id ? t("🤝 Ничья!", "🤝 It’s a draw!") : session.winner_id === user?.id ? t("🎉 Победа!", "🎉 You won!") : t("😢 Поражение", "😢 You lost")}
                   </p>
                 ) : (
                   <p className={`font-medium ${isMyTurn ? "text-green-600" : "text-muted-foreground"}`}>
-                    {isMyTurn ? "Ваш ход" : "Ход противника"}
+                    {isMyTurn ? t("Ваш ход", "Your turn") : t("Ход противника", "Opponent’s turn")}
                   </p>
                 )}
               </div>

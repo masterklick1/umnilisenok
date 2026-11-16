@@ -1,9 +1,10 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { unsubscribeFromPush, subscribeToPush, isPushSupported } from "@/lib/push";
-import { getRussianAuthError } from "@/lib/auth-errors";
+import { getAuthError } from "@/lib/auth-errors";
 import {
   clearDemoSession,
   createDemoUser,
@@ -26,6 +27,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const { t } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,8 +89,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(createDemoUser());
     setLoading(false);
     toast({
-      title: "Демо-режим включён 🦊",
-      description: "Можно попробовать уроки без регистрации. Родительский контроль подключается после аккаунта.",
+      title: t("Демо-режим включён 🦊", "Demo mode is on 🦊"),
+      description: t("Можно попробовать уроки без регистрации. Родительский контроль подключается после аккаунта.", "Try lessons without signing up. Create an account to use parental controls."),
     });
   };
 
@@ -109,14 +111,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         toast({
-          title: "Ошибка регистрации",
-          description: getRussianAuthError(error, "sign-up"),
+          title: t("Ошибка регистрации", "Couldn’t sign up"),
+          description: getAuthError(error, "sign-up", t),
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Регистрация успешна! 🎉",
-          description: "Добро пожаловать в Умный Лисенок!",
+          title: t("Регистрация успешна! 🎉", "Account created! 🎉"),
+          description: t("Добро пожаловать в Умный Лисенок!", "Welcome to Clever Little Fox!"),
         });
       }
 
@@ -124,8 +126,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       const authError = error instanceof Error ? error : new Error("Неизвестная ошибка регистрации");
       toast({
-        title: "Ошибка регистрации",
-        description: getRussianAuthError(authError, "sign-up"),
+        title: t("Ошибка регистрации", "Couldn’t sign up"),
+        description: getAuthError(authError, "sign-up", t),
         variant: "destructive",
       });
       return { error: authError };
@@ -141,13 +143,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         toast({
-          title: "Ошибка входа",
-          description: getRussianAuthError(error, "sign-in"),
+          title: t("Ошибка входа", "Couldn’t sign in"),
+          description: getAuthError(error, "sign-in", t),
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Добро пожаловать обратно! 🦊",
+          title: t("Добро пожаловать обратно! 🦊", "Welcome back! 🦊"),
         });
       }
 
@@ -155,8 +157,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       const authError = error instanceof Error ? error : new Error("Неизвестная ошибка входа");
       toast({
-        title: "Ошибка входа",
-        description: getRussianAuthError(authError, "sign-in"),
+        title: t("Ошибка входа", "Couldn’t sign in"),
+        description: getAuthError(authError, "sign-in", t),
         variant: "destructive",
       });
       return { error: authError };
@@ -185,13 +187,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       sessionStorage.removeItem("activeChildId");
       sessionStorage.removeItem("activeChildName");
       toast({
-        title: "До скорой встречи! 👋",
+        title: t("До скорой встречи! 👋", "See you soon! 👋"),
       });
     } catch (error) {
       const authError = error instanceof Error ? error : new Error("Неизвестная ошибка выхода");
       toast({
-        title: "Ошибка",
-        description: authError.message,
+        title: t("Ошибка", "Error"),
+        description: t("Не удалось выйти из аккаунта.", "Couldn’t sign out."),
         variant: "destructive",
       });
     }

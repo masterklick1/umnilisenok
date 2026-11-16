@@ -54,6 +54,7 @@ const UNITS: Unit[] = [
 
 export const ENGLISH_COURSE_UNITS = UNITS.map((unit, index) => ({
   label: unit.label,
+  title: unit.title,
   icon: unit.icon,
   firstLesson: index * ORDERS.length,
   size: ORDERS.length,
@@ -64,9 +65,9 @@ export const ENGLISH_COURSE_LESSONS = UNITS.flatMap((unit, unitIndex) => {
   const question = unit.question ?? "What is it?";
   const reply = (item: Word) => item.reply ?? asNoun(item.word.toLowerCase());
   return [
-    { title: unit.title, description: "Услышь слово", prompt: (item: Word) => item.word.toLowerCase() },
-    { title: request(unit.words[1].word.toLowerCase()).slice(0, -1), description: "Пойми просьбу", prompt: (item: Word) => request(item.word.toLowerCase()) },
-    { title: question, description: "Повтори фразу", prompt: (item: Word) => `${question} ${reply(item)}` },
+    { title: unit.title, description: "Услышь слово", descriptionEn: "Listen to a word", prompt: (item: Word) => item.word.toLowerCase() },
+    { title: request(unit.words[1].word.toLowerCase()).slice(0, -1), description: "Пойми просьбу", descriptionEn: "Follow an instruction", prompt: (item: Word) => request(item.word.toLowerCase()) },
+    { title: question, description: "Повтори фразу", descriptionEn: "Repeat a phrase", prompt: (item: Word) => `${question} ${reply(item)}` },
   ].map((lesson, index) => ({
     ...lesson, words: unit.words, unitIndex, order: ORDERS[index], repeat: index === 2, reply,
   }));

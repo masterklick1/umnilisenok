@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ type TypeFilter = "all" | "photo" | "audio" | "location";
 type StatusFilter = "all" | "pending" | "fulfilled" | "failed";
 
 export function MonitoringPanel({ childId, childName }: Props) {
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -100,7 +102,7 @@ export function MonitoringPanel({ childId, childName }: Props) {
       body: JSON.stringify(body),
     });
     const j = await res.json();
-    if (!res.ok) throw new Error(j.error || "Ошибка");
+    if (!res.ok) throw new Error(j.error || t("Ошибка", "Error"));
     return j;
   };
 
@@ -108,10 +110,10 @@ export function MonitoringPanel({ childId, childName }: Props) {
     setCreating(type);
     try {
       await callFn("create", { child_id: childId, request_type: type });
-      toast({ title: "Запрос отправлен", description: `${childName} увидит уведомление.` });
+      toast({ title: t("Запрос отправлен", "Request sent"), description: t(`${childName} увидит уведомление.`, `${childName} will see a notification.`) });
       await load();
     } catch (e: any) {
-      toast({ title: "Не удалось отправить", description: e.message, variant: "destructive" });
+      toast({ title: t("Не удалось отправить", "Couldn’t send the message"), description: e.message, variant: "destructive" });
     }
     setCreating(null);
   };
@@ -120,10 +122,10 @@ export function MonitoringPanel({ childId, childName }: Props) {
     setBusyId(id);
     try {
       await callFn("cancel", { id });
-      toast({ title: "Запрос отменён" });
+      toast({ title: t("Запрос отменён", "Request canceled") });
       await load();
     } catch (e: any) {
-      toast({ title: "Не удалось отменить", description: e.message, variant: "destructive" });
+      toast({ title: t("Не удалось отменить", "Couldn’t cancel the request"), description: e.message, variant: "destructive" });
     }
     setBusyId(null);
   };
@@ -148,22 +150,22 @@ export function MonitoringPanel({ childId, childName }: Props) {
         }
       );
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "Ошибка ИИ");
-      toast({ title: "ИИ-анализ готов", description: j.analysis?.summary || "Готово" });
+      if (!res.ok) throw new Error(j.error || t("Ошибка ИИ", "AI error"));
+      toast({ title: t("ИИ-анализ готов", "AI analysis is ready"), description: j.analysis?.summary || t("Готово", "Done") });
       await load();
     } catch (e: any) {
-      toast({ title: "Не удалось проанализировать", description: e.message, variant: "destructive" });
+      toast({ title: t("Не удалось проанализировать", "Couldn’t complete the analysis"), description: e.message, variant: "destructive" });
     }
     setBusyId(null);
   };
 
   const statusBadge = (s: string) => {
-    if (s === "fulfilled") return <Badge className="gap-1"><CheckCircle2 className="w-3 h-3" />Выполнено</Badge>;
-    if (s === "failed") return <Badge variant="destructive" className="gap-1"><XCircle className="w-3 h-3" />Ошибка</Badge>;
-    return <Badge variant="secondary" className="gap-1"><Clock className="w-3 h-3" />Ожидание</Badge>;
+    if (s === "fulfilled") return <Badge className="gap-1"><CheckCircle2 className="w-3 h-3" />{t("Выполнено", "Completed")}</Badge>;
+    if (s === "failed") return <Badge variant="destructive" className="gap-1"><XCircle className="w-3 h-3" />{t("Ошибка", "Error")}</Badge>;
+    return <Badge variant="secondary" className="gap-1"><Clock className="w-3 h-3" />{t("Ожидание", "Waiting")}</Badge>;
   };
 
-  const typeLabel = (t: string) => t === "photo" ? "📷 Фото" : t === "audio" ? "🎙 Звук" : "📍 Локация";
+  const typeLabel = (type: string) => type === "photo" ? t("📷 Фото", "📷 Photo") : type === "audio" ? t("🎙 Звук", "🎙 Audio") : t("📍 Локация", "📍 Location");
 
   const renderAi = (a?: AiAnalysis) => {
     if (!a) return null;
@@ -177,10 +179,10 @@ export function MonitoringPanel({ childId, childName }: Props) {
           ) : (
             <ShieldAlert className="w-3.5 h-3.5 text-destructive" />
           )}
-          ИИ-анализ
+          {t("ИИ-анализ", "AI analysis")}
           {typeof score === "number" && (
             <Badge variant={safe ? "secondary" : "destructive"} className="ml-auto">
-              Безопасность: {score}/5
+              {t("Безопасность:", "Safety:")} {score}/5
             </Badge>
           )}
         </div>
@@ -199,57 +201,57 @@ export function MonitoringPanel({ childId, childName }: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Удалённая проверка · {childName}</span>
+          <span>{t("Удалённая проверка ·", "Remote check ·")} {childName}</span>
           <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Ребёнок получит уведомление о проверке — никакой скрытой слежки.
+          {t("Ребёнок получит уведомление о проверке — никакой скрытой слежки.", "Your child will get a notification about the request.")}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-3 gap-2">
           <Button onClick={() => createRequest("photo")} disabled={creating !== null} variant="outline" className="gap-1">
             {creating === "photo" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-            Фото
+            {t("Фото", "Photo")}
           </Button>
           <Button onClick={() => createRequest("audio")} disabled={creating !== null} variant="outline" className="gap-1">
             {creating === "audio" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
-            Звук
+            {t("Звук", "Audio")}
           </Button>
           <Button onClick={() => createRequest("location")} disabled={creating !== null} variant="outline" className="gap-1">
             {creating === "location" ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-            Локация
+            {t("Локация", "Location")}
           </Button>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Фильтр:</span>
+          <span className="text-xs text-muted-foreground">{t("Фильтр:", "Filter:")}</span>
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
             <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Все типы</SelectItem>
-              <SelectItem value="photo">📷 Фото</SelectItem>
-              <SelectItem value="audio">🎙 Звук</SelectItem>
-              <SelectItem value="location">📍 Локация</SelectItem>
+              <SelectItem value="all">{t("Все типы", "All types")}</SelectItem>
+              <SelectItem value="photo">{t("📷 Фото", "📷 Photo")}</SelectItem>
+              <SelectItem value="audio">{t("🎙 Звук", "🎙 Audio")}</SelectItem>
+              <SelectItem value="location">{t("📍 Локация", "📍 Location")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
             <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Все статусы</SelectItem>
-              <SelectItem value="pending">Ожидание</SelectItem>
-              <SelectItem value="fulfilled">Выполнено</SelectItem>
-              <SelectItem value="failed">Ошибка</SelectItem>
+              <SelectItem value="all">{t("Все статусы", "All statuses")}</SelectItem>
+              <SelectItem value="pending">{t("Ожидание", "Waiting")}</SelectItem>
+              <SelectItem value="fulfilled">{t("Выполнено", "Completed")}</SelectItem>
+              <SelectItem value="failed">{t("Ошибка", "Error")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">История запросов</h4>
+          <h4 className="text-sm font-medium">{t("История запросов", "Request history")}</h4>
           {requests.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">Запросов пока нет</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">{t("Запросов пока нет", "No requests yet")}</p>
           ) : (
             requests.map((r) => {
               const ai = r.result_data?.ai_analysis;
@@ -277,7 +279,7 @@ export function MonitoringPanel({ childId, childName }: Props) {
                           target="_blank" rel="noopener noreferrer"
                           className="text-xs text-primary inline-flex items-center gap-1"
                         >
-                          На карте <ExternalLink className="w-3 h-3" />
+                          {t("На карте", "On the map")} <ExternalLink className="w-3 h-3" />
                         </a>
                       )}
                       {r.signed_url && r.request_type === "photo" && (
@@ -299,7 +301,7 @@ export function MonitoringPanel({ childId, childName }: Props) {
                           {busyId === r.id
                             ? <Loader2 className="w-3 h-3 animate-spin" />
                             : <Ban className="w-3 h-3" />}
-                          <span className="ml-1 text-xs">Отменить</span>
+                          <span className="ml-1 text-xs">{t("Отменить", "Cancel")}</span>
                         </Button>
                       )}
 
@@ -311,7 +313,7 @@ export function MonitoringPanel({ childId, childName }: Props) {
                           className="h-7 px-2"
                         >
                           <Repeat className="w-3 h-3" />
-                          <span className="ml-1 text-xs">Повторить</span>
+                          <span className="ml-1 text-xs">{t("Повторить", "Try again")}</span>
                         </Button>
                       )}
 
@@ -325,7 +327,7 @@ export function MonitoringPanel({ childId, childName }: Props) {
                           {busyId === r.id
                             ? <Loader2 className="w-3 h-3 animate-spin" />
                             : <Sparkles className="w-3 h-3 text-primary" />}
-                          <span className="ml-1 text-xs">ИИ-анализ</span>
+                          <span className="ml-1 text-xs">{t("ИИ-анализ", "AI analysis")}</span>
                         </Button>
                       )}
                     </div>

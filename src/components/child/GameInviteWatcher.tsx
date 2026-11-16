@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,7 @@ interface PendingGame {
  * plus polling so an invite is never missed.
  */
 export function GameInviteWatcher() {
+  const { t, label } = useLanguage();
   const { user } = useAuth();
   const { isChild } = useUserRole();
   const navigate = useNavigate();
@@ -96,16 +98,16 @@ export function GameInviteWatcher() {
           <Gamepad2 className="h-5 w-5 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">Тебя зовут играть! 🎮</p>
+          <p className="truncate text-sm font-bold">{t("Тебя зовут играть! 🎮", "You’re invited to play! 🎮")}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {GAME_NAMES[game.game_type] || "Игра"}
+            {label(GAME_NAMES[game.game_type]) || t("Игра", "Game")}
           </p>
         </div>
         <Button size="sm" onClick={() => navigate(`/games/${game.id}`)}>
-          Играть
+          {t("Играть", "Play")}
         </Button>
         <button
-          aria-label="Скрыть"
+          aria-label={t("Скрыть", "Hide")}
           className="text-muted-foreground hover:text-foreground"
           onClick={() => dismiss(game.id)}
         >

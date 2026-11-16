@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ interface CreateChildFormProps {
 }
 
 export const CreateChildForm = ({ onSubmit }: CreateChildFormProps) => {
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,15 +31,15 @@ export const CreateChildForm = ({ onSubmit }: CreateChildFormProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Новый аккаунт ребёнка</CardTitle>
+        <CardTitle className="text-lg">{t("Новый аккаунт ребёнка", "New child account")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="childName">Имя ребёнка</Label>
+            <Label htmlFor="childName">{t("Имя ребёнка", "Child’s name")}</Label>
             <Input
               id="childName"
-              placeholder="Введите имя"
+              placeholder={t("Введите имя", "Enter your name")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -45,7 +47,7 @@ export const CreateChildForm = ({ onSubmit }: CreateChildFormProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label>Выберите аватар</Label>
+            <Label>{t("Выберите аватар", "Choose an avatar")}</Label>
             <div className="grid grid-cols-6 gap-2">
               {AVATARS.map((avatar) => (
                 <button
@@ -65,7 +67,7 @@ export const CreateChildForm = ({ onSubmit }: CreateChildFormProps) => {
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting || !name.trim()}>
-            {isSubmitting ? "Создание..." : "Создать аккаунт"}
+            {isSubmitting ? t("Создание...", "Creating…") : t("Создать аккаунт", "Create account")}
           </Button>
         </form>
       </CardContent>

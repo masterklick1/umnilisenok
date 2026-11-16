@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useVirtualHome, UserRoomItem } from "@/hooks/useVirtualHome";
@@ -11,6 +12,7 @@ const GOLD = ["border-yellow-400", "border-amber-400", "border-yellow-500"];
 const RAINBOW = ["border-red-400", "border-sky-400", "border-violet-400"];
 
 export const RoomView = () => {
+  const { t, label } = useLanguage();
   const { userPet, userRoomItems, loading } = useVirtualHome();
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [zoom, setZoom] = useState<Drawing | null>(null);
@@ -52,19 +54,19 @@ export const RoomView = () => {
               <p className="font-bold text-xs sm:text-sm text-gray-800">{userPet.pet_name}</p>
               <div className="flex items-center gap-1 text-[10px] text-rose-500 font-semibold">
                 <Heart className="w-3 h-3 fill-rose-500" />
-                <span>{userPet.happiness}% счастья</span>
+                <span>{userPet.happiness}{t("% счастья", "% happiness")}</span>
               </div>
             </div>
           </div>
         ) : (
           <div className="bg-amber-100/80 text-amber-800 text-xs font-medium px-3 py-1.5 rounded-full border border-amber-200">
-            Заведите питомца в магазине! 🐾
+            {t("Заведите питомца в магазине! 🐾", "Adopt a pet in the shop! 🐾")}
           </div>
         )}
 
         <div className="flex items-center gap-1 text-xs text-indigo-600 bg-indigo-100/80 px-3 py-1.5 rounded-full font-medium">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Предметов: {userRoomItems.length}</span>
+          <span>{t("Предметов:", "Items:")} {userRoomItems.length}</span>
         </div>
       </div>
 
@@ -76,20 +78,20 @@ export const RoomView = () => {
               key={d.id}
               onClick={() => setZoom(zoom?.id === d.id ? null : d)}
               className={`bg-white p-1 border-[6px] ${frames[i % 3]} ${frames !== FRAME_COLORS ? "border-8 shadow-lg" : ""} rounded-sm shadow-md transition-transform hover:scale-105 ${i % 2 ? "rotate-2" : "-rotate-2"}`}
-              aria-label={d.title || "Рисунок"}
+              aria-label={d.title || t("Рисунок", "Drawing")}
             >
-              <img src={d.image_data} alt={d.title || "Рисунок"} className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
+              <img src={d.image_data} alt={d.title || t("Рисунок", "Drawing")} className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
             </button>
           ))
         ) : (
           <div className="border-4 border-dashed border-amber-300 rounded-sm px-3 py-2 text-[11px] text-amber-700 bg-white/50">
-            🖼️ Нарисуй картину в «Творчестве» — она повиснет здесь!
+            {t("🖼️ Нарисуй картину в «Творчестве» — она повиснет здесь!", "🖼️ Save a picture in Arts and crafts to hang it here!")}
           </div>
         )}
       </div>
       {zoom && (
         <button onClick={() => setZoom(null)} className="relative z-20 mx-auto mt-3 block bg-white p-2 border-8 border-amber-700 rounded shadow-xl">
-          <img src={zoom.image_data} alt={zoom.title || "Рисунок"} className="max-h-64 object-contain" />
+          <img src={zoom.image_data} alt={zoom.title || t("Рисунок", "Drawing")} className="max-h-64 object-contain" />
         </button>
       )}
 
@@ -100,20 +102,20 @@ export const RoomView = () => {
             <div className={`${getPetStage(userPet.adopted_at).scale}`}><div className="text-8xl sm:text-9xl filter drop-shadow-xl transition-transform hover:scale-110 duration-300 animate-bounce-gentle">
               {userPet.pets?.icon || "🐾"}
             </div></div>
-            <p className="text-center text-xs font-bold text-indigo-700 mt-1">{getPetStage(userPet.adopted_at).label}</p>
+            <p className="text-center text-xs font-bold text-indigo-700 mt-1">{label(getPetStage(userPet.adopted_at).label)}</p>
             <div className="w-24 h-4 bg-black/10 rounded-full blur-sm mx-auto mt-2" />
           </div>
         ) : (
           <div className="text-center py-10">
             <p className="text-4xl mb-2">🏠</p>
-            <p className="text-gray-500 text-sm">Ваша комната пока пуста</p>
+            <p className="text-gray-500 text-sm">{t("Ваша комната пока пуста", "Your room is empty")}</p>
           </div>
         )}
       </div>
 
       {/* Нижняя часть комнаты: Мебель и предметы */}
       <div className="relative z-10 border-t border-indigo-100/60 pt-4">
-        <p className="text-xs font-semibold text-gray-500 mb-2">Мебель в комнате:</p>
+        <p className="text-xs font-semibold text-gray-500 mb-2">{t("Мебель в комнате:", "Furniture in the room:")}</p>
         {furniture.length > 0 ? (
           <div className="flex items-center gap-3 overflow-x-auto pb-2">
             {furniture.map((item: UserRoomItem, idx: number) => (
@@ -123,14 +125,14 @@ export const RoomView = () => {
               >
                 <span className="text-3xl">{item.room_items?.icon || "📦"}</span>
                 <span className="text-[10px] font-medium text-gray-600 mt-1 truncate max-w-[60px]">
-                  {item.room_items?.name}
+                  {label(item.room_items?.name)}
                 </span>
               </Card>
             ))}
           </div>
         ) : (
           <div className="text-xs text-gray-400 italic bg-white/40 p-3 rounded-xl border border-dashed border-gray-300 text-center">
-            Купите мебель в магазине, чтобы украсить комнату! ✨
+            {t("Купите мебель в магазине, чтобы украсить комнату! ✨", "Get furniture from the shop to decorate your room! ✨")}
           </div>
         )}
       </div>

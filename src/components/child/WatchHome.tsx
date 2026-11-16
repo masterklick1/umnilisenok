@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { SOSButton } from "@/components/SOSButton";
 import type { LocationTrackerStatus } from "@/hooks/useLocationTracker";
@@ -14,6 +15,7 @@ const MONTHS = [
  * Уроки и игры на часах не показываются — родитель следит из своего кабинета.
  */
 export const WatchHome = ({ childName }: { childName: string }) => {
+  const { t, language } = useLanguage();
   const [status, setStatus] = useState<LocationTrackerStatus | null>(null);
   const [now, setNow] = useState(new Date());
 
@@ -35,7 +37,9 @@ export const WatchHome = ({ childName }: { childName: string }) => {
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
   const ss = String(now.getSeconds()).padStart(2, "0");
-  const dateLine = `${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}`;
+  const dateLine = language === "en" ? now.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" }) : `${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}`;
+
+  const sentTime = lastSent?.toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-primary/20 text-white flex flex-col items-center justify-between py-5 px-3 select-none overflow-hidden">
@@ -65,15 +69,15 @@ export const WatchHome = ({ childName }: { childName: string }) => {
         </div>
         <div className="text-[11px] text-white/70 text-center leading-tight max-w-[200px]">
           {trackingOk
-            ? `Защита включена · «где я» отправлено в ${lastSent!.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`
-            : "Ищем местоположение…"}
+            ? t(`Защита включена · «где я» отправлено в ${sentTime}`, `Safety on · Location sent at ${sentTime}`)
+            : t("Ищем местоположение…", "Finding your location…")}
         </div>
       </div>
 
       {/* Большой SOS по центру */}
       <div className="flex flex-col items-center gap-2 pb-2">
         <SOSButton big />
-        <div className="text-[11px] text-white/50">Красная кнопка — позвать родителей</div>
+        <div className="text-[11px] text-white/50">{t("Красная кнопка — позвать родителей", "Tap the red button to ask your parents for help")}</div>
         <button
           type="button"
           onClick={() => {
@@ -82,7 +86,7 @@ export const WatchHome = ({ childName }: { childName: string }) => {
           }}
           className="mt-1 rounded-full border border-white/30 px-3 py-1 text-[11px] text-white/80"
         >
-          Уроки и игры
+          {t("Уроки и игры", "Lessons and games")}
         </button>
       </div>
     </div>

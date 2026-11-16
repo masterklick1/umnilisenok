@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ const generateCode = () => {
 };
 
 export function InvitePanel() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -59,7 +61,7 @@ export function InvitePanel() {
       .single();
     setCreating(false);
     if (error) {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({ title: t("Ошибка", "Error"), description: error.message, variant: "destructive" });
       return;
     }
     setChildName("");
@@ -77,16 +79,16 @@ export function InvitePanel() {
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({ title: `${label} скопирован`, duration: 1500 });
+    toast({ title: t(`${label} скопирован`, `${label} copied`), duration: 1500 });
   };
 
   const share = async (inv: Invite) => {
     const url = joinUrl(inv.code);
-    const text = `Открой ссылку на телефоне ${inv.child_first_name} и зарегистрируй детский аккаунт: ${url}\n\nИли введи код вручную: ${inv.code}`;
+    const text = t(`Открой ссылку на телефоне ${inv.child_first_name} и зарегистрируй детский аккаунт: ${url}\n\nИли введи код вручную: ${inv.code}`, `Open this link on ${inv.child_first_name}’s phone to set up their account: ${url}\n\nYou can also enter this code manually: ${inv.code}`);
     if (navigator.share) {
-      try { await navigator.share({ title: "Привязка устройства", text, url }); } catch { /* user cancelled */ }
+      try { await navigator.share({ title: t("Привязка устройства", "Link a device"), text, url }); } catch { /* user cancelled */ }
     } else {
-      copy(text, "Сообщение");
+      copy(text, t("Сообщение", "Message"));
     }
   };
 
@@ -96,36 +98,34 @@ export function InvitePanel() {
     <div className="space-y-4">
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="py-4 px-4">
-          <p className="text-sm font-medium">Детское приложение на телефоне ребёнка</p>
+          <p className="text-sm font-medium">{t("Детское приложение на телефоне ребёнка", "The app on your child’s phone")}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Создайте код или QR — ребёнок откроет приложение на своём телефоне («Я ребёнок» → скан или
-            код). Вы остаётесь родителем здесь и видите его действия во вкладке «Зеркало».
+            {t("Создайте код или QR — ребёнок откроет приложение на своём телефоне («Я ребёнок» → скан или код). Вы остаётесь родителем здесь и видите его действия во вкладке «Зеркало».", "Create a code or QR code. On their phone, your child selects “I’m a child” and enters or scans the code. Check their activity in Monitor.")}
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Создать код для телефона ребёнка</CardTitle>
+          <CardTitle className="text-base">{t("Создать код для телефона ребёнка", "Create a code for your child’s phone")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="childName">Имя ребёнка</Label>
+            <Label htmlFor="childName">{t("Имя ребёнка", "Child’s name")}</Label>
             <div className="flex gap-2">
               <Input
                 id="childName"
-                placeholder="Например, Маша"
+                placeholder={t("Например, Маша", "For example, Alex")}
                 value={childName}
                 onChange={(e) => setChildName(e.target.value)}
               />
               <Button onClick={create} disabled={creating || !childName.trim()}>
-                Создать код
+                {t("Создать код", "Create code")}
               </Button>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            На телефоне ребёнка: «Я ребёнок» → скан QR или ввод 6-значного кода. Email и пароль не
-            нужны — аккаунт создаётся автоматически.
+            {t("На телефоне ребёнка: «Я ребёнок» → скан QR или ввод 6-значного кода. Email и пароль не нужны — аккаунт создаётся автоматически.", "On the child’s phone, select “I’m a child,” then scan the QR code or enter the six-digit code. The account is created automatically.")}
           </p>
         </CardContent>
       </Card>
@@ -134,7 +134,7 @@ export function InvitePanel() {
         <Card className="border-primary">
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between">
-              <span>Приглашение для {activeInvite.child_first_name}</span>
+              <span>{t("Приглашение для", "Invitation for")} {activeInvite.child_first_name}</span>
               <Button variant="ghost" size="icon" onClick={() => setActiveInvite(null)}>
                 <RefreshCw className="w-4 h-4" />
               </Button>
@@ -146,24 +146,24 @@ export function InvitePanel() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase text-muted-foreground">Код</Label>
+              <Label className="text-xs uppercase text-muted-foreground">{t("Код", "Linking code")}</Label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 text-3xl font-mono font-bold tracking-widest text-center bg-muted py-3 rounded">
                   {activeInvite.code}
                 </div>
-                <Button variant="outline" size="icon" onClick={() => copy(activeInvite.code, "Код")}>
+                <Button variant="outline" size="icon" onClick={() => copy(activeInvite.code, t("Код", "Linking code"))}>
                   <Copy className="w-4 h-4" />
                 </Button>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase text-muted-foreground">Ссылка</Label>
+              <Label className="text-xs uppercase text-muted-foreground">{t("Ссылка", "Link")}</Label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 text-xs bg-muted py-2 px-3 rounded truncate">
                   {joinUrl(activeInvite.code)}
                 </div>
-                <Button variant="outline" size="icon" onClick={() => copy(joinUrl(activeInvite.code), "Ссылка")}>
+                <Button variant="outline" size="icon" onClick={() => copy(joinUrl(activeInvite.code), t("Ссылка", "Link"))}>
                   <Copy className="w-4 h-4" />
                 </Button>
                 <Button variant="outline" size="icon" onClick={() => share(activeInvite)}>
@@ -173,8 +173,7 @@ export function InvitePanel() {
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Код постоянный — сохраните его. По нему ребёнок сможет войти в свой аккаунт снова,
-              если приложение удалят и установят заново.
+              {t("Код постоянный — сохраните его. По нему ребёнок сможет войти в свой аккаунт снова, если приложение удалят и установят заново.", "Keep this permanent code so your child can sign in again after reinstalling the app.")}
             </p>
           </CardContent>
         </Card>
@@ -183,7 +182,7 @@ export function InvitePanel() {
       {invites.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Коды детей (постоянные)</CardTitle>
+            <CardTitle className="text-base">{t("Коды детей (постоянные)", "Permanent child codes")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {invites.map((inv) => (
@@ -194,12 +193,12 @@ export function InvitePanel() {
                 </div>
                 <div>
                   {inv.used_at ? (
-                    <Badge variant="secondary">Аккаунт создан</Badge>
+                    <Badge variant="secondary">{t("Аккаунт создан", "Account created")}</Badge>
                   ) : (
-                    <Badge>Ждёт входа</Badge>
+                    <Badge>{t("Ждёт входа", "Waiting for sign-in")}</Badge>
                   )}
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => copy(inv.code, "Код")}>
+                <Button variant="ghost" size="icon" onClick={() => copy(inv.code, t("Код", "Linking code"))}>
                   <Copy className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => setActiveInvite(inv)}>

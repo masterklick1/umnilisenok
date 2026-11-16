@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,7 +24,7 @@ type Topic = {
   items: Item[];
 };
 
-const itemSound = (item: Item) => item.sound || `Это ${item.name}. ${item.description}`;
+
 
 const topics: Topic[] = [
   {
@@ -307,7 +308,12 @@ const generateQuizOptions = (correctItem: Item, allItems: Item[]): Item[] => {
 };
 
 export default function WorldPage() {
+  const { t, label, language } = useLanguage();
   const navigate = useNavigate();
+  const speakLocale = (text: string) => speak(text, language === "en" ? "en-US" : "ru-RU");
+  const itemSound = (item: Item) => language === "en"
+    ? `${label(item.name)}. ${label(item.description)}.`
+    : item.sound || `Это ${item.name}. ${item.description}`;
   const { toast } = useToast();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
   const { addStars } = useUserProgress();
@@ -384,19 +390,19 @@ export default function WorldPage() {
     
     if (correct) {
       setScore(score + 1);
-      speak("Правильно! Молодец!");
+      speakLocale(t("Правильно! Молодец!", "That’s right! Well done!"));
       addStars(1, "world");
       logCorrectAnswer({ section: "world", topic: selectedTopic.id, item: selected.name });
       toast({
-        title: "Правильно! 🎉",
-        description: "Отличная работа! +1 ⭐",
+        title: t("Правильно! 🎉", "That’s right! 🎉"),
+        description: t("Отличная работа! +1 ⭐", "Great job! +1 ⭐"),
       });
     } else {
-      speak("Не правильно. Ещё раз подумай!");
+      speakLocale(t("Не правильно. Ещё раз подумай!", "Think again!"));
       logWrongAnswer({ section: "world", topic: selectedTopic.id, expected: selectedTopic.items[currentIndex].name, got: selected.name });
       toast({
-        title: "Попробуй ещё раз! 💪",
-        description: `Правильный ответ: ${selectedTopic.items[currentIndex].name}`,
+        title: t("Попробуй ещё раз! 💪", "Try again! 💪"),
+        description: t(`Правильный ответ: ${selectedTopic.items[currentIndex].name}`, `Correct answer: ${label(selectedTopic.items[currentIndex].name)}`),
         variant: "destructive",
       });
     }
@@ -435,16 +441,16 @@ export default function WorldPage() {
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Назад
+          {t("Назад", "Back")}
         </Button>
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">🌍</div>
           <h1 className="text-4xl font-extrabold text-gradient mb-2">
-            Окружающий мир
+            {t("Окружающий мир", "World around us")}
           </h1>
           <p className="text-lg text-muted-foreground">
-            Познаём мир вокруг нас!
+            {t("Познаём мир вокруг нас!", "Discover the world around you!")}
           </p>
         </div>
 
@@ -459,8 +465,8 @@ export default function WorldPage() {
               >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
                 <div className="relative z-10 text-5xl sm:text-6xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{topic.emoji}</div>
-                <h3 className="relative z-10 text-xl sm:text-2xl font-extrabold">{topic.name}</h3>
-                <p className="relative z-10 text-muted-foreground mt-1 text-sm font-medium">{topic.items.length} карточек</p>
+                <h3 className="relative z-10 text-xl sm:text-2xl font-extrabold">{label(topic.name)}</h3>
+                <p className="relative z-10 text-muted-foreground mt-1 text-sm font-medium">{topic.items.length} {t("карточек", "cards")}</p>
               </Card>
             ))}
           </div>
@@ -469,7 +475,7 @@ export default function WorldPage() {
         {selectedTopic && !mode && (
           <div className="space-y-6">
             <Button variant="outline" onClick={resetToTopics} className="mb-4">
-              ← Выбрать тему
+              {t("← Выбрать тему", "← Choose a topic")}
             </Button>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -479,8 +485,8 @@ export default function WorldPage() {
               >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
                 <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">📖</div>
-                <h3 className="relative z-10 text-2xl font-extrabold mb-2">Учить</h3>
-                <p className="relative z-10 text-muted-foreground">Познакомься с темой "{selectedTopic.name}"</p>
+                <h3 className="relative z-10 text-2xl font-extrabold mb-2">{t("Учить", "Learn")}</h3>
+                <p className="relative z-10 text-muted-foreground">{t(`Познакомься с темой «${selectedTopic.name}»`, `Explore ${label(selectedTopic.name)}`)}</p>
               </Card>
 
               <Card 
@@ -490,8 +496,8 @@ export default function WorldPage() {
               >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
                 <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">🎯</div>
-                <h3 className="relative z-10 text-2xl font-extrabold mb-2">Викторина</h3>
-                <p className="relative z-10 text-muted-foreground">Угадай предмет по картинке</p>
+                <h3 className="relative z-10 text-2xl font-extrabold mb-2">{t("Викторина", "Quiz")}</h3>
+                <p className="relative z-10 text-muted-foreground">{t("Угадай предмет по картинке", "Identify objects in pictures")}</p>
               </Card>
 
               <Card 
@@ -501,8 +507,8 @@ export default function WorldPage() {
               >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
                 <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">🔎</div>
-                <h3 className="relative z-10 text-2xl font-extrabold mb-2">Угадай по описанию</h3>
-                <p className="relative z-10 text-muted-foreground">Выбери по подсказке</p>
+                <h3 className="relative z-10 text-2xl font-extrabold mb-2">{t("Угадай по описанию", "Guess from the clue")}</h3>
+                <p className="relative z-10 text-muted-foreground">{t("Выбери по подсказке", "Choose the answer from the clue")}</p>
               </Card>
             </div>
 
@@ -514,8 +520,8 @@ export default function WorldPage() {
               >
                 <Volume2 className="h-7 w-7 shrink-0" aria-hidden="true" />
                 <span className="min-w-0 whitespace-normal">
-                  <span className="block text-lg font-bold">Послушай и покажи</span>
-                  <span className="block text-sm font-normal">Найди игрушку нужного цвета по просьбе Лисёнка</span>
+                  <span className="block text-lg font-bold">{t("Послушай и покажи", "Listen and point")}</span>
+                  <span className="block text-sm font-normal">{t("Найди игрушку нужного цвета по просьбе Лисёнка", "Find the color Little Fox asks for")}</span>
                 </span>
               </Button>
             )}
@@ -528,10 +534,10 @@ export default function WorldPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div className="text-lg font-semibold">
-                {currentIndex + 1} из {selectedTopic!.items.length}
+                {currentIndex + 1} {t("из", "of")} {selectedTopic!.items.length}
               </div>
               <Button variant="outline" onClick={resetMode}>
-                Выбрать режим
+                {t("Выбрать режим", "Choose an activity")}
               </Button>
             </div>
 
@@ -541,23 +547,23 @@ export default function WorldPage() {
               <Button
                 size="lg"
                 variant="secondary"
-                onClick={() => speak(itemSound(currentItem))}
+                onClick={() => speakLocale(itemSound(currentItem))}
                 className="mb-8"
               >
                 <Volume2 className="mr-2 h-5 w-5" />
-                Послушать
+                {t("Послушать", "Listen")}
               </Button>
 
-              <div className="text-3xl font-bold mb-4 text-primary">{currentItem.name}</div>
-              <div className="text-xl text-muted-foreground">{currentItem.description}</div>
+              <div className="text-3xl font-bold mb-4 text-primary">{label(currentItem.name)}</div>
+              <div className="text-xl text-muted-foreground">{label(currentItem.description)}</div>
             </Card>
 
             <div className="flex gap-4 justify-center">
               <Button size="lg" onClick={prevItem} variant="outline">
-                ← Предыдущий
+                {t("← Предыдущий", "← Previous")}
               </Button>
               <Button size="lg" onClick={nextItem}>
-                Следующий →
+                {t("Следующий →", "Next →")}
               </Button>
             </div>
           </div>
@@ -567,16 +573,16 @@ export default function WorldPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow">
               <div className="text-lg font-semibold">
-                Счёт: {score} / {total}
+                {t("Счёт:", "Score:")} {score} / {total}
               </div>
               <Button variant="outline" onClick={resetMode}>
-                Выбрать режим
+                {t("Выбрать режим", "Choose an activity")}
               </Button>
             </div>
 
             <Card className="p-8 text-center">
               <div className="text-3xl mb-6 text-muted-foreground">
-                Что это?
+                {t("Что это?", "What is it?")}
               </div>
               
               <div className="text-8xl mb-8">{currentItem.emoji}</div>
@@ -594,7 +600,7 @@ export default function WorldPage() {
                         : ""
                     }`}
                   >
-                    {option.name}
+                    {label(option.name)}
                   </Button>
                 ))}
               </div>
@@ -608,7 +614,7 @@ export default function WorldPage() {
                   {showResult ? "🎉" : "💪"}
                 </div>
                 <div className="text-2xl font-bold">
-                  {showResult ? "Правильно!" : "Попробуй ещё!"}
+                  {showResult ? t("Правильно!", "That’s right!") : t("Попробуй ещё!", "Try again!")}
                 </div>
               </div>
             )}
@@ -619,18 +625,18 @@ export default function WorldPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow">
               <div className="text-lg font-semibold">
-                Счёт: {score} / {total}
+                {t("Счёт:", "Score:")} {score} / {total}
               </div>
               <Button variant="outline" onClick={resetMode}>
-                Выбрать режим
+                {t("Выбрать режим", "Choose an activity")}
               </Button>
             </div>
 
             <Card className="p-8 text-center">
-              <div className="text-2xl mb-4 text-muted-foreground">Кто или что это?</div>
-              <div className="text-2xl font-semibold mb-6">«{currentItem.description}»</div>
-              <Button size="sm" variant="outline" className="mb-8" onClick={() => speak(itemSound(currentItem))}>
-                <Volume2 className="mr-2 h-4 w-4" /> Послушать
+              <div className="text-2xl mb-4 text-muted-foreground">{t("Кто или что это?", "Who or what is it?")}</div>
+              <div className="text-2xl font-semibold mb-6">«{label(currentItem.description)}»</div>
+              <Button size="sm" variant="outline" className="mb-8" onClick={() => speakLocale(itemSound(currentItem))}>
+                <Volume2 className="mr-2 h-4 w-4" /> {t("Послушать", "Listen")}
               </Button>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
@@ -660,7 +666,7 @@ export default function WorldPage() {
                   {showResult ? "🎉" : "💪"}
                 </div>
                 <div className="text-2xl font-bold">
-                  {showResult ? "Правильно!" : "Попробуй ещё!"}
+                  {showResult ? t("Правильно!", "That’s right!") : t("Попробуй ещё!", "Try again!")}
                 </div>
               </div>
             )}

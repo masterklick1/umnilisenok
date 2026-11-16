@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export const PlaceAddressSearch = ({
   onSelectPlace,
   onManualCurrent,
 }: PlaceAddressSearchProps) => {
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [activePreset, setActivePreset] = useState<GeofencePreset | null>(null);
   const [searching, setSearching] = useState(false);
@@ -91,7 +93,7 @@ export const PlaceAddressSearch = ({
 
       if (!found.length) {
         setSearchError(
-          "Адрес не найден. Попробуйте другой запрос или укажите вручную — где ребёнок сейчас.",
+          t("Адрес не найден. Попробуйте другой запрос или укажите вручную — где ребёнок сейчас.", "Address not found. Try a different search or enter your child’s location manually."),
         );
         return;
       }
@@ -150,7 +152,7 @@ export const PlaceAddressSearch = ({
     const details = await getPlaceDetails(s.placeId);
     setSearching(false);
     if (!details) {
-      setSearchError("Не удалось получить детали адреса.");
+      setSearchError(t("Не удалось получить детали адреса.", "Couldn’t get the address details."));
       return;
     }
     pickResult(details, true);
@@ -170,12 +172,10 @@ export const PlaceAddressSearch = ({
 
       <div>
         <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-          Умный поиск места
+          {t("Умный поиск места", "Find a place")}
         </Label>
         <p className="text-xs text-muted-foreground mt-1">
-          Нажмите «Садик» или «Школа» — подберём адрес. Каждое сохранённое место запоминается
-          навсегда: при входе и выходе придёт уведомление («в школе», «вышел», «идёт домой»).
-          Радиус каждого места настраивается отдельно ниже.
+          {t("Нажмите «Садик» или «Школа» — подберём адрес. Каждое сохранённое место запоминается навсегда: при входе и выходе придёт уведомление («в школе», «вышел», «идёт домой»). Радиус каждого места настраивается отдельно ниже.", "Select Preschool or School to look up the address. You’ll get alerts when your child enters or leaves a saved place. Adjust each place’s radius below.")}
         </p>
       </div>
 
@@ -202,7 +202,7 @@ export const PlaceAddressSearch = ({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Адрес или название: Садик №5, ул. Ленина 10…"
+              placeholder={t("Адрес или название: Садик №5, ул. Ленина 10…", "Address or place name")}
               className="pl-9"
               disabled={disabled || searching}
               onKeyDown={(e) => {
@@ -216,7 +216,7 @@ export const PlaceAddressSearch = ({
             disabled={disabled || searching || !query.trim()}
             onClick={() => runSearch(query)}
           >
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Найти"}
+            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : t("Найти", "Search")}
           </Button>
         </div>
 
@@ -224,7 +224,7 @@ export const PlaceAddressSearch = ({
           <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border bg-popover shadow-md overflow-hidden">
             {suggesting && (
               <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
-                <Loader2 className="w-3 h-3 animate-spin" /> Поиск…
+                <Loader2 className="w-3 h-3 animate-spin" /> {t("Поиск…", "Searching…")}
               </div>
             )}
             {suggestions.map((s) => (
@@ -245,16 +245,14 @@ export const PlaceAddressSearch = ({
       </div>
 
       <p className="text-[10px] text-muted-foreground">
-        Подсказки Google при вводе адреса работают через защищённый сервер — без ограничений
-        браузера/устройства.
+        {t("Подсказки Google при вводе адреса работают через защищённый сервер — без ограничений браузера/устройства.", "Google address suggestions are provided by the app’s server.")}
       </p>
 
       {searchError && (
         <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs space-y-2">
           <p className="text-amber-900">{searchError}</p>
           <p className="text-amber-800">
-            Не нашли? Нажмите «Определить автоматически» или «Вручную» выше — координаты с GPS или
-            с карты Google.
+            {t("Не нашли? Нажмите «Определить автоматически» или «Вручную» выше — координаты с GPS или с карты Google.", "Can’t find it? Use “Find automatically” or enter coordinates from Google Maps.")}
           </p>
           {activePreset && (
             <Button
@@ -266,7 +264,7 @@ export const PlaceAddressSearch = ({
               onClick={() => onManualCurrent(activePreset)}
             >
               <MapPin className="w-4 h-4 mr-1" />
-              Зона = где {childName} сейчас ({activePreset.emoji} {activePreset.name})
+              {t("Зона = где", "Center the zone where")} {childName} {t("сейчас (", "is now (")}{activePreset.emoji} {activePreset.name})
             </Button>
           )}
         </div>
@@ -274,7 +272,7 @@ export const PlaceAddressSearch = ({
 
       {results.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Выберите адрес из списка</Label>
+          <Label className="text-xs text-muted-foreground">{t("Выберите адрес из списка", "Choose an address from the list")}</Label>
           {results.map((r) => (
             <div
               key={r.placeId}
@@ -292,7 +290,7 @@ export const PlaceAddressSearch = ({
                   disabled={disabled}
                   onClick={() => pickResult(r, false)}
                 >
-                  Выбрать
+                  {t("Выбрать", "Select")}
                 </Button>
                 <Button
                   type="button"
@@ -303,7 +301,7 @@ export const PlaceAddressSearch = ({
                   onClick={() => pickResult(r, true)}
                 >
                   <BookmarkPlus className="w-3 h-3" />
-                  Сохранить
+                  {t("Сохранить", "Save")}
                 </Button>
               </div>
             </div>

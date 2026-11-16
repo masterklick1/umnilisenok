@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Pet, RoomItem, UserPet, UserRoomItem } from "@/hooks/useVirtualHome";
@@ -18,6 +19,7 @@ interface Props {
 type Ach = { id: string; title: string; icon: string };
 
 export const AchievementRewards = ({ items, pets, owned, ownedPets, onClaim, onPetClaimed }: Props) => {
+  const { t, label } = useLanguage();
   const { toast } = useToast();
   const [achs, setAchs] = useState<Record<string, Ach>>({});
   const [mine, setMine] = useState<Set<string>>(new Set());
@@ -47,15 +49,15 @@ export const AchievementRewards = ({ items, pets, owned, ownedPets, onClaim, onP
     if (e.kind === "item") await onClaim(e.raw as RoomItem);
     else {
       const { data } = await supabase.rpc("claim_reward_pet", { _pet_id: e.id, _name: e.name });
-      if (data) { toast({ title: `Новый друг: ${e.name}! ${e.icon}` }); onPetClaimed(); }
-      else toast({ title: "Пока рано 🦊", variant: "destructive" });
+      if (data) { toast({ title: t(`Новый друг: ${label(e.name)}! ${e.icon}`, `A new friend: ${label(e.name)}! ${e.icon}`) }); onPetClaimed(); }
+      else toast({ title: t("Пока рано 🦊", "Keep going 🦊"), variant: "destructive" });
     }
     setBusy(null);
   };
 
   return (
     <div className="space-y-3">
-      <h3 className="font-bold">🏅 Редкие вещи за достижения</h3>
+      <h3 className="font-bold">{t("🏅 Редкие вещи за достижения", "🏅 Rare achievement rewards")}</h3>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {entries.map((e) => {
           const a = achs[e.ach];
@@ -63,17 +65,17 @@ export const AchievementRewards = ({ items, pets, owned, ownedPets, onClaim, onP
           return (
             <Card key={e.id} className="p-3 flex flex-col items-center gap-1 text-center">
               <div className={`text-5xl ${ready || e.owned ? "" : "grayscale opacity-50"}`}>{e.icon}</div>
-              <p className="font-bold text-sm">{e.name}</p>
+              <p className="font-bold text-sm">{label(e.name)}</p>
               <p className="text-[11px] text-muted-foreground">
-                {e.kind === "pet" ? "Редкий питомец" : e.isFrame ? "Рамки для рисунков" : "Мебель"}
+                {e.kind === "pet" ? t("Редкий питомец", "Rare pet") : e.isFrame ? t("Рамки для рисунков", "Picture frames") : t("Мебель", "Furniture")}
               </p>
-              <p className="text-xs">{a ? `${a.icon} «${a.title}»` : ""}</p>
+              <p className="text-xs">{a ? `${a.icon} «${label(a.title)}»` : ""}</p>
               {e.owned ? (
-                <Button size="sm" variant="secondary" disabled className="w-full gap-1"><Check className="w-4 h-4" /> Есть</Button>
+                <Button size="sm" variant="secondary" disabled className="w-full gap-1"><Check className="w-4 h-4" /> {t("Есть", "Owned")}</Button>
               ) : ready ? (
-                <Button size="sm" className="w-full" disabled={busy === e.id} onClick={() => claim(e)}>🎁 Забрать</Button>
+                <Button size="sm" className="w-full" disabled={busy === e.id} onClick={() => claim(e)}>{t("🎁 Забрать", "🎁 Claim")}</Button>
               ) : (
-                <Button size="sm" variant="outline" disabled className="w-full gap-1"><Lock className="w-4 h-4" /> Закрыто</Button>
+                <Button size="sm" variant="outline" disabled className="w-full gap-1"><Lock className="w-4 h-4" /> {t("Закрыто", "Locked")}</Button>
               )}
             </Card>
           );

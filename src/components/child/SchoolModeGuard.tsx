@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,6 +31,7 @@ const isSchoolTime = (start: string, end: string, now = new Date()): boolean => 
  * ребёнок видит экран «Время уроков». SOS и геолокация продолжают работать.
  */
 export const SchoolModeGuard = ({ children }: { children: ReactNode }) => {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { isChild } = useUserRole();
   const [blocked, setBlocked] = useState(false);
@@ -83,13 +85,13 @@ export const SchoolModeGuard = ({ children }: { children: ReactNode }) => {
   return (
     <div className="rounded-3xl border-2 border-primary/30 bg-card/95 p-8 text-center shadow-xl space-y-4">
       <div className="text-7xl">🏫</div>
-      <h2 className="text-2xl font-bold text-primary">Время уроков!</h2>
+      <h2 className="text-2xl font-bold text-primary">{t("Время уроков!", "School time!")}</h2>
       <p className="text-muted-foreground">
-        Сейчас школьное время — уроки и игры откроются после занятий
-        {endTime ? ` (в ${endTime.slice(0, 5)})` : ""}.
+        {t("Сейчас школьное время — уроки и игры откроются после занятий", "It’s school time. Lessons and games will reopen after class")}
+        {endTime ? t(` (в ${endTime.slice(0, 5)})`, ` (at ${endTime.slice(0, 5)})`) : ""}.
       </p>
       <p className="text-sm text-muted-foreground">
-        Кнопка SOS работает всегда — она внизу экрана.
+        {t("Кнопка SOS работает всегда — она внизу экрана.", "The SOS button at the bottom of the screen is always available.")}
       </p>
     </div>
   );

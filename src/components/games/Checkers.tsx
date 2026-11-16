@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useCallback } from "react";
 
 interface Piece {
@@ -25,6 +26,7 @@ export const Checkers = ({
   myId,
   opponentId,
 }: CheckersProps) => {
+  const { t } = useLanguage();
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
   const [validMoves, setValidMoves] = useState<[number, number][]>([]);
 
@@ -135,9 +137,9 @@ export const Checkers = ({
     <div className="flex flex-col items-center gap-4">
       <div className="text-center mb-2">
         <p className="text-sm text-muted-foreground">
-          Вы играете за:{" "}
+          {t("Вы играете за:", "You play as:")}{" "}
           <span className={`font-bold ${myColor === "red" ? "text-red-600" : "text-gray-800"}`}>
-            {myColor === "red" ? "🔴 Красные" : "⚫ Чёрные"}
+            {myColor === "red" ? t("🔴 Красные", "🔴 Red") : t("⚫ Чёрные", "⚫ Black")}
           </span>
         </p>
       </div>

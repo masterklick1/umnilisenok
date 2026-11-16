@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { PetQuizGame } from "./PetQuizGame";
 import { getPetStage, daysWord } from "@/lib/pet-growth";
 
 export const PetCare = () => {
+  const { t, label } = useLanguage();
   const {
     pets,
     userPet,
@@ -106,7 +108,7 @@ export const PetCare = () => {
             onClick={() => setShowAdoptNew(true)}
           >
             <Plus className="w-4 h-4" />
-            <span>Ещё питомец</span>
+            <span>{t("Ещё питомец", "Another pet")}</span>
           </Button>
         </div>
 
@@ -122,11 +124,11 @@ export const PetCare = () => {
                       <div className="animate-bounce-gentle">{userPet.pets?.icon || "🐾"}{st.key === "adult" && <span className="text-4xl align-top">👑</span>}</div>
                     </div>
                     <h2 className="text-2xl font-bold text-indigo-950 mb-1">{userPet.pet_name}</h2>
-                    <p className="text-muted-foreground text-sm">{userPet.pets?.species || userPet.pets?.name}</p>
+                    <p className="text-muted-foreground text-sm">{label(userPet.pets?.species || userPet.pets?.name)}</p>
                     <div className="mt-3 inline-flex flex-col items-center gap-1">
-                      <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm font-bold">{st.label}</span>
+                      <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm font-bold">{label(st.label)}</span>
                       <span className="text-xs text-muted-foreground">
-                        {st.next ? `Подрастёт через ${st.next} ${daysWord(st.next)}` : "Совсем взрослый — умеет всё! 🎉"}
+                        {st.next ? t(`Подрастёт через ${st.next} ${daysWord(st.next)}`, `Grows in ${st.next} ${st.next === 1 ? "day" : "days"}`) : t("Совсем взрослый — умеет всё! 🎉", "All grown up! 🎉")}
                       </span>
                       <div className="flex gap-1 text-lg">
                         <span>🍼</span><span className={st.key === "baby" ? "opacity-30" : ""}>🎒</span><span className={st.key === "adult" ? "" : "opacity-30"}>👑</span>
@@ -142,7 +144,7 @@ export const PetCare = () => {
               <Card className="p-4 shadow-sm border-rose-100">
                 <div className="flex items-center gap-3 mb-2">
                   <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
-                  <span className="font-semibold text-sm">Счастье</span>
+                  <span className="font-semibold text-sm">{t("Счастье", "Happiness")}</span>
                   <span className="ml-auto font-bold text-rose-600">{userPet.happiness}%</span>
                 </div>
                 <Progress value={userPet.happiness} className="h-2.5 bg-rose-100" />
@@ -151,7 +153,7 @@ export const PetCare = () => {
               <Card className="p-4 shadow-sm border-amber-100">
                 <div className="flex items-center gap-3 mb-2">
                   <Utensils className="w-5 h-5 text-amber-500" />
-                  <span className="font-semibold text-sm">Сытость</span>
+                  <span className="font-semibold text-sm">{t("Сытость", "Fullness")}</span>
                   <span className="ml-auto font-bold text-amber-600">{userPet.hunger}%</span>
                 </div>
                 <Progress value={userPet.hunger} className="h-2.5 bg-amber-100" />
@@ -160,7 +162,7 @@ export const PetCare = () => {
               <Card className="p-4 shadow-sm border-blue-100">
                 <div className="flex items-center gap-3 mb-2">
                   <Moon className="w-5 h-5 text-blue-500" />
-                  <span className="font-semibold text-sm">Энергия</span>
+                  <span className="font-semibold text-sm">{t("Энергия", "Energy")}</span>
                   <span className="ml-auto font-bold text-blue-600">{userPet.energy}%</span>
                 </div>
                 <Progress value={userPet.energy} className="h-2.5 bg-blue-100" />
@@ -176,7 +178,7 @@ export const PetCare = () => {
                 disabled={userPet.hunger >= 100 || userStars < 1}
               >
                 <Utensils className="w-6 h-6 text-amber-500" />
-                <span className="font-medium text-xs sm:text-sm">Покормить</span>
+                <span className="font-medium text-xs sm:text-sm">{t("Покормить", "Feed")}</span>
                 <span className="text-[10px] text-amber-600 font-bold">(1 ⭐)</span>
               </Button>
 
@@ -187,7 +189,7 @@ export const PetCare = () => {
                 className="h-20 flex flex-col gap-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
               >
                 <Gamepad2 className="w-6 h-6" />
-                <span className="font-medium text-xs sm:text-sm">Играть</span>
+                <span className="font-medium text-xs sm:text-sm">{t("Играть", "Play")}</span>
                 <span className="text-[10px] text-amber-200 font-bold">(1 🎟️)</span>
               </Button>
 
@@ -198,8 +200,8 @@ export const PetCare = () => {
                 disabled={userPet.energy >= 100}
               >
                 <Moon className="w-6 h-6 text-blue-500" />
-                <span className="font-medium text-xs sm:text-sm">Отдыхать</span>
-                <span className="text-[10px] text-gray-400">(бесплатно)</span>
+                <span className="font-medium text-xs sm:text-sm">{t("Отдыхать", "Rest")}</span>
+                <span className="text-[10px] text-gray-400">{t("(бесплатно)", "(free)")}</span>
               </Button>
             </div>
           </>
@@ -210,10 +212,10 @@ export const PetCare = () => {
           <DialogContent className="max-w-xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl">
-                <Gamepad2 className="w-6 h-6 text-indigo-600" /> Игровая комната
+                <Gamepad2 className="w-6 h-6 text-indigo-600" /> {t("Игровая комната", "Playroom")}
               </DialogTitle>
               <DialogDescription>
-                Выберите мини-игру для питомца! (Осталось билетов: {tickets} 🎟️)
+                {t("Выберите мини-игру для питомца! (Осталось билетов:", "Choose a game for your pet! (Tickets left:")} {tickets} 🎟️)
               </DialogDescription>
             </DialogHeader>
 
@@ -226,8 +228,8 @@ export const PetCare = () => {
                   <div className="p-3 bg-indigo-100 rounded-full text-indigo-600">
                     <Volume2 className="w-8 h-8" />
                   </div>
-                  <h3 className="font-bold text-lg">Учёный Питомец</h3>
-                  <p className="text-xs text-muted-foreground">Викторина с озвучкой вопросов по урокам!</p>
+                  <h3 className="font-bold text-lg">{t("Учёный Питомец", "Clever Pet")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("Викторина с озвучкой вопросов по урокам!", "A quiz with spoken questions!")}</p>
                 </Card>
 
                 <Card
@@ -237,14 +239,14 @@ export const PetCare = () => {
                   <div className="p-3 bg-purple-100 rounded-full text-purple-600">
                     <Sparkles className="w-8 h-8" />
                   </div>
-                  <h3 className="font-bold text-lg">Тренировка памяти</h3>
-                  <p className="text-xs text-muted-foreground">Мини-игра на запоминание картинок</p>
+                  <h3 className="font-bold text-lg">{t("Тренировка памяти", "Memory game")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("Мини-игра на запоминание картинок", "A game about remembering pictures")}</p>
                 </Card>
               </div>
             ) : (
               <div>
                 <Button variant="ghost" size="sm" onClick={() => setSelectedGame(null)} className="mb-4">
-                  ← Назад к выбору игр
+                  {t("← Назад к выбору игр", "← Back to games")}
                 </Button>
                 {selectedGame === "quiz" && (
                   <PetQuizGame onClose={() => setIsGameModalOpen(false)} />
@@ -261,19 +263,19 @@ export const PetCare = () => {
   return (
     <div className="space-y-6">
       <Card className="p-6 text-center bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-100">
-        <h2 className="text-xl font-bold text-indigo-950 mb-2">🏠 Приют для питомцев</h2>
+        <h2 className="text-xl font-bold text-indigo-950 mb-2">{t("🏠 Приют для питомцев", "🏠 Pet shelter")}</h2>
         <p className="text-muted-foreground text-sm">
-          Выбери себе друга! Ухаживай за ним, и он будет радовать тебя каждый день.
+          {t("Выбери себе друга! Ухаживай за ним, и он будет радовать тебя каждый день.", "Choose a friend and take care of them every day.")}
         </p>
         <div className="flex items-center justify-center gap-2 mt-4 bg-white/80 w-fit mx-auto px-4 py-1.5 rounded-full border border-amber-200">
           <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-          <span className="font-bold text-amber-900">{userStars} звёзд</span>
+          <span className="font-bold text-amber-900">{userStars} {t("звёзд", "stars")}</span>
         </div>
       </Card>
 
       {myPetsList.length > 0 && (
         <Button variant="ghost" onClick={() => setShowAdoptNew(false)}>
-          ← Назад к моим питомцам
+          {t("← Назад к моим питомцам", "← Back to my pets")}
         </Button>
       )}
 
@@ -304,7 +306,7 @@ export const PetCare = () => {
                   }}
                 >
                   <div className="text-5xl">{pet.icon}</div>
-                  <h4 className="font-semibold text-sm">{pet.name || pet.species}</h4>
+                  <h4 className="font-semibold text-sm">{label(pet.name || pet.species)}</h4>
                   <div className="flex items-center gap-1 text-sm font-bold text-amber-600">
                     <Star className="w-4 h-4 fill-amber-500" />
                     <span>{pet.price_stars}</span>
@@ -316,15 +318,15 @@ export const PetCare = () => {
                 <DialogHeader>
                   <DialogTitle className="text-center">
                     <span className="text-6xl block mb-4">{pet.icon}</span>
-                    Завести {(pet.name || pet.species)?.toLowerCase()}?
+                    {t("Завести", "Adopt")} {(pet.name || pet.species)?.toLowerCase()}?
                   </DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium">Как назовём питомца?</label>
+                    <label className="text-sm font-medium">{t("Как назовём питомца?", "What should we name your pet?")}</label>
                     <Input
-                      placeholder="Введи имя..."
+                      placeholder={t("Введи имя...", "Enter a name…")}
                       value={petName}
                       onChange={(e) => setPetName(e.target.value)}
                       className="mt-2"
@@ -332,7 +334,7 @@ export const PetCare = () => {
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <span>Стоимость:</span>
+                    <span>{t("Стоимость:", "Cost:")}</span>
                     <div className="flex items-center gap-1 font-bold text-amber-600">
                       <Star className="w-5 h-5 fill-amber-500" />
                       <span>{pet.price_stars}</span>
@@ -344,7 +346,7 @@ export const PetCare = () => {
                     disabled={!canAfford || !petName.trim()}
                     onClick={handleAdopt}
                   >
-                    {canAfford ? "Забрать домой 🏠" : "Недостаточно звёзд"}
+                    {canAfford ? t("Забрать домой 🏠", "Take home 🏠") : t("Недостаточно звёзд", "Not enough stars")}
                   </Button>
                 </div>
               </DialogContent>

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface ProminentDisclosureModalProps {
@@ -21,27 +22,29 @@ export function ProminentDisclosureModal({
   open,
   onConfirm,
   onCancel,
-  title = DEFAULT_TITLE,
-  description = DEFAULT_DESCRIPTION,
-  confirmLabel = "Понятно",
-  cancelLabel = "Отмена",
+  title,
+  description,
+  confirmLabel,
+  cancelLabel,
 }: ProminentDisclosureModalProps) {
+  const { t } = useLanguage();
   return (
     <AlertDialog open={open}>
       <AlertDialogContent className="max-w-sm">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-xl">{title}</AlertDialogTitle>
+          <AlertDialogTitle className="text-xl">{title ?? t(DEFAULT_TITLE, "📍 Background location")}</AlertDialogTitle>
           <AlertDialogDescription className="text-base mt-4">
-            {description}
+            {description ?? t(DEFAULT_DESCRIPTION,
+              "Clever Little Fox collects background location data so parents can see their child’s location on the map in real time, even when the app is closed or inactive. Select Continue to open permission settings.")}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="flex gap-2 pt-2">
           <AlertDialogCancel onClick={onCancel} className="flex-1">
-            {cancelLabel}
+            {cancelLabel ?? t("Отмена", "Cancel")}
           </AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} className="flex-1">
-            {confirmLabel}
+            {confirmLabel ?? t("Понятно", "Continue")}
           </AlertDialogAction>
         </div>
       </AlertDialogContent>

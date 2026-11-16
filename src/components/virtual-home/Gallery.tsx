@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -5,12 +6,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { deleteDrawing, listDrawings, useGalleryOwner, type Drawing } from "@/lib/drawing-gallery";
 
 export function Gallery() {
+  const { t } = useLanguage();
   const owner = useGalleryOwner();
-  if (!owner) return <p role="status">Загружаем галерею…</p>;
+  if (!owner) return <p role="status">{t("Загружаем галерею…", "Loading gallery…")}</p>;
   return <GalleryContents key={owner.id} ownerId={owner.id} local={owner.local} />;
 }
 
 function GalleryContents({ ownerId, local }: { ownerId: string; local: boolean }) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<Drawing[] | null>(null);
   const [selected, setSelected] = useState<Drawing | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -29,7 +32,7 @@ function GalleryContents({ ownerId, local }: { ownerId: string; local: boolean }
   }, [ownerId, local, attempt]);
 
   const remove = async () => {
-    if (!selected || removing || !window.confirm("Удалить этот рисунок из галереи?")) return;
+    if (!selected || removing || !window.confirm(t("Удалить этот рисунок из галереи?", "Remove this drawing from the gallery?"))) return;
     setRemoving(true);
     setRemoveFailed(false);
     try {
@@ -45,16 +48,16 @@ function GalleryContents({ ownerId, local }: { ownerId: string; local: boolean }
 
   if (loadFailed) return (
     <Card className="space-y-3 p-6 text-center">
-      <p role="status">Не удалось открыть галерею.</p>
-      <Button onClick={() => { setLoadFailed(false); setAttempt((value) => value + 1); }}>Попробовать ещё раз</Button>
+      <p role="status">{t("Не удалось открыть галерею.", "Couldn’t open the gallery.")}</p>
+      <Button onClick={() => { setLoadFailed(false); setAttempt((value) => value + 1); }}>{t("Попробовать ещё раз", "Try again")}</Button>
     </Card>
   );
-  if (!items) return <p role="status">Загружаем галерею…</p>;
-  if (!items.length) return <Card className="p-6 text-center">Здесь появятся рисунки, которые ты сохранишь в «Творчестве».</Card>;
+  if (!items) return <p role="status">{t("Загружаем галерею…", "Loading gallery…")}</p>;
+  if (!items.length) return <Card className="p-6 text-center">{t("Здесь появятся рисунки, которые ты сохранишь в «Творчестве».", "Pictures you save in Arts and crafts will appear here.")}</Card>;
 
   return (
     <>
-      {local && <p className="mb-3 text-sm text-muted-foreground">Рисунки сохранены на этом устройстве.</p>}
+      {local && <p className="mb-3 text-sm text-muted-foreground">{t("Рисунки сохранены на этом устройстве.", "Your pictures are saved on this device.")}</p>}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {items.map((item) => (
           <button key={item.id} type="button" onClick={() => { setRemoveFailed(false); setSelected(item); }}
@@ -67,12 +70,12 @@ function GalleryContents({ ownerId, local }: { ownerId: string; local: boolean }
       <Dialog open={!!selected} onOpenChange={(open) => { if (!open && !removing) setSelected(null); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{selected?.title || "Рисунок"}</DialogTitle>
-            <DialogDescription>Работа из галереи</DialogDescription>
+            <DialogTitle>{selected?.title || t("Рисунок", "Drawing")}</DialogTitle>
+            <DialogDescription>{t("Работа из галереи", "Picture from the gallery")}</DialogDescription>
           </DialogHeader>
           {selected && <img src={selected.image_data} alt={selected.title} className="mx-auto max-h-[60vh] w-full rounded-xl bg-white object-contain" />}
-          {removeFailed && <p role="status">Не удалось удалить рисунок. Попробуй ещё раз.</p>}
-          <Button variant="outline" onClick={() => void remove()} disabled={removing}>{removing ? "Удаляем…" : "Удалить рисунок"}</Button>
+          {removeFailed && <p role="status">{t("Не удалось удалить рисунок. Попробуй ещё раз.", "Couldn’t remove the drawing. Try again.")}</p>}
+          <Button variant="outline" onClick={() => void remove()} disabled={removing}>{removing ? t("Удаляем…", "Removing…") : t("Удалить рисунок", "Remove drawing")}</Button>
         </DialogContent>
       </Dialog>
     </>

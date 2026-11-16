@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,6 +60,7 @@ const formatInterval = (sec: number) => {
 };
 
 function ChildLocationPanel() {
+  const { t } = useLanguage();
   const [status, setStatus] = useState<LocationTrackerStatus>(defaultStatus);
   const [retrying, setRetrying] = useState(false);
   const [stale, setStale] = useState(false);
@@ -141,7 +143,7 @@ function ChildLocationPanel() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            aria-label="Геолокация"
+            aria-label={t("Геолокация", "Location")}
             className={`h-10 w-10 rounded-full border shadow-md backdrop-blur flex items-center justify-center text-base ${ringClass}`}>
             {icon}
           </button>
@@ -150,7 +152,7 @@ function ChildLocationPanel() {
           {isWakeLockSupported() && (
             <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-2 py-1.5">
               <Label htmlFor="keep-awake" className="text-xs cursor-pointer flex-1">
-                Не гасить экран
+                {t("Не гасить экран", "Keep screen on")}
               </Label>
               <Switch id="keep-awake" checked={keepAwake} onCheckedChange={setKeepAwake} />
             </div>
@@ -159,11 +161,11 @@ function ChildLocationPanel() {
           <div className="flex flex-wrap gap-2">
             {denied ? (
               <Button size="sm" onClick={openAppSettings}>
-                Настройки
+                {t("Настройки", "Settings")}
               </Button>
             ) : (
               <Button size="sm" disabled={retrying} onClick={retry}>
-                {retrying ? "…" : "Отправить сейчас"}
+                {retrying ? "…" : t("Отправить сейчас", "Send now")}
               </Button>
             )}
           </div>
@@ -186,6 +188,7 @@ type DisclosureStep = "location" | "monitoring";
 
 /** Фоновые сервисы ребёнка: геолокация и ответы родителю — только на аккаунте ребёнка. */
 export function ChildDeviceServices() {
+  const { t } = useLanguage();
   const { user, isDemo } = useAuth();
   const route = useLocation();
   const { isChild, loading: roleLoading } = useUserRole();
@@ -350,7 +353,13 @@ export function ChildDeviceServices() {
         onConfirm={handleDisclosureConfirm}
         onCancel={handleDisclosureCancel}
         {...(currentDisclosure === "monitoring"
-          ? { title: MONITORING_DISCLOSURE_TITLE, description: MONITORING_DISCLOSURE_DESCRIPTION }
+          ? {
+              title: t(MONITORING_DISCLOSURE_TITLE, "🛡️ Safety features (camera and audio)"),
+              description: t(
+                MONITORING_DISCLOSURE_DESCRIPTION,
+                "Clever Little Fox lets parents request a camera photo or a short audio recording from this device for their child’s safety. The device displays a notification for each request. Select Continue to enable this feature.",
+              ),
+            }
           : {})}
       />
     </>

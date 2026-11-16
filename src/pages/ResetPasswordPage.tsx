@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 
 export default function ResetPasswordPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [hasSession, setHasSession] = useState(false);
@@ -37,11 +39,11 @@ export default function ResetPasswordPage() {
     setError("");
 
     if (password.length < 6) {
-      setError("Пароль должен быть минимум 6 символов");
+      setError(t("Пароль должен быть минимум 6 символов", "Use at least 6 characters for your password"));
       return;
     }
     if (password !== confirm) {
-      setError("Пароли не совпадают");
+      setError(t("Пароли не совпадают", "The passwords don’t match"));
       return;
     }
 
@@ -52,9 +54,9 @@ export default function ResetPasswordPage() {
     if (updateError) {
       const msg = updateError.message?.toLowerCase() ?? "";
       if (msg.includes("weak") || msg.includes("pwned") || msg.includes("known")) {
-        setError("Этот пароль слишком простой. Придумайте другой.");
+        setError(t("Этот пароль слишком простой. Придумайте другой.", "This password is too easy to guess. Choose another one."));
       } else {
-        setError("Не удалось сменить пароль. Попробуйте ещё раз.");
+        setError(t("Не удалось сменить пароль. Попробуйте ещё раз.", "We couldn’t change your password. Try again."));
       }
       return;
     }
@@ -76,25 +78,25 @@ export default function ResetPasswordPage() {
         <CardHeader className="text-center">
           <div className="text-6xl mb-4">{done ? "✅" : "🔒"}</div>
           <CardTitle className="text-2xl">
-            {done ? "Пароль изменён" : "Новый пароль"}
+            {done ? t("Пароль изменён", "Password changed") : t("Новый пароль", "New password")}
           </CardTitle>
           <CardDescription>
             {done
-              ? "Теперь вы можете войти с новым паролем"
+              ? t("Теперь вы можете войти с новым паролем", "You can now sign in with your new password")
               : hasSession
-                ? "Придумайте новый пароль для входа"
-                : "Ссылка устарела или уже использована"}
+                ? t("Придумайте новый пароль для входа", "Choose a new password")
+                : t("Ссылка устарела или уже использована", "This link has expired or was already used")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {done ? (
             <Button className="w-full" onClick={() => navigate("/parent", { replace: true })}>
-              Продолжить
+              {t("Продолжить", "Continue")}
             </Button>
           ) : hasSession ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="new-password">Новый пароль</Label>
+                <Label htmlFor="new-password">{t("Новый пароль", "New password")}</Label>
                 <Input
                   id="new-password"
                   type="password"
@@ -105,7 +107,7 @@ export default function ResetPasswordPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Повторите пароль</Label>
+                <Label htmlFor="confirm-password">{t("Повторите пароль", "Confirm password")}</Label>
                 <Input
                   id="confirm-password"
                   type="password"
@@ -117,16 +119,16 @@ export default function ResetPasswordPage() {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Сохраняем..." : "Сохранить пароль"}
+                {isLoading ? t("Сохраняем...", "Saving…") : t("Сохранить пароль", "Save password")}
               </Button>
             </form>
           ) : (
             <>
               <p className="text-sm text-muted-foreground text-center">
-                Запросите новое письмо для смены пароля на странице входа.
+                {t("Запросите новое письмо для смены пароля на странице входа.", "Request a new password reset email on the sign-in page.")}
               </p>
               <Button className="w-full" onClick={() => navigate("/auth", { replace: true })}>
-                На страницу входа
+                {t("На страницу входа", "Back to sign in")}
               </Button>
             </>
           )}

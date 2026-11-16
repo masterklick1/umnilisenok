@@ -1,3 +1,4 @@
+import type { AppLanguage } from "@/contexts/LanguageContext";
 import { VOWELS, SIMPLE_SYLLABLES, COMPLEX_SYLLABLES, READING_WORDS } from "@/lib/reading-curriculum";
 
 export const READING_LEVEL_TITLES: Record<number, string> = {
@@ -6,6 +7,17 @@ export const READING_LEVEL_TITLES: Record<number, string> = {
   3: "Сложные слоги",
   4: "Простые слова",
 };
+
+const ENGLISH_LEVEL_TITLES: Record<number, string> = {
+  1: "Vowels",
+  2: "Simple syllables",
+  3: "Longer syllables",
+  4: "Simple words",
+};
+
+export function getReadingLevelTitle(level: number, language: AppLanguage) {
+  return (language === "en" ? ENGLISH_LEVEL_TITLES : READING_LEVEL_TITLES)[level];
+}
 
 export const readingItemsForLevel = (level: number): string[] =>
   level === 1

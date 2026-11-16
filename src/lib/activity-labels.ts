@@ -1,3 +1,5 @@
+import type { AppLanguage } from "@/contexts/LanguageContext";
+import { contentLabel } from "@/lib/content-labels";
 import { TOYS_LESSON_EVENT, TOYS_LESSON_PATH } from "@/lib/toys-lesson";
 
 export interface ActivityLike {
@@ -85,33 +87,33 @@ const asNumber = (value: unknown): number | null => {
   return null;
 };
 
-export const getSectionLabel = (section: unknown): string | null => {
+export const getSectionLabel = (section: unknown, language: AppLanguage = "ru"): string | null => {
   const key = asString(section);
   if (!key) return null;
-  return SECTION_LABELS[key] || null;
+  return contentLabel(SECTION_LABELS[key], language) || null;
 };
 
-export const getPathLabel = (path: string | null | undefined): string => {
+export const getPathLabel = (path: string | null | undefined, language: AppLanguage = "ru"): string => {
   if (!path) return "";
-  if (PATH_LABELS[path]) return PATH_LABELS[path];
+  if (PATH_LABELS[path]) return contentLabel(PATH_LABELS[path], language);
 
   const gameMatch = path.match(/^\/games\/(.+)$/);
-  if (gameMatch) return `Игра «${gameMatch[1]}»`;
+  if (gameMatch) return language === "en" ? `Game “${gameMatch[1]}”` : `Игра «${gameMatch[1]}»`;
 
   return path;
 };
 
-export const getActivityTypeLabel = (type: string): string =>
-  ACTIVITY_TYPE_LABELS[type] || type.replace(/_/g, " ");
+export const getActivityTypeLabel = (type: string, language: AppLanguage = "ru"): string =>
+  contentLabel(ACTIVITY_TYPE_LABELS[type], language) || type.replace(/_/g, " ");
 
-const formatLevel = (level: unknown): string | null => {
+const formatLevel = (level: unknown, language: AppLanguage = "ru"): string | null => {
   const n = asNumber(level);
-  return n === null ? null : `уровень ${n}`;
+  return n === null ? null : language === "en" ? `level ${n}` : `уровень ${n}`;
 };
 
-const formatSectionContext = (details: Record<string, unknown>): string | null => {
-  const section = getSectionLabel(details.section);
-  const level = formatLevel(details.level);
+const formatSectionContext = (details: Record<string, unknown>, language: AppLanguage = "ru"): string | null => {
+  const section = getSectionLabel(details.section, language);
+  const level = formatLevel(details.level, language);
   if (section && level) return `${section}, ${level}`;
   if (section) return section;
   if (level) return level.charAt(0).toUpperCase() + level.slice(1);
@@ -120,117 +122,117 @@ const formatSectionContext = (details: Record<string, unknown>): string | null =
 
 const formatAnswerDetails = (
   details: Record<string, unknown>,
-  isCorrect: boolean
+  isCorrect: boolean,
+  language: AppLanguage,
 ): string => {
   const parts: string[] = [];
 
-  const sectionContext = formatSectionContext(details);
+  const sectionContext = formatSectionContext(details, language);
   if (sectionContext) parts.push(sectionContext);
 
   const exercise = asString(details.exercise);
   if (exercise) {
-    const exerciseLabel = EXERCISE_LABELS[exercise] || exercise;
-    parts.push(`задание: ${exerciseLabel}`);
+    const exerciseLabel = contentLabel(EXERCISE_LABELS[exercise], language) || exercise;
+    parts.push(language === "en" ? `Activity: ${exerciseLabel}` : `задание: ${exerciseLabel}`);
   }
 
   const mode = asString(details.mode);
   if (mode) {
     const modeLabel =
-      INTELLECT_MODE_LABELS[mode] ||
-      ALPHABET_MODE_LABELS[mode] ||
+      contentLabel(INTELLECT_MODE_LABELS[mode] || ALPHABET_MODE_LABELS[mode], language) ||
       mode;
     parts.push(modeLabel);
   }
 
   const letter = asString(details.letter);
-  if (letter) parts.push(`буква «${letter}»`);
+  if (letter) parts.push(language === "en" ? `Letter “${letter}”` : `буква «${letter}»`);
 
   const topic = asString(details.topic);
   if (topic) {
-    const topicLabel = TOPIC_LABELS[topic] || topic;
-    parts.push(`тема «${topicLabel}»`);
+    const topicLabel = contentLabel(TOPIC_LABELS[topic], language) || topic;
+    parts.push(language === "en" ? `Topic “${topicLabel}”` : `тема «${topicLabel}»`);
   }
 
   const item = asString(details.item);
-  if (item) parts.push(`ответ: «${item}»`);
+  if (item) parts.push(language === "en" ? `Answer: “${contentLabel(item, language)}”` : `ответ: «${item}»`);
 
   const answer = details.answer;
   if (answer !== undefined && answer !== null) {
-    parts.push(`ответ: ${asString(answer) ?? String(answer)}`);
+    parts.push(language === "en" ? `Answer: ${contentLabel(asString(answer) ?? String(answer), language)}` : `ответ: ${asString(answer) ?? String(answer)}`);
   }
 
   const shape = asString(details.shape);
-  if (shape) parts.push(`фигура: ${shape}`);
+  if (shape) parts.push(language === "en" ? `Shape: ${shape}` : `фигура: ${shape}`);
 
   if (!isCorrect) {
     const correct = details.correct ?? details.expected;
     if (correct !== undefined && correct !== null) {
-      parts.push(`верно было: ${asString(correct) ?? String(correct)}`);
+      parts.push(language === "en" ? `Correct answer: ${contentLabel(asString(correct) ?? String(correct), language)}` : `верно было: ${asString(correct) ?? String(correct)}`);
     }
     const got = asString(details.got ?? details.selected);
-    if (got) parts.push(`выбрал: «${got}»`);
+    if (got) parts.push(language === "en" ? `Selected: “${contentLabel(got, language)}”` : `выбрал: «${got}»`);
   }
 
   return parts.join(" · ");
 };
 
-const formatPageViewDetails = (details: Record<string, unknown>): string => {
+const formatPageViewDetails = (details: Record<string, unknown>, language: AppLanguage = "ru"): string => {
   const path = asString(details.path);
-  if (path) return getPathLabel(path);
+  if (path) return getPathLabel(path, language);
   return "";
 };
 
-const formatSelectLevelDetails = (details: Record<string, unknown>): string => {
-  const section = getSectionLabel(details.section) || "раздел";
+const formatSelectLevelDetails = (details: Record<string, unknown>, language: AppLanguage = "ru"): string => {
+  const section = getSectionLabel(details.section, language) || (language === "en" ? "section" : "раздел");
   const level = asNumber(details.level);
-  if (level !== null) return `${section}, уровень ${level}`;
+  if (level !== null) return language === "en" ? `${section}, level ${level}` : `${section}, уровень ${level}`;
   return section;
 };
 
-const formatStartLearningDetails = (details: Record<string, unknown>): string => {
-  const section = getSectionLabel(details.section) || "раздел";
+const formatStartLearningDetails = (details: Record<string, unknown>, language: AppLanguage = "ru"): string => {
+  const section = getSectionLabel(details.section, language) || (language === "en" ? "section" : "раздел");
   const mode = asString(details.mode);
   if (mode) {
-    const modeLabel = ALPHABET_MODE_LABELS[mode] || mode;
+    const modeLabel = contentLabel(ALPHABET_MODE_LABELS[mode], language) || mode;
     return `${section}: ${modeLabel}`;
   }
   return section;
 };
 
-const formatClickDetails = (details: Record<string, unknown>): string => {
+const formatClickDetails = (details: Record<string, unknown>, language: AppLanguage = "ru"): string => {
   const element = asString(details.element);
-  return element ? `элемент «${element}»` : "";
+  return element ? (language === "en" ? `“${contentLabel(element, language)}”` : `элемент «${element}»`) : "";
 };
 
-export const formatActivityDescription = (activity: ActivityLike): string => {
+export const formatActivityDescription = (activity: ActivityLike, language: AppLanguage = "ru"): string => {
   const details = activity.details ?? {};
   const type = activity.activity_type;
 
   switch (type) {
     case "answer_correct":
     case "answer_wrong": {
-      const text = formatAnswerDetails(details, type === "answer_correct");
+      const text = formatAnswerDetails(details, type === "answer_correct", language);
       if (text) return text;
       break;
     }
     case "page_view": {
-      const fromDetails = formatPageViewDetails(details);
+      const fromDetails = formatPageViewDetails(details, language);
       if (fromDetails) return fromDetails;
-      if (activity.page_path) return getPathLabel(activity.page_path);
+      if (activity.page_path) return getPathLabel(activity.page_path, language);
       break;
     }
     case "select_level": {
-      const text = formatSelectLevelDetails(details);
+      const text = formatSelectLevelDetails(details, language);
       if (text) return text;
       break;
     }
     case "start_learning": {
-      const text = formatStartLearningDetails(details);
+      const text = formatStartLearningDetails(details, language);
       if (text) return text;
       break;
     }
     case "click": {
-      const text = formatClickDetails(details);
+      const text = formatClickDetails(details, language);
       if (text) return text;
       break;
     }
@@ -238,9 +240,9 @@ export const formatActivityDescription = (activity: ActivityLike): string => {
       break;
   }
 
-  const location = activity.page_path ? getPathLabel(activity.page_path) : "";
-  const section = getSectionLabel(details.section);
-  const level = formatLevel(details.level);
+  const location = activity.page_path ? getPathLabel(activity.page_path, language) : "";
+  const section = getSectionLabel(details.section, language);
+  const level = formatLevel(details.level, language);
 
   const fallback: string[] = [];
   if (section) fallback.push(section);
@@ -250,9 +252,9 @@ export const formatActivityDescription = (activity: ActivityLike): string => {
   return fallback.join(" · ");
 };
 
-export const getActivityLocationLabel = (activity: ActivityLike): string | null => {
+export const getActivityLocationLabel = (activity: ActivityLike, language: AppLanguage = "ru"): string | null => {
   const path = activity.page_path || asString(activity.details?.path);
   if (!path) return null;
-  const label = getPathLabel(path);
+  const label = getPathLabel(path, language);
   return label || null;
 };

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
 interface ColorPaletteProps {
@@ -19,6 +20,7 @@ const COLORS = [
 ];
 
 export const ColorPalette = ({ selectedColor, onColorSelect }: ColorPaletteProps) => {
+  const { t } = useLanguage();
   return (
     <div className="flex gap-2 flex-wrap justify-center">
       {COLORS.map((color) => (
@@ -30,7 +32,7 @@ export const ColorPalette = ({ selectedColor, onColorSelect }: ColorPaletteProps
             selectedColor === color ? "border-foreground scale-110 shadow-lg" : "border-border"
           )}
           style={{ backgroundColor: color }}
-          aria-label={`Выбрать цвет ${color}`}
+          aria-label={t(`Выбрать цвет ${color}`, `Choose color ${color}`)}
         />
       ))}
     </div>

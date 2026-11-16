@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 
 export const SOSButton = ({ big = false }: { big?: boolean }) => {
+  const { t } = useLanguage();
   const { user, isDemo } = useAuth();
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
@@ -28,8 +30,8 @@ export const SOSButton = ({ big = false }: { big?: boolean }) => {
     if (!user?.id) return;
     if (isDemo) {
       toast({
-        title: "SOS доступен после подключения",
-        description: "В демо можно смотреть уроки, а безопасность и уведомления включаются в аккаунте ребёнка.",
+        title: t("SOS доступен после подключения", "Link an account to use SOS"),
+        description: t("В демо можно смотреть уроки, а безопасность и уведомления включаются в аккаунте ребёнка.", "Demo mode includes lessons. Link a child account to use safety features and notifications."),
       });
       return;
     }
@@ -82,14 +84,14 @@ export const SOSButton = ({ big = false }: { big?: boolean }) => {
       if (error) throw error;
 
       toast({
-        title: "🚨 SOS отправлен!",
-        description: "Родители получат уведомление прямо сейчас.",
+        title: t("🚨 SOS отправлен!", "🚨 SOS sent!"),
+        description: t("Родители получат уведомление прямо сейчас.", "Your parents will get an alert now."),
       });
     } catch (e) {
       console.error(e);
       toast({
-        title: "Ошибка",
-        description: "Не удалось отправить SOS. Попробуй ещё раз.",
+        title: t("Ошибка", "Error"),
+        description: t("Не удалось отправить SOS. Попробуй ещё раз.", "Couldn’t send SOS. Try again."),
         variant: "destructive",
       });
     } finally {
@@ -117,21 +119,20 @@ export const SOSButton = ({ big = false }: { big?: boolean }) => {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="text-2xl text-destructive flex items-center gap-2">
-            🚨 Отправить SOS?
+            {t("🚨 Отправить SOS?", "🚨 Send SOS?")}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-base">
-            Родителям придёт срочное уведомление с твоим местоположением.
-            Нажимай только если тебе нужна помощь!
+            {t("Родителям придёт срочное уведомление с твоим местоположением. Нажимай только если тебе нужна помощь!", "Your parents will get an urgent alert with your location. Tap only if you need help.")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Отмена</AlertDialogCancel>
+          <AlertDialogCancel>{t("Отмена", "Cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={sendSOS}
             disabled={sending}
             className="bg-destructive hover:bg-destructive/90"
           >
-            {sending ? "Отправляем…" : "Да, помогите!"}
+            {sending ? t("Отправляем…", "Sending…") : t("Да, помогите!", "Yes, I need help!")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

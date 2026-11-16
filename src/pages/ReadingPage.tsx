@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { StreakBonusBanner } from "@/components/StreakBonusBanner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,7 @@ const VowelQuiz = ({
   locked: boolean;
   onResult: ResultFn;
 }) => {
+  const { t } = useLanguage();
   useEffect(() => {
     speak(`Буква ${round.target.toLowerCase()}`);
   }, [round.target]);
@@ -100,14 +102,14 @@ const VowelQuiz = ({
   return (
     <Card className="p-6 sm:p-8 text-center">
       <p className="text-xl sm:text-2xl text-muted-foreground mb-2">
-        Послушай и найди эту букву
+        {t("Послушай и найди эту букву", "Listen and find the letter")}
       </p>
       <Button
         variant="secondary"
         className="mb-6 gap-2"
         onClick={() => speak(`Буква ${round.target.toLowerCase()}`)}
       >
-        <Volume2 className="h-5 w-5" /> Послушать ещё
+        <Volume2 className="h-5 w-5" /> {t("Послушать ещё", "Listen again")}
       </Button>
       <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
         {round.options.map((o) => (
@@ -138,6 +140,7 @@ const Builder = ({
   locked: boolean;
   onResult: ResultFn;
 }) => {
+  const { t } = useLanguage();
   const tiles = useMemo(
     () => shuffleLetters(target).map((ch, i) => ({ ch, id: i })),
     [target]
@@ -170,7 +173,7 @@ const Builder = ({
       {hint}
       <div className="min-h-20 mb-4 flex justify-center items-center gap-2 flex-wrap">
         {picked.length === 0 ? (
-          <span className="text-muted-foreground">Нажимай буквы по порядку</span>
+          <span className="text-muted-foreground">{t("Нажимай буквы по порядку", "Tap the letters in order")}</span>
         ) : (
           picked.map((p) => (
             <span
@@ -183,7 +186,7 @@ const Builder = ({
         )}
       </div>
       <Button variant="outline" size="sm" className="mb-6" onClick={undo} disabled={locked || picked.length === 0}>
-        ← Убрать букву
+        {t("← Убрать букву", "← Remove a letter")}
       </Button>
       <div className="flex justify-center gap-3 flex-wrap">
         {tiles.map((t) => (
@@ -207,7 +210,7 @@ const Builder = ({
         className="mt-6 gap-2"
         onClick={() => speak(target.toLowerCase())}
       >
-        <Volume2 className="h-4 w-4" /> Послушать ещё
+        <Volume2 className="h-4 w-4" /> {t("Послушать ещё", "Listen again")}
       </Button>
     </Card>
   );
@@ -223,6 +226,7 @@ const PictureQuiz = ({
   locked: boolean;
   onResult: ResultFn;
 }) => {
+  const { t } = useLanguage();
   useEffect(() => {
     speak(round.word.word.toLowerCase());
   }, [round.word.word]);
@@ -230,7 +234,7 @@ const PictureQuiz = ({
   return (
     <Card className="p-6 sm:p-8 text-center">
       <p className="text-xl sm:text-2xl text-muted-foreground mb-2">
-        Найди картинку к слову
+        {t("Найди картинку к слову", "Match the picture to the word")}
       </p>
       <div className="text-6xl sm:text-7xl font-extrabold text-primary mb-6 tracking-widest">
         {round.word.word}
@@ -240,7 +244,7 @@ const PictureQuiz = ({
         className="mb-6 gap-2"
         onClick={() => speak(round.word.word.toLowerCase())}
       >
-        <Volume2 className="h-5 w-5" /> Послушать слово
+        <Volume2 className="h-5 w-5" /> {t("Послушать слово", "Listen to the word")}
       </Button>
       <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto">
         {round.options.map((o) => (
@@ -260,12 +264,14 @@ const PictureQuiz = ({
 };
 
 export default function ReadingPage() {
+  const { t } = useLanguage();
   const progress = useReadingProgress();
-  if (progress.roleLoading) return <p className="p-6 text-center">Загружаем занятие…</p>;
+  if (progress.roleLoading) return <p className="p-6 text-center">{t("Загружаем занятие…", "Loading the activity…")}</p>;
   return <ReadingLesson key={progress.childId ?? "guest"} {...progress} />;
 }
 
 function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useReadingProgress>) {
+  const { t, label, language } = useLanguage();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -310,7 +316,7 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
       reward(1);
       void markLearned(correct, session.level);
       void logCorrectAnswer(details);
-      void speak("Правильно! Молодец!");
+      void speak(t("Правильно! Молодец!", "That’s right! Well done!"), language === "en" ? "en-US" : "ru-RU");
       return;
     }
 
@@ -321,7 +327,7 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
       feedback,
     });
     void logWrongAnswer(details);
-    void speak(feedback === "retry" ? "Попробуй ещё раз!" : `Правильный ответ: ${correct}`);
+    void speak(feedback === "retry" ? t("Попробуй ещё раз!", "Try again!") : t(`Правильный ответ: ${correct}`, `Correct answer: ${correct}`), language === "en" ? "en-US" : "ru-RU");
   };
 
   const advance = () => {
@@ -331,9 +337,9 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
     if (next.index !== next.items.length) return;
     if (childId === user?.id && next.score === READING_LESSON_LENGTH && next.mistakes.length === 0) {
       reward(5);
-      toast({ title: "Все ответы с первой попытки! 🏆", description: "+5 ⭐ бонус" });
+      toast({ title: t("Все ответы с первой попытки! 🏆", "You got every answer on your first try! 🏆"), description: t("+5 ⭐ бонус", "+5 ⭐ bonus") });
     }
-    void speak("Молодец! Урок пройден!");
+    void speak(t("Молодец! Урок пройден!", "Well done! Lesson complete!"), language === "en" ? "en-US" : "ru-RU");
   };
 
   const nextLevel = session && LEVELS.find(({ level: candidate }) => candidate > session.level &&
@@ -341,7 +347,7 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
   const hasMoreInLevel = session && readingItemsForLevel(session.level)
     .some((entry) => !learned.has(entry) && !session.items.includes(entry));
   const nextLessonLevel = hasMoreInLevel ? session.level : nextLevel;
-  const listenLabel = round?.kind === "picture" ? "Послушать слово" : "Послушать ещё";
+  const listenLabel = round?.kind === "picture" ? t("Послушать слово", "Listen to the word") : t("Послушать ещё", "Listen again");
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-background via-primary/5 to-accent/5 pb-24">
@@ -353,24 +359,24 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
         <div className="flex justify-between items-center mb-6">
           <Button variant="outline" size="sm" className="gap-2" onClick={() => (session ? setShowLesson(false) : navigate("/"))}>
             <ArrowLeft className="w-4 h-4" />
-            {session ? "Уровни" : "Назад"}
+            {session ? t("Уровни", "Levels") : t("Назад", "Back")}
           </Button>
           {session && !finished && (
             <div className="bg-card rounded-full px-4 py-2 shadow-md font-bold text-primary">
-              {session.index + 1} / {session.items.length} · Счёт: {session.score}
+              {session.index + 1} / {session.items.length} {t("· Счёт:", "· Score:")} {session.score}
             </div>
           )}
         </div>
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">📖</div>
-          <h1 className="text-4xl font-extrabold text-gradient mb-2">Чтение</h1>
-          {!level && <p className="text-lg text-muted-foreground">Читаем по складам весело!</p>}
+          <h1 className="text-4xl font-extrabold text-gradient mb-2">{t("Чтение", "Russian reading")}</h1>
+          {!level && <p className="text-lg text-muted-foreground">{t("Читаем по складам весело!", "Have fun learning to read Russian!")}</p>}
         </div>
 
         {!session && saved && saved.index < saved.items.length && (
           <Button className="mb-6 w-full" size="lg" onClick={() => setShowLesson(true)}>
-            Продолжить занятие · {READING_LEVEL_TITLES[saved.level]}
+            {t("Продолжить занятие ·", "Continue reading ·")} {READING_LEVEL_TITLES[saved.level]}
           </Button>
         )}
 
@@ -386,15 +392,15 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
               >
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-black/5" />
                 <div className="relative z-10 text-6xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">{l.emoji}</div>
-                <h3 className="relative z-10 text-2xl font-extrabold mb-2">{l.title}</h3>
-                <p className="relative z-10 text-muted-foreground">Уровень {l.level} · {l.subtitle}</p>
+                <h3 className="relative z-10 text-2xl font-extrabold mb-2">{label(l.title)}</h3>
+                <p className="relative z-10 text-muted-foreground">{t("Уровень", "Level")} {l.level} · {l.subtitle}</p>
                 {(() => {
                   const items = [...new Set(readingItemsForLevel(l.level))];
                   const done = items.filter((x) => learned.has(x));
                   const pct = Math.round((done.length / items.length) * 100);
                   return (
                     <div className="relative z-10 mt-4 space-y-2">
-                      <div className="text-sm font-bold">🦊 Пройдено: {done.length} из {items.length}</div>
+                      <div className="text-sm font-bold">{t("🦊 Пройдено:", "🦊 Completed:")} {done.length} {t("из", "of")} {items.length}</div>
                       <div className="h-2 rounded-full bg-background/60 overflow-hidden">
                         <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                       </div>
@@ -417,22 +423,22 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
         {session && finished && (
           <Card className="p-6 sm:p-10 text-center space-y-6">
             <div className="text-7xl">{session.score === session.items.length ? "🏆" : "🎉"}</div>
-            <div className="text-2xl font-bold">Занятие завершено!</div>
-            <p className="text-muted-foreground">Верных ответов: {session.score} из {session.items.length}</p>
+            <div className="text-2xl font-bold">{t("Занятие завершено!", "Activity complete!")}</div>
+            <p className="text-muted-foreground">{t("Верных ответов:", "Correct answers:")} {session.score} {t("из", "of")} {session.items.length}</p>
             <div className="flex flex-wrap justify-center gap-3">
               {session.mistakes.length > 0 && (
                 <Button size="lg" onClick={() => startLevel(session.level, session.mistakes)}>
-                  Повторить сложное
+                  {t("Повторить сложное", "Review tricky items")}
                 </Button>
               )}
               {nextLessonLevel ? (
                 <Button size="lg" onClick={() => startLevel(nextLessonLevel)}>
-                  Следующий урок
+                  {t("Следующий урок", "Next lesson")}
                 </Button>
               ) : (
-                <Button size="lg" onClick={() => startLevel(session.level)}>Играть ещё раз</Button>
+                <Button size="lg" onClick={() => startLevel(session.level)}>{t("Играть ещё раз", "Play again")}</Button>
               )}
-              <Button size="lg" variant="outline" onClick={() => setShowLesson(false)}>Другой уровень</Button>
+              <Button size="lg" variant="outline" onClick={() => setShowLesson(false)}>{t("Другой уровень", "Choose another level")}</Button>
             </div>
           </Card>
         )}
@@ -457,7 +463,7 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
             hint={
               <div className="mb-4">
                 <div className="text-7xl">{round.word.emoji}</div>
-                <p className="text-muted-foreground mt-2">Собери слово по картинке</p>
+                <p className="text-muted-foreground mt-2">{t("Собери слово по картинке", "Build the word shown in the picture")}</p>
               </div>
             }
             locked={locked}
@@ -472,13 +478,13 @@ function ReadingLesson({ childId, learned, markLearned }: ReturnType<typeof useR
         {session?.feedback && item && (
           <div className="mt-4 space-y-3 text-center">
             <p role="status" className="font-semibold">
-              {session.feedback === "retry" && `Попробуй ещё раз. Нажми «${listenLabel}», если нужна подсказка.`}
-              {session.feedback === "correct" && "Правильно! Молодец!"}
-              {session.feedback === "incorrect" && `Правильный ответ: ${item}`}
+              {session.feedback === "retry" && t(`Попробуй ещё раз. Нажми «${listenLabel}», если нужна подсказка.`, `Try again. Tap “${listenLabel}” for a hint.`)}
+              {session.feedback === "correct" && t("Правильно! Молодец!", "That’s right! Well done!")}
+              {session.feedback === "incorrect" && t(`Правильный ответ: ${item}`, `Correct answer: ${item}`)}
             </p>
             {locked && (
               <Button size="lg" onClick={advance}>
-                {session.index + 1 === session.items.length ? "Посмотреть результат" : "Дальше"}
+                {session.index + 1 === session.items.length ? t("Посмотреть результат", "See results") : t("Дальше", "Next")}
               </Button>
             )}
           </div>

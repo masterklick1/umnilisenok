@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { connectChildWithInviteCode, parseInviteCode } from "@/lib/child-connect
 type Mode = "choose" | "scan" | "code";
 
 export default function JoinPage() {
+  const { t } = useLanguage();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -28,11 +30,11 @@ export default function JoinPage() {
       setConnecting(false);
 
       if (result.ok === false) {
-        toast({ title: "Не получилось", description: result.error, variant: "destructive" });
+        toast({ title: t("Не получилось", "Something went wrong"), description: result.error, variant: "destructive" });
         return;
       }
 
-      toast({ title: `Привет, ${result.childName}! 🦊`, description: "Заходим в твоё приложение…" });
+      toast({ title: t(`Привет, ${result.childName}! 🦊`, `Hi, ${result.childName}! 🦊`), description: t("Заходим в твоё приложение…", "Opening your account…") });
       navigate("/", { replace: true });
     },
     [connecting, navigate, toast],
@@ -52,7 +54,7 @@ export default function JoinPage() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-4">
         <div className="text-6xl animate-bounce">🦊</div>
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        <p className="text-lg font-medium">Подключаем твоё место…</p>
+        <p className="text-lg font-medium">{t("Подключаем твоё место…", "Connecting your account…")}</p>
       </div>
     );
   }
@@ -62,11 +64,11 @@ export default function JoinPage() {
       <Card className="w-full max-w-md border-2 border-orange-200">
         <CardHeader className="text-center pb-2">
           <div className="text-7xl mb-2">🦊</div>
-          <CardTitle className="text-2xl">Я ребёнок</CardTitle>
+          <CardTitle className="text-2xl">{t("Я ребёнок", "I’m a child")}</CardTitle>
           <CardDescription>
-            {mode === "choose" && "Выбери, как подключиться к родителю"}
-            {mode === "scan" && "Сканируй QR-код от мамы или папы"}
-            {mode === "code" && "Введи 6-значный код от родителя"}
+            {mode === "choose" && t("Выбери, как подключиться к родителю", "Choose how to connect with your parent")}
+            {mode === "scan" && t("Сканируй QR-код от мамы или папы", "Scan the QR code from your parent")}
+            {mode === "code" && t("Введи 6-значный код от родителя", "Enter your parent’s 6-digit code")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -78,7 +80,7 @@ export default function JoinPage() {
                 onClick={() => setMode("scan")}
               >
                 <QrCode className="w-7 h-7" />
-                Сканировать QR-код
+                {t("Сканировать QR-код", "Scan QR code")}
               </Button>
               <Button
                 size="lg"
@@ -87,11 +89,11 @@ export default function JoinPage() {
                 onClick={() => setMode("code")}
               >
                 <Hash className="w-7 h-7" />
-                Ввести код
+                {t("Ввести код", "Enter a code")}
               </Button>
               <Button variant="ghost" className="w-full" onClick={() => navigate("/auth")}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Назад
+                {t("Назад", "Back")}
               </Button>
             </>
           )}
@@ -103,8 +105,8 @@ export default function JoinPage() {
                   const parsed = parseInviteCode(text);
                   if (!parsed) {
                     toast({
-                      title: "Не QR от родителя",
-                      description: "Попробуй другой код или введи цифры вручную",
+                      title: t("Не QR от родителя", "This isn’t a parent’s QR code"),
+                      description: t("Попробуй другой код или введи цифры вручную", "Try another QR code or enter the digits yourself"),
                       variant: "destructive",
                     });
                     return;
@@ -113,14 +115,14 @@ export default function JoinPage() {
                 }}
                 onError={(msg) =>
                   toast({
-                    title: "Камера недоступна",
-                    description: msg + ". Используй ввод кода.",
+                    title: t("Камера недоступна", "Camera unavailable"),
+                    description: msg + t(". Используй ввод кода.", ". Enter the code instead."),
                     variant: "destructive",
                   })
                 }
               />
               <Button variant="outline" className="w-full" onClick={() => setMode("choose")}>
-                Назад
+                {t("Назад", "Back")}
               </Button>
             </>
           )}
@@ -142,10 +144,10 @@ export default function JoinPage() {
                 disabled={code.length !== 6 || connecting}
                 onClick={() => finishConnect(code)}
               >
-                {connecting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Подключиться"}
+                {connecting ? <Loader2 className="w-5 h-5 animate-spin" /> : t("Подключиться", "Connect")}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => setMode("choose")}>
-                Назад
+                {t("Назад", "Back")}
               </Button>
             </>
           )}

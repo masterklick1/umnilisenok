@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,7 @@ export interface UserRoomItem {
 }
 
 export const useVirtualHome = () => {
+  const { t } = useLanguage();
   const [pets, setPets] = useState<Pet[]>([]);
   const [roomItems, setRoomItems] = useState<RoomItem[]>([]);
   const [userPets, setUserPets] = useState<UserPet[]>([]);
@@ -108,6 +110,7 @@ export const useVirtualHome = () => {
 
   // Проверка и списание билета для игры
   const useGameTicket = async (): Promise<boolean> => {
+  const { t } = useLanguage();
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
@@ -122,8 +125,8 @@ export const useVirtualHome = () => {
 
       if (currentTickets < 1) {
         toast({
-          title: "Нет билетов! 🎟️",
-          description: "Выполняйте задания, чтобы получить билеты на игры.",
+          title: t("Нет билетов! 🎟️", "No tickets left! 🎟️"),
+          description: t("Выполняйте задания, чтобы получить билеты на игры.", "Finish activities to earn tickets for games."),
           variant: "destructive",
         });
         return false;
@@ -158,8 +161,8 @@ export const useVirtualHome = () => {
       const currentStars = progress?.stars || 0;
       if (currentStars < pet.price_stars) {
         toast({
-          title: "Недостаточно звёзд ⭐",
-          description: `Нужно ${pet.price_stars} звёзд для покупки!`,
+          title: t("Недостаточно звёзд ⭐", "Not enough stars ⭐"),
+          description: t(`Нужно ${pet.price_stars} звёзд для покупки!`, `You need ${pet.price_stars} stars to adopt this pet.`),
           variant: "destructive",
         });
         return false;
@@ -188,8 +191,8 @@ export const useVirtualHome = () => {
       if (error) throw error;
 
       toast({
-        title: "Поздравляем! 🎉",
-        description: `Вы завели питомца по имени ${name}!`,
+        title: t("Поздравляем! 🎉", "Congratulations! 🎉"),
+        description: t(`Вы завели питомца по имени ${name}!`, `You adopted ${name}!`),
       });
 
       await fetchData();
@@ -198,8 +201,8 @@ export const useVirtualHome = () => {
     } catch (error) {
       console.error("Ошибка при адаптации питомца:", error);
       toast({
-        title: "Ошибка",
-        description: "Не удалось завести питомца.",
+        title: t("Ошибка", "Error"),
+        description: t("Не удалось завести питомца.", "Couldn’t adopt the pet."),
         variant: "destructive",
       });
       return false;
@@ -223,8 +226,8 @@ export const useVirtualHome = () => {
       const currentStars = progress?.stars || 0;
       if (currentStars < 1) {
         toast({
-          title: "Недостаточно звёзд ⭐",
-          description: "Кормление стоит 1 звезду!",
+          title: t("Недостаточно звёзд ⭐", "Not enough stars ⭐"),
+          description: t("Кормление стоит 1 звезду!", "Feeding costs one star!"),
           variant: "destructive",
         });
         return;
@@ -249,8 +252,8 @@ export const useVirtualHome = () => {
       );
 
       toast({
-        title: "Вкусно! 🥣",
-        description: `${userPet.pet_name} покушал и рад!`,
+        title: t("Вкусно! 🥣", "Yummy! 🥣"),
+        description: t(`${userPet.pet_name} покушал и рад!`, `${userPet.pet_name} enjoyed the meal!`),
       });
     } catch (error) {
       console.error("Ошибка при кормлении:", error);
@@ -271,8 +274,8 @@ export const useVirtualHome = () => {
       setUserPet((prev) => (prev ? { ...prev, energy: newEnergy } : null));
 
       toast({
-        title: "Сладкие сны! 😴",
-        description: `${userPet.pet_name} отдохнул и полон сил!`,
+        title: t("Сладкие сны! 😴", "Sweet dreams! 😴"),
+        description: t(`${userPet.pet_name} отдохнул и полон сил!`, `${userPet.pet_name} is rested and full of energy!`),
       });
     } catch (error) {
       console.error("Ошибка при отдыхе:", error);
@@ -294,8 +297,8 @@ export const useVirtualHome = () => {
       const currentStars = progress?.stars || 0;
       if (currentStars < item.price_stars) {
         toast({
-          title: "Недостаточно звёзд ⭐",
-          description: `Предмет стоит ${item.price_stars} звёзд!`,
+          title: t("Недостаточно звёзд ⭐", "Not enough stars ⭐"),
+          description: t(`Предмет стоит ${item.price_stars} звёзд!`, `This item costs ${item.price_stars} stars!`),
           variant: "destructive",
         });
         return false;
@@ -314,8 +317,8 @@ export const useVirtualHome = () => {
       });
 
       toast({
-        title: "Успешно! 🛒",
-        description: `Вы купили ${item.name}!`,
+        title: t("Успешно! 🛒", "Purchased! 🛒"),
+        description: t(`Вы купили ${item.name}!`, `You bought ${item.name}!`),
       });
 
       await fetchData();
@@ -323,8 +326,8 @@ export const useVirtualHome = () => {
     } catch (error) {
       console.error("Ошибка при покупке предмета:", error);
       toast({
-        title: "Ошибка",
-        description: "Не удалось купить предмет.",
+        title: t("Ошибка", "Error"),
+        description: t("Не удалось купить предмет.", "Couldn’t buy the item."),
         variant: "destructive",
       });
       return false;
@@ -336,13 +339,13 @@ export const useVirtualHome = () => {
     const { data, error } = await supabase.rpc("claim_reward_item", { _item_id: item.id });
     if (error || !data) {
       toast({
-        title: "Пока рано 🦊",
-        description: "Позанимайся ещё немного, и награда откроется!",
+        title: t("Пока рано 🦊", "Keep going 🦊"),
+        description: t("Позанимайся ещё немного, и награда откроется!", "Keep practicing to unlock the reward!"),
         variant: "destructive",
       });
       return false;
     }
-    toast({ title: "Награда получена! 🎉", description: `${item.name} теперь в твоей комнате!` });
+    toast({ title: t("Награда получена! 🎉", "Reward claimed! 🎉"), description: t(`${item.name} теперь в твоей комнате!`, `${item.name} is now in your room!`) });
     await fetchData();
     return true;
   };

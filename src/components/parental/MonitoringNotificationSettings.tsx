@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,7 @@ export function shouldNotify(prefs: MonitoringNotifPrefs, type: string, status: 
 }
 
 export function MonitoringNotificationSettings() {
+  const { t } = useLanguage();
   const [prefs, setPrefs] = useState<MonitoringNotifPrefs>(defaultPrefs);
 
   useEffect(() => {
@@ -61,14 +63,14 @@ export function MonitoringNotificationSettings() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Bell className="w-4 h-4" /> Уведомления о мониторинге
+          <Bell className="w-4 h-4" /> {t("Уведомления о мониторинге", "Monitoring notifications")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label htmlFor="notif-photo" className="flex items-center gap-2 cursor-pointer">
-              <Camera className="w-4 h-4 text-muted-foreground" /> Фото
+              <Camera className="w-4 h-4 text-muted-foreground" /> {t("Фото", "Photo")}
             </Label>
             <Switch
               id="notif-photo"
@@ -78,7 +80,7 @@ export function MonitoringNotificationSettings() {
           </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="notif-audio" className="flex items-center gap-2 cursor-pointer">
-              <Mic className="w-4 h-4 text-muted-foreground" /> Звук
+              <Mic className="w-4 h-4 text-muted-foreground" /> {t("Звук", "Audio")}
             </Label>
             <Switch
               id="notif-audio"
@@ -88,7 +90,7 @@ export function MonitoringNotificationSettings() {
           </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="notif-location" className="flex items-center gap-2 cursor-pointer">
-              <MapPin className="w-4 h-4 text-muted-foreground" /> Локация
+              <MapPin className="w-4 h-4 text-muted-foreground" /> {t("Локация", "Location")}
             </Label>
             <Switch
               id="notif-location"
@@ -99,7 +101,7 @@ export function MonitoringNotificationSettings() {
         </div>
 
         <div className="pt-3 border-t">
-          <Label className="text-sm mb-2 block">Уровень уведомлений</Label>
+          <Label className="text-sm mb-2 block">{t("Уровень уведомлений", "Which events to show")}</Label>
           <RadioGroup
             value={prefs.level}
             onValueChange={(v) => update({ level: v as "errors" | "all" })}
@@ -108,13 +110,13 @@ export function MonitoringNotificationSettings() {
             <div className="flex items-center gap-2">
               <RadioGroupItem value="all" id="lvl-all" />
               <Label htmlFor="lvl-all" className="cursor-pointer font-normal">
-                Все события (успех и ошибки)
+                {t("Все события (успех и ошибки)", "All results")}
               </Label>
             </div>
             <div className="flex items-center gap-2">
               <RadioGroupItem value="errors" id="lvl-errors" />
               <Label htmlFor="lvl-errors" className="cursor-pointer font-normal">
-                Только ошибки
+                {t("Только ошибки", "Only errors")}
               </Label>
             </div>
           </RadioGroup>
@@ -122,7 +124,7 @@ export function MonitoringNotificationSettings() {
 
         <div className="pt-3 border-t">
           <Label htmlFor="timeout-select" className="text-sm mb-2 block">
-            Уведомить, если нет ответа от ребёнка
+            {t("Уведомить, если нет ответа от ребёнка", "Notify me when my child doesn’t respond")}
           </Label>
           <select
             id="timeout-select"
@@ -132,12 +134,12 @@ export function MonitoringNotificationSettings() {
           >
             {TIMEOUT_OPTIONS.map((m) => (
               <option key={m} value={m}>
-                {m === 0 ? "Отключено" : `Через ${m} мин`}
+                {m === 0 ? t("Отключено", "Off") : t(`Через ${m} мин`, `After ${m} min`)}
               </option>
             ))}
           </select>
           <p className="text-xs text-muted-foreground mt-1">
-            Если запрос остаётся в статусе «ожидание» дольше указанного времени, придёт уведомление.
+            {t("Если запрос остаётся в статусе «ожидание» дольше указанного времени, придёт уведомление.", "You’ll get a notification if a request is still pending after this time.")}
           </p>
         </div>
       </CardContent>

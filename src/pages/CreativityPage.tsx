@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Images, Palette, Pencil, Sticker } from "lucide-react";
@@ -10,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActivityTracker } from "@/hooks/useActivityTracker";
 
 const CreativityPage = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   useActivityTracker();
   const [activeTab, setActiveTab] = useState("draw");
@@ -25,11 +27,11 @@ const CreativityPage = () => {
             className="gap-2"
           >
             <ArrowLeft className="w-5 h-5" />
-            Назад
+            {t("Назад", "Back")}
           </Button>
           <h1 className="flex items-center gap-2 text-2xl font-extrabold sm:text-3xl">
             <span>🎨</span>
-            <span className="text-gradient">Творчество</span>
+            <span className="text-gradient">{t("Творчество", "Arts and crafts")}</span>
           </h1>
         </div>
 
@@ -37,19 +39,19 @@ const CreativityPage = () => {
           <TabsList className="mx-auto mb-6 grid h-auto w-full max-w-xl grid-cols-2 gap-1 sm:grid-cols-4">
             <TabsTrigger value="draw" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Pencil className="w-4 h-4" />
-              Рисовать
+              {t("Рисовать", "Draw")}
             </TabsTrigger>
             <TabsTrigger value="coloring" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Palette className="w-4 h-4" />
-              Раскрашивать
+              {t("Раскрашивать", "Color")}
             </TabsTrigger>
             <TabsTrigger value="stickers" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Sticker className="w-4 h-4" />
-              Наклейки
+              {t("Наклейки", "Stickers")}
             </TabsTrigger>
             <TabsTrigger value="gallery" className="min-w-0 flex-col gap-1 px-1 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Images className="w-4 h-4" />
-              Галерея
+              {t("Галерея", "Gallery")}
             </TabsTrigger>
           </TabsList>
 

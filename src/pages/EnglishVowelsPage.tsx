@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { speakEnglish } from "@/lib/sound";
@@ -30,6 +31,7 @@ const CONSONANTS: LetterCard[] = [
 ];
 
 export default function EnglishVowelsPage() {
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"vowels" | "consonants">("vowels");
 
@@ -53,8 +55,8 @@ export default function EnglishVowelsPage() {
             <ArrowLeft className="w-6 h-6" />
           </Button>
           <div>
-            <h1 className="text-3xl font-black text-indigo-600">Буквы и Звуки</h1>
-            <p className="text-sm text-muted-foreground">Гласные и согласные буквы</p>
+            <h1 className="text-3xl font-black text-indigo-600">{t("Буквы и Звуки", "Letters and sounds")}</h1>
+            <p className="text-sm text-muted-foreground">{t("Гласные и согласные буквы", "Vowels and consonants")}</p>
           </div>
         </div>
 
@@ -68,7 +70,7 @@ export default function EnglishVowelsPage() {
                 : "bg-transparent text-slate-600 hover:bg-indigo-50"
             }`}
           >
-            Гласные (Vowels)
+            {t("Гласные (Vowels)", "Vowels")}
           </Button>
           <Button
             onClick={() => setTab("consonants")}
@@ -78,7 +80,7 @@ export default function EnglishVowelsPage() {
                 : "bg-transparent text-slate-600 hover:bg-purple-50"
             }`}
           >
-            Согласные (Consonants)
+            {t("Согласные (Consonants)", "Consonants")}
           </Button>
         </div>
 
@@ -97,7 +99,7 @@ export default function EnglishVowelsPage() {
                 <div>
                   <div className="text-2xl">{item.emoji}</div>
                   <div className="font-bold text-slate-800 text-lg">{item.example}</div>
-                  <div className="text-xs text-slate-500">{item.translation}</div>
+                  {language === "ru" && <div className="text-xs text-slate-500">{item.translation}</div>}
                 </div>
               </div>
               <div className="text-indigo-500 p-2 bg-indigo-50 rounded-full">

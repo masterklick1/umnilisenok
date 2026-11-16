@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { StreakBonusBanner } from "@/components/StreakBonusBanner";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,7 @@ type ResultFn = (ok: boolean, correct?: string) => void;
 
 // ===== Слоги (чтение слогов) =====
 const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
+  const { t } = useLanguage();
   const randomSyllable = () => {
     const c = SYLLABLE_CONSONANTS[Math.floor(Math.random() * SYLLABLE_CONSONANTS.length)];
     const v = SYLLABLE_VOWELS[Math.floor(Math.random() * SYLLABLE_VOWELS.length)];
@@ -103,19 +105,19 @@ const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div className="text-lg font-semibold">Читаем слоги ✏️</div>
-        <Button variant="outline" onClick={onExit}>Выбрать режим</Button>
+        <div className="text-lg font-semibold">{t("Читаем слоги ✏️", "Read Russian syllables ✏️")}</div>
+        <Button variant="outline" onClick={onExit}>{t("Выбрать режим", "Choose an activity")}</Button>
       </div>
       <Card className="p-12 text-center">
         <div className="text-8xl font-extrabold text-primary mb-8">{syllable}</div>
         <Button size="lg" variant="secondary" className="mb-8" onClick={() => speak(syllable)}>
-          <Volume2 className="mr-2 h-5 w-5" /> Послушать слог
+          <Volume2 className="mr-2 h-5 w-5" /> {t("Послушать слог", "Listen to the syllable")}
         </Button>
-        <p className="text-muted-foreground">Прочитай слог вслух, а потом проверь себя кнопкой</p>
+        <p className="text-muted-foreground">{t("Прочитай слог вслух, а потом проверь себя кнопкой", "Read the syllable aloud, then tap the button to check")}</p>
       </Card>
       <div className="flex justify-center">
         <Button size="lg" onClick={handleNextSyllable}>
-          Следующий слог →
+          {t("Следующий слог →", "Next syllable →")}
         </Button>
       </div>
     </div>
@@ -124,6 +126,7 @@ const SyllablesMode = ({ onExit }: { onExit: () => void }) => {
 
 // ===== Гласная или согласная =====
 const VowelsMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => void }) => {
+  const { t } = useLanguage();
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);
   const [round, setRound] = useState(0);
@@ -141,7 +144,7 @@ const VowelsMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => vo
     const ok = (choice === "vowel") === data.isVowel;
     setTotal((t) => t + 1);
     if (ok) setScore((s) => s + 1);
-    onResult(ok, data.isVowel ? "гласная" : "согласная");
+    onResult(ok, data.isVowel ? t("гласная", "vowel") : t("согласная", "consonant"));
     setTimeout(() => { setLocked(null); setRound((r) => r + 1); }, 1300);
   };
 
@@ -157,18 +160,18 @@ const VowelsMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => vo
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow">
-        <div className="text-lg font-semibold">Счёт: {score} / {total}</div>
-        <Button variant="outline" onClick={onExit}>Выбрать режим</Button>
+        <div className="text-lg font-semibold">{t("Счёт:", "Score:")} {score} / {total}</div>
+        <Button variant="outline" onClick={onExit}>{t("Выбрать режим", "Choose an activity")}</Button>
       </div>
       <Card className="p-8 text-center">
-        <p className="text-2xl text-muted-foreground mb-4">Это гласная или согласная?</p>
+        <p className="text-2xl text-muted-foreground mb-4">{t("Это гласная или согласная?", "Is it a vowel or a consonant?")}</p>
         <div className="text-8xl font-extrabold text-primary mb-8">{data.letter}</div>
         <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
           <Button size="lg" disabled={locked !== null} className={`h-20 text-xl ${btnClass("vowel")}`} onClick={() => pick("vowel")}>
-            Гласная
+            {t("Гласная", "Vowel")}
           </Button>
           <Button size="lg" disabled={locked !== null} className={`h-20 text-xl ${btnClass("consonant")}`} onClick={() => pick("consonant")}>
-            Согласная
+            {t("Согласная", "Consonant")}
           </Button>
         </div>
       </Card>
@@ -178,6 +181,7 @@ const VowelsMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => vo
 
 // ===== Пропущенная буква =====
 const MissingMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => void }) => {
+  const { t } = useLanguage();
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);
   const [round, setRound] = useState(0);
@@ -208,11 +212,11 @@ const MissingMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => v
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow">
-        <div className="text-lg font-semibold">Счёт: {score} / {total}</div>
-        <Button variant="outline" onClick={onExit}>Выбрать режим</Button>
+        <div className="text-lg font-semibold">{t("Счёт:", "Score:")} {score} / {total}</div>
+        <Button variant="outline" onClick={onExit}>{t("Выбрать режим", "Choose an activity")}</Button>
       </div>
       <Card className="p-8 text-center">
-        <p className="text-2xl text-muted-foreground mb-6">Какая буква пропала?</p>
+        <p className="text-2xl text-muted-foreground mb-6">{t("Какая буква пропала?", "Which letter is missing?")}</p>
         <div className="flex justify-center items-center gap-3 mb-8">
           <span className="text-7xl font-extrabold text-primary">{data.a}</span>
           <span className="text-7xl font-extrabold text-accent bg-accent/10 rounded-2xl px-4 animate-pulse-soft">?</span>
@@ -237,6 +241,7 @@ const MissingMode = ({ onResult, onExit }: { onResult: ResultFn; onExit: () => v
 };
 
 export default function AlphabetPage() {
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { logCorrectAnswer, logWrongAnswer, logActivity } = useActivityTracker();
@@ -253,12 +258,12 @@ export default function AlphabetPage() {
       addStars(1, "alphabet");
       void recordLearned("alphabet", correct ?? "");
       logCorrectAnswer({ section: "alphabet", mode: modeName });
-      speak("Правильно! Молодец!");
-      toast({ title: "Правильно! 🎉", description: "+1 ⭐" });
+      speak(t("Правильно! Молодец!", "That’s right! Well done!"), language === "en" ? "en-US" : "ru-RU");
+      toast({ title: t("Правильно! 🎉", "That’s right! 🎉"), description: "+1 ⭐" });
     } else {
       logWrongAnswer({ section: "alphabet", mode: modeName });
-      speak("Попробуй ещё раз!");
-      toast({ title: "Попробуй ещё! 💪", description: correct ? `Правильно: ${correct}` : "Попробуй ещё", variant: "destructive" });
+      speak(t("Попробуй ещё раз!", "Try again!"), language === "en" ? "en-US" : "ru-RU");
+      toast({ title: t("Попробуй ещё! 💪", "Try again! 💪"), description: correct ? t(`Правильно: ${correct}`, `Correct answer: ${correct}`) : t("Попробуй ещё", "Try again"), variant: "destructive" });
     }
   };
 
@@ -310,17 +315,17 @@ export default function AlphabetPage() {
       addStars(1, "alphabet");
       void recordLearned("alphabet", russianAlphabet[currentIndex].letter);
       logCorrectAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter });
-      speak("Правильно! Молодец!");
+      speak(t("Правильно! Молодец!", "That’s right! Well done!"), language === "en" ? "en-US" : "ru-RU");
       toast({
-        title: "Правильно! 🎉",
-        description: "Отличная работа! +1 ⭐",
+        title: t("Правильно! 🎉", "That’s right! 🎉"),
+        description: t("Отличная работа! +1 ⭐", "Great job! +1 ⭐"),
       });
     } else {
       logWrongAnswer({ section: "alphabet", letter: russianAlphabet[currentIndex].letter, selected: selected.letter });
-      speak("Не правильно. Ещё раз подумай!");
+      speak(t("Не правильно. Ещё раз подумай!", "Think again!"), language === "en" ? "en-US" : "ru-RU");
       toast({
-        title: "Попробуй ещё раз! 💪",
-        description: `Правильный ответ: ${russianAlphabet[currentIndex].letter}`,
+        title: t("Попробуй ещё раз! 💪", "Try again! 💪"),
+        description: t(`Правильный ответ: ${russianAlphabet[currentIndex].letter}`, `Correct answer: ${russianAlphabet[currentIndex].letter}`),
         variant: "destructive",
       });
     }
@@ -342,11 +347,11 @@ export default function AlphabetPage() {
   };
 
   const menuItems = [
-    { m: "learn" as Mode, emoji: "📖", title: "Учить буквы", desc: "Все буквы алфавита", grad: "from-rose-100 to-orange-100", onClick: startLearning },
-    { m: "syllables" as Mode, emoji: "✏️", title: "Слоги", desc: "Учимся читать слоги", grad: "from-amber-100 to-yellow-100", onClick: () => setMode("syllables") },
-    { m: "quiz" as Mode, emoji: "🎯", title: "Викторина", desc: "Найди букву для слова", grad: "from-sky-100 to-cyan-100", onClick: startQuiz },
-    { m: "vowels" as Mode, emoji: "🔵", title: "Гласная или согласная", desc: "Определи букву", grad: "from-violet-100 to-purple-100", onClick: () => setMode("vowels") },
-    { m: "missing" as Mode, emoji: "❓", title: "Пропущенная буква", desc: "Какая буква пропала?", grad: "from-emerald-100 to-teal-100", onClick: () => setMode("missing") },
+    { m: "learn" as Mode, emoji: "📖", title: t("Учить буквы", "Learn the letters"), desc: t("Все буквы алфавита", "All the Russian letters"), grad: "from-rose-100 to-orange-100", onClick: startLearning },
+    { m: "syllables" as Mode, emoji: "✏️", title: t("Слоги", "Syllables"), desc: t("Учимся читать слоги", "Learn to read syllables"), grad: "from-amber-100 to-yellow-100", onClick: () => setMode("syllables") },
+    { m: "quiz" as Mode, emoji: "🎯", title: t("Викторина", "Quiz"), desc: t("Найди букву для слова", "Find the first letter"), grad: "from-sky-100 to-cyan-100", onClick: startQuiz },
+    { m: "vowels" as Mode, emoji: "🔵", title: t("Гласная или согласная", "Vowel or consonant"), desc: t("Определи букву", "Identify the letter"), grad: "from-violet-100 to-purple-100", onClick: () => setMode("vowels") },
+    { m: "missing" as Mode, emoji: "❓", title: t("Пропущенная буква", "Missing letter"), desc: t("Какая буква пропала?", "Which letter is missing?"), grad: "from-emerald-100 to-teal-100", onClick: () => setMode("missing") },
   ];
 
   return (
@@ -359,16 +364,16 @@ export default function AlphabetPage() {
           className="mb-6"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Назад
+          {t("Назад", "Back")}
         </Button>
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce-gentle">📚</div>
           <h1 className="text-4xl font-extrabold text-gradient mb-2">
-            Алфавит
+            {t("Алфавит", "Russian alphabet")}
           </h1>
           <p className="text-lg text-muted-foreground">
-            Учим буквы весело!
+            {t("Учим буквы весело!", "Have fun learning letters!")}
           </p>
         </div>
 
@@ -394,10 +399,10 @@ export default function AlphabetPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div className="text-lg font-semibold">
-                Буква {currentIndex + 1} из {russianAlphabet.length}
+                {t("Буква", "Letter")} {currentIndex + 1} {t("из", "of")} {russianAlphabet.length}
               </div>
               <Button variant="outline" onClick={resetMode}>
-                Выбрать режим
+                {t("Выбрать режим", "Choose an activity")}
               </Button>
             </div>
 
@@ -413,22 +418,22 @@ export default function AlphabetPage() {
                 className="mb-8"
               >
                 <Volume2 className="mr-2 h-5 w-5" />
-                Послушать букву
+                {t("Послушать букву", "Listen to the letter")}
               </Button>
 
               <div className="text-4xl mb-4">{currentLetter.emoji}</div>
               <div className="text-2xl font-semibold mb-2">{currentLetter.word}</div>
               <div className="text-xl text-muted-foreground">
-                начинается с буквы <span className="font-bold text-primary">{currentLetter.letter}</span>
+                {t("начинается с буквы", "starts with")} <span className="font-bold text-primary">{currentLetter.letter}</span>
               </div>
             </Card>
 
             <div className="flex gap-4 justify-center">
               <Button size="lg" onClick={prevLetter} variant="outline">
-                ← Предыдущая
+                {t("← Предыдущая", "← Previous")}
               </Button>
               <Button size="lg" onClick={nextLetter}>
-                Следующая →
+                {t("Следующая →", "Next →")}
               </Button>
             </div>
           </div>
@@ -442,16 +447,16 @@ export default function AlphabetPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow">
               <div className="text-lg font-semibold">
-                Счёт: {score} / {total}
+                {t("Счёт:", "Score:")} {score} / {total}
               </div>
               <Button variant="outline" onClick={resetMode}>
-                Выбрать режим
+                {t("Выбрать режим", "Choose an activity")}
               </Button>
             </div>
 
             <Card className="p-8 text-center">
               <div className="text-3xl mb-6 text-muted-foreground">
-                Найди букву для слова:
+                {t("Найди букву для слова:", "Find the first letter of:")}
               </div>
               
               <div className="text-6xl mb-4">{currentLetter.emoji}</div>
@@ -486,7 +491,7 @@ export default function AlphabetPage() {
                   {showResult ? "🎉" : "💪"}
                 </div>
                 <div className="text-2xl font-bold">
-                  {showResult ? "Правильно!" : "Попробуй ещё!"}
+                  {showResult ? t("Правильно!", "That’s right!") : t("Попробуй ещё!", "Try again!")}
                 </div>
               </div>
             )}

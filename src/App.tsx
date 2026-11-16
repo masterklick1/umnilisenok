@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import Index from "./pages/Index";
 import MathPage from "./pages/MathPage";
@@ -174,7 +175,16 @@ const ParentOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => (
+function LoadingScreen({ scanner = false }: { scanner?: boolean }) {
+  const { t } = useLanguage();
+  return (
+    <p className="p-6 text-center" role="status">
+      {scanner ? t("Открываем сканер…", "Opening the scanner…") : t("Загружаем урок…", "Loading the lesson…")}
+    </p>
+  );
+}
+
+const AppContent = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
@@ -190,7 +200,7 @@ const App = () => (
             {/* Публичные роуты */}
             <Route path="/auth" element={<AuthPage />} />
             <Route path={TOYS_LESSON_PATH} element={
-              <Suspense fallback={<p className="p-6 text-center" role="status">Загружаем урок…</p>}>
+              <Suspense fallback={<LoadingScreen />}>
                 <ToysLessonPage />
               </Suspense>
             } />
@@ -205,7 +215,7 @@ const App = () => (
             {/* Защищенные роуты (для детей и родителей) */}
             <Route path="/voice-lesson" element={
               <ProtectedRoute>
-                <Suspense fallback={<p className="p-6 text-center" role="status">Загружаем урок…</p>}>
+                <Suspense fallback={<LoadingScreen />}>
                   <VoiceTeacherPage />
                 </Suspense>
               </ProtectedRoute>
@@ -254,7 +264,7 @@ const App = () => (
               path="/tales/read-page"
               element={
                 <ProtectedRoute>
-                  <Suspense fallback={<p className="p-6 text-center" role="status">Открываем сканер…</p>}>
+                  <Suspense fallback={<LoadingScreen scanner />}>
                     <PageReaderPage />
                   </Suspense>
                 </ProtectedRoute>
@@ -384,4 +394,10 @@ const App = () => (
   </QueryClientProvider>
 );
 
-export default App;
+export default function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
+  );
+}

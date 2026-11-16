@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +46,7 @@ interface GameSession {
 }
 
 export const useParentalControl = () => {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
   const [children, setChildren] = useState<ChildProfile[]>([]);
@@ -199,8 +201,8 @@ export const useParentalControl = () => {
       }
 
       toast({
-        title: "Аккаунт создан! 🎉",
-        description: `Аккаунт для ${firstName} успешно создан`,
+        title: t("Аккаунт создан! 🎉", "Account created! 🎉"),
+        description: t(`Аккаунт для ${firstName} успешно создан`, `Account created for ${firstName}`),
       });
 
       await fetchChildren();
@@ -214,11 +216,11 @@ export const useParentalControl = () => {
         window.location.reload();
       }
       toast({
-        title: "Ошибка",
+        title: t("Ошибка", "Error"),
         description:
           error instanceof Error
             ? error.message
-            : "Не удалось создать аккаунт ребёнка",
+            : t("Не удалось создать аккаунт ребёнка", "Couldn’t create a child account"),
         variant: "destructive",
       });
       return { error };
@@ -241,15 +243,15 @@ export const useParentalControl = () => {
       await fetchChildren();
 
       toast({
-        title: "Аккаунт удалён",
-        description: "Аккаунт ребёнка и все его данные удалены безвозвратно.",
+        title: t("Аккаунт удалён", "Account deleted"),
+        description: t("Аккаунт ребёнка и все его данные удалены безвозвратно.", "The child’s account and associated data were permanently deleted."),
       });
       return { error: null };
     } catch (error) {
       console.error("Error deleting child account:", error);
       toast({
-        title: "Не удалось удалить аккаунт",
-        description: error instanceof Error ? error.message : "Попробуйте позже",
+        title: t("Не удалось удалить аккаунт", "Couldn’t delete the account"),
+        description: error instanceof Error ? error.message : t("Попробуйте позже", "Try again later"),
         variant: "destructive",
       });
       return { error };
@@ -327,14 +329,14 @@ export const useParentalControl = () => {
       setChildAnalysis(data);
       
       toast({
-        title: "Анализ готов! 🧠",
-        description: "ИИ проанализировал успехи ребёнка",
+        title: t("Анализ готов! 🧠", "Analysis is ready! 🧠"),
+        description: t("ИИ проанализировал успехи ребёнка", "AI reviewed your child’s progress"),
       });
     } catch (error) {
       console.error("Error analyzing child:", error);
       toast({
-        title: "Ошибка",
-        description: "Не удалось получить анализ",
+        title: t("Ошибка", "Error"),
+        description: t("Не удалось получить анализ", "Couldn’t get the analysis"),
         variant: "destructive",
       });
     } finally {

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { ENGLISH_VOCABULARY } from "@/lib/english-vocabulary";
 import { ENGLISH_ANIMALS } from "@/lib/english-animals";
 import { useState } from "react";
@@ -85,6 +86,7 @@ const CATEGORIES: Category[] = [
 ];
 
 export default function EnglishWordsPage() {
+  const { t, label, language } = useLanguage();
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<Category>(CATEGORIES[0]);
   const [listening, setListening] = useState(false);
@@ -108,7 +110,7 @@ export default function EnglishWordsPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-black text-amber-600">First Words</h1>
-            <p className="text-sm text-muted-foreground">Первые английские слова</p>
+            <p className="text-sm text-muted-foreground">{t("Первые английские слова", "First English words")}</p>
           </div>
         </div>
 
@@ -128,7 +130,7 @@ export default function EnglishWordsPage() {
               }`}
             >
               {cat.icon}
-              <span className="font-bold">{cat.name}</span>
+              <span className="font-bold">{label(cat.name)}</span>
             </Button>
           ))}
         </div>
@@ -139,7 +141,7 @@ export default function EnglishWordsPage() {
           <>
             {activeCategory.id === "animals" && (
               <Button className="w-full gap-2 rounded-2xl" size="lg" onClick={() => setListening(true)}>
-                <Volume2 className="h-5 w-5" /> Послушай и выбери
+                <Volume2 className="h-5 w-5" /> {t("Послушай и выбери", "Listen and choose")}
               </Button>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -152,7 +154,7 @@ export default function EnglishWordsPage() {
                   <div className="text-5xl my-2">{item.emoji}</div>
                   <div>
                     <div className="text-xl font-bold text-slate-800">{item.word}</div>
-                    <div className="text-xs text-slate-500">{item.translation}</div>
+                    {language === "ru" && <div className="text-xs text-slate-500">{item.translation}</div>}
                   </div>
                   <div className="mt-3 text-amber-500 p-2 bg-amber-50 rounded-full">
                     <Volume2 className="w-4 h-4" />

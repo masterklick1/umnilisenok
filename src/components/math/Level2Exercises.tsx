@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,24 +24,28 @@ const Wrapper = ({
   score: number;
   total: number;
   onBack: () => void;
-}) => (
+}) => {
+  const { t } = useLanguage();
+  return (
   <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-background p-4">
     <div className="container mx-auto max-w-4xl">
       <div className="flex justify-between items-center mb-6">
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Назад
+          {t("Назад", "Back")}
         </Button>
         <div className="text-lg font-semibold">
-          Счёт: {score} / {total}
+          {t("Счёт:", "Score:")} {score} / {total}
         </div>
       </div>
       <Card className="p-8 text-center">{children}</Card>
     </div>
   </div>
 );
+};
 
 export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const { addStars } = useUserProgress();
   const { logCorrectAnswer, logWrongAnswer } = useActivityTracker();
@@ -68,19 +73,19 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   const reward = (msg: string) => {
     addStars(1, "math");
     setScore((s) => s + 1);
-    speak("Правильно!");
+    speak(t("Правильно!", "That’s right!"), language === "en" ? "en-US" : "ru-RU");
     toast({ title: msg + " 🎉", description: "+1 ⭐" });
   };
 
   const wrong = (correct: string) => {
-    speak("Попробуй ещё раз!");
-    toast({ title: "Попробуй ещё! 💪", description: `Правильно: ${correct}`, variant: "destructive" });
+    speak(t("Попробуй ещё раз!", "Try again!"), language === "en" ? "en-US" : "ru-RU");
+    toast({ title: t("Попробуй ещё! 💪", "Try again! 💪"), description: t(`Правильно: ${correct}`, `Correct answer: ${correct}`), variant: "destructive" });
   };
 
   const checkAnswer = (selected: number, correct: number) => {
     setTotal((t) => t + 1);
     if (selected === correct) {
-      reward("Молодец");
+      reward(t("Молодец", "Well done"));
       logCorrectAnswer({ section: "math", level: 2, answer: selected });
     } else {
       wrong(String(correct));
@@ -89,20 +94,20 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   };
 
   const exercises = [
-    { type: "abacus" as ExerciseType, title: "Счёты-абак", description: "Считаем до 10 вместе", emoji: "🧮" },
-    { type: "building" as ExerciseType, title: "Строим домики", description: "Сложение и вычитание", emoji: "🏗️" },
-    { type: "3dshapes" as ExerciseType, title: "Объёмные фигуры", description: "Куб, шар, пирамида", emoji: "🎲" },
-    { type: "patterns" as ExerciseType, title: "Узоры", description: "Найди закономерность", emoji: "🔢" },
-    { type: "neighbors" as ExerciseType, title: "Соседи числа", description: "Что идёт после?", emoji: "🔢" },
-    { type: "comparenum" as ExerciseType, title: "Сравни числа", description: "Где число больше?", emoji: "⚖️" },
+    { type: "abacus" as ExerciseType, title: t("Счёты-абак", "Abacus"), description: t("Считаем до 10 вместе", "Count to ten together"), emoji: "🧮" },
+    { type: "building" as ExerciseType, title: t("Строим домики", "Build houses"), description: t("Сложение и вычитание", "Addition and subtraction"), emoji: "🏗️" },
+    { type: "3dshapes" as ExerciseType, title: t("Объёмные фигуры", "3D shapes"), description: t("Куб, шар, пирамида", "Cube, sphere and pyramid"), emoji: "🎲" },
+    { type: "patterns" as ExerciseType, title: t("Узоры", "Patterns"), description: t("Найди закономерность", "Find the pattern"), emoji: "🔢" },
+    { type: "neighbors" as ExerciseType, title: t("Соседи числа", "Number neighbors"), description: t("Что идёт после?", "What comes next?"), emoji: "🔢" },
+    { type: "comparenum" as ExerciseType, title: t("Сравни числа", "Compare numbers"), description: t("Где число больше?", "Which number is bigger?"), emoji: "⚖️" },
   ];
 
   const shapes3d = useMemo(() => {
     const all = [
-      { name: "куб", emoji: "🎲" },
-      { name: "шар", emoji: "⚽" },
-      { name: "пирамида", emoji: "🔺" },
-      { name: "цилиндр", emoji: "🥫" },
+      { name: t("куб", "cube"), emoji: "🎲" },
+      { name: t("шар", "sphere"), emoji: "⚽" },
+      { name: t("пирамида", "pyramid"), emoji: "🔺" },
+      { name: t("цилиндр", "cylinder"), emoji: "🥫" },
     ];
     const target = all[Math.floor(Math.random() * all.length)];
     const opts = [...all].sort(() => Math.random() - 0.5);
@@ -136,12 +141,12 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
         <div className="container mx-auto max-w-4xl">
           <Button variant="ghost" onClick={onBack} className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Выбрать уровень
+            {t("Выбрать уровень", "Choose a level")}
           </Button>
           <div className="text-center mb-8">
             <div className="text-6xl mb-4 animate-bounce-gentle">🎯</div>
-            <h1 className="text-4xl font-bold mb-2">Юный математик</h1>
-            <p className="text-lg text-muted-foreground">4-5 лет</p>
+            <h1 className="text-4xl font-bold mb-2">{t("Юный математик", "Young mathematician")}</h1>
+            <p className="text-lg text-muted-foreground">{t("4-5 лет", "Ages 4–5")}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {exercises.map((ex) => (
@@ -164,7 +169,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   if (currentExercise === "abacus") {
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Посчитай шарики на абаке!</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Посчитай шарики на абаке!", "Count the beads on the abacus!")}</h2>
         <div className="flex justify-center gap-1 mb-8 text-4xl flex-wrap max-w-md mx-auto">
           {[...Array(abacusNumber)].map((_, i) => (
             <span key={i}>🟠</span>
@@ -192,7 +197,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
   if (currentExercise === "building") {
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Строим домики!</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Строим домики!", "Let’s build houses!")}</h2>
         <div className="text-6xl mb-8">{buildingProblem.question} = ?</div>
         <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
           {[...Array(10)].map((_, i) => (
@@ -219,10 +224,10 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
         <h2 className="text-2xl font-bold mb-6">
-          Найди фигуру: <span className="text-primary">{shapes3dData.target.name}</span>
+          {t("Найди фигуру:", "Find the shape:")} <span className="text-primary">{shapes3dData.target.name}</span>
         </h2>
-        <Button size="sm" variant="outline" onClick={() => speak(`Найди ${shapes3dData.target.name}`)} className="mb-6">
-          🔊 Повторить
+        <Button size="sm" variant="outline" onClick={() => speak(t(`Найди ${shapes3dData.target.name}`, `Find the ${shapes3dData.target.name}`), language === "en" ? "en-US" : "ru-RU")} className="mb-6">
+          {t("🔊 Повторить", "🔊 Listen again")}
         </Button>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {shapes3dData.opts.map((s, i) => (
@@ -233,7 +238,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
               onClick={() => {
                 setTotal((t) => t + 1);
                 if (s.name === shapes3dData.target.name) {
-                  reward("Точно");
+                  reward(t("Точно", "Exactly"));
                   logCorrectAnswer({ section: "math", level: 2, exercise: "3dshapes", shape: s.name });
                 } else {
                   wrong(shapes3dData.target.name);
@@ -261,7 +266,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
 
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Что дальше в узоре?</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Что дальше в узоре?", "What comes next in the pattern?")}</h2>
         <div className="flex justify-center gap-2 mb-8 text-5xl">
           {patternData.seq.map((c, i) => (
             <span key={i}>{c}</span>
@@ -277,7 +282,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
               onClick={() => {
                 setTotal((t) => t + 1);
                 if (c === patternData.next) {
-                  reward("Точно");
+                  reward(t("Точно", "Exactly"));
                   logCorrectAnswer({ section: "math", level: 2, exercise: "patterns" });
                 } else {
                   wrong(patternData.next);
@@ -298,7 +303,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     const r = neighborData;
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-6">Какое число идёт после {r.n}?</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("Какое число идёт после", "What number comes after")} {r.n}?</h2>
         <div className="text-6xl mb-8">{r.n} → ?</div>
         <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
           {[...Array(10)].map((_, i) => (
@@ -324,7 +329,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     const pick = (side: "a" | "b") => {
       setTotal((t) => t + 1);
       if (side === r.bigger) {
-        reward("Верно");
+        reward(t("Верно", "Correct"));
         logCorrectAnswer({ section: "math", level: 2, exercise: "comparenum" });
       } else {
         wrong(String(r[r.bigger]));
@@ -334,7 +339,7 @@ export const Level2Exercises = ({ onBack }: Level2ExercisesProps) => {
     };
     return (
       <Wrapper score={score} total={total} onBack={() => setCurrentExercise(null)}>
-        <h2 className="text-2xl font-bold mb-8">Где число больше?</h2>
+        <h2 className="text-2xl font-bold mb-8">{t("Где число больше?", "Which number is bigger?")}</h2>
         <div className="grid grid-cols-2 gap-6 max-w-md mx-auto">
           {(["a", "b"] as const).map((side) => (
             <button

@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ColorPalette } from "./ColorPalette";
@@ -254,6 +255,7 @@ async function renderColoring(image: ColoringImage, colors: Record<number, strin
 }
 
 export const ColoringBook = () => {
+  const { t, label } = useLanguage();
   const owner = useGalleryOwner();
   const saving = useRef(false);
   const drafts = useRef<Record<string, Drawing>>({});
@@ -310,7 +312,7 @@ export const ColoringBook = () => {
     try {
       const drawing = drafts.current[saveKey] ?? {
         id: crypto.randomUUID(),
-        title: `Раскраска · ${currentImage.name}`,
+        title: t(`Раскраска · ${label(currentImage.name)}`, `Coloring page · ${label(currentImage.name)}`),
         image_data: await renderColoring(currentImage, coloredPaths, strokeWidth),
         created_at: new Date().toISOString(),
       };
@@ -331,39 +333,39 @@ export const ColoringBook = () => {
     <div className="flex flex-col items-center gap-4">
       <div className="flex flex-wrap justify-center gap-2">
         {LEVELS.map((level, index) => (
-          <Button key={level.title} variant={index === levelIndex ? "default" : "outline"}
+          <Button key={label(level.title)} variant={index === levelIndex ? "default" : "outline"}
             aria-pressed={index === levelIndex} disabled={saveStatus === "saving"}
             onClick={() => {
               if (index === levelIndex) return;
               setLevelIndex(index);
               selectImage(0);
             }}>
-            {level.title} · {level.images.length}
+            {label(level.title)} · {level.images.length}
           </Button>
         ))}
       </div>
 
       <div className="flex w-full max-w-xl items-center justify-between gap-2">
-        <Button variant="outline" size="icon" aria-label="Предыдущая раскраска" disabled={saveStatus === "saving"} onClick={() => move(-1)}>
+        <Button variant="outline" size="icon" aria-label={t("Предыдущая раскраска", "Previous coloring page")} disabled={saveStatus === "saving"} onClick={() => move(-1)}>
           <ChevronLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0 text-center" aria-live="polite">
-          <h3 className="text-lg font-bold sm:text-2xl">{currentImage.name}</h3>
-          <p className="text-sm text-muted-foreground">{currentImageIndex + 1} из {images.length}</p>
+          <h3 className="text-lg font-bold sm:text-2xl">{label(currentImage.name)}</h3>
+          <p className="text-sm text-muted-foreground">{currentImageIndex + 1} {t("из", "of")} {images.length}</p>
         </div>
-        <Button variant="outline" size="icon" aria-label="Следующая раскраска" disabled={saveStatus === "saving"} onClick={() => move(1)}>
+        <Button variant="outline" size="icon" aria-label={t("Следующая раскраска", "Next coloring page")} disabled={saveStatus === "saving"} onClick={() => move(1)}>
           <ChevronRight className="h-5 w-5" />
         </Button>
       </div>
 
       <Button variant="outline" disabled={saveStatus === "saving"} onClick={() => setShowPicker(true)}>
-        <Images className="mr-2 h-4 w-4" /> Выбрать картинку
+        <Images className="mr-2 h-4 w-4" /> {t("Выбрать картинку", "Choose a picture")}
       </Button>
       <Dialog open={showPicker} onOpenChange={setShowPicker}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Выбрать раскраску</DialogTitle>
-            <DialogDescription>{LEVELS[levelIndex].title}</DialogDescription>
+            <DialogTitle>{t("Выбрать раскраску", "Choose a coloring page")}</DialogTitle>
+            <DialogDescription>{label(LEVELS[levelIndex].title)}</DialogDescription>
           </DialogHeader>
           <div className="grid max-h-[65vh] grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-3">
             {images.map((image, index) => (
@@ -373,7 +375,7 @@ export const ColoringBook = () => {
                 <svg aria-hidden="true" viewBox="0 0 300 200" className="mb-1 block w-full bg-white">
                   {image.paths.map((path, i) => <path key={i} d={path} fill="white" stroke="#202234" strokeWidth="3" />)}
                 </svg>
-                {image.name}
+                {label(image.name)}
               </button>
             ))}
           </div>
@@ -381,12 +383,12 @@ export const ColoringBook = () => {
       </Dialog>
 
       <p className="text-center text-sm text-muted-foreground">
-        {numbered ? "Выбери краску с таким же номером, как на рисунке." : "Выбери цвет и нажми на деталь рисунка."}
+        {numbered ? t("Выбери краску с таким же номером, как на рисунке.", "Pick the paint with the same number as the section in the picture.") : t("Выбери цвет и нажми на деталь рисунка.", "Choose a color and tap part of the picture.")}
       </p>
       {numbered ? (
         <div className="flex flex-wrap justify-center gap-2">
           {numbered.palette.map((color, index) => (
-            <Button key={color} variant="outline" size="icon" aria-label={`Цвет ${index + 1}`}
+            <Button key={color} variant="outline" size="icon" aria-label={t(`Цвет ${index + 1}`, `Color ${index + 1}`)}
               aria-pressed={selectedNumber === index + 1}
               style={{ backgroundColor: color }}
               className={`font-bold text-slate-950 ${hint === index + 1 ? "ring-4 ring-amber-500" : selectedNumber === index + 1 ? "ring-2 ring-slate-900" : ""}`}
@@ -396,10 +398,10 @@ export const ColoringBook = () => {
           ))}
         </div>
       ) : <ColorPalette selectedColor={selectedColor} onColorSelect={setSelectedColor} />}
-      {hint !== null && <p role="status">Для этой детали нужен цвет № {hint}.</p>}
+      {hint !== null && <p role="status">{t("Для этой детали нужен цвет №", "This section uses color number")} {hint}.</p>}
 
       <div className="w-full max-w-xl overflow-hidden rounded-2xl border-4 border-primary/20 bg-white shadow-sm">
-        <svg viewBox="0 0 300 200" aria-label={currentImage.name} className="block h-auto w-full">
+        <svg viewBox="0 0 300 200" aria-label={label(currentImage.name)} className="block h-auto w-full">
           {currentImage.paths.map((path, index) => (
             <path
               key={index}
@@ -420,18 +422,18 @@ export const ColoringBook = () => {
       </div>
 
       {numbered && Object.keys(coloredPaths ?? {}).length === numbered.paths.length && (
-        <p role="status" className="font-semibold">Готово! Все детали раскрашены.</p>
+        <p role="status" className="font-semibold">{t("Готово! Все детали раскрашены.", "Done! You colored the whole picture.")}</p>
       )}
       <div className="flex flex-wrap justify-center gap-2">
         <Button variant="outline" disabled={!hasPaint || saveStatus === "saving"} onClick={() => { changePaint({}); setHint(null); }}>
-          <RotateCcw className="mr-2 h-4 w-4" /> Очистить
+          <RotateCcw className="mr-2 h-4 w-4" /> {t("Очистить", "Clear")}
         </Button>
         <Button disabled={!owner || !hasPaint || saveStatus === "saving" || !!saved[saveKey]} onClick={() => void save()}>
-          <Save className="mr-2 h-4 w-4" /> {saveStatus === "saving" ? "Сохраняем…" : "Сохранить в галерею"}
+          <Save className="mr-2 h-4 w-4" /> {saveStatus === "saving" ? t("Сохраняем…", "Saving…") : t("Сохранить в галерею", "Save to gallery")}
         </Button>
       </div>
-      {saved[saveKey] && <p role="status">Раскраска в галерее.</p>}
-      {saveStatus === "error" && <p role="status">Не удалось сохранить раскраску. Попробуй ещё раз.</p>}
+      {saved[saveKey] && <p role="status">{t("Раскраска в галерее.", "Coloring page saved to the gallery.")}</p>}
+      {saveStatus === "error" && <p role="status">{t("Не удалось сохранить раскраску. Попробуй ещё раз.", "Couldn’t save the coloring page. Try again.")}</p>}
     </div>
   );
 };

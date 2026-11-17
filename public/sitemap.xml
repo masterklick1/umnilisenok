@@ -11,7 +11,22 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://umnilisenok.lovable.app/pricing.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://umnilisenok.lovable.app/privacy.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://umnilisenok.lovable.app/terms.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://umnilisenok.lovable.app/refunds.html</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

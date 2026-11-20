@@ -1,3 +1,4 @@
+import { safeUUID } from "@/lib/uuid";
 import { supabase } from "@/integrations/supabase/client";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -85,7 +86,7 @@ export const connectChildWithInviteCode = async (
 
   const childName = row.child_first_name as string;
   const email = `child_${Date.now()}_${Math.random().toString(36).slice(2)}@internal.app`;
-  const password = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+  const password = safeUUID().replace(/-/g, "") + safeUUID().replace(/-/g, "");
 
   const { data: signupData, error: signupError } = await supabase.auth.signUp({
     email,

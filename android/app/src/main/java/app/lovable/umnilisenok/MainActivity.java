@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "UmniLisenok";
     public static final String EXTRA_AUTOSTART = "autostart";
+    private static long lastRecreateAt = 0L;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -47,7 +48,14 @@ public class MainActivity extends BridgeActivity {
                     } catch (Throwable t) {
                         Log.e(TAG, "destroy webview failed", t);
                     }
-                    recreate();
+                    long now = System.currentTimeMillis();
+                    if (now - lastRecreateAt > 30_000L) {
+                        lastRecreateAt = now;
+                        recreate();
+                    } else {
+                        Log.e(TAG, "WebView падает повторно — не перезапускаем по кругу");
+                        finish();
+                    }
                     return true;
                 }
             });
@@ -57,7 +65,7 @@ public class MainActivity extends BridgeActivity {
     // Смахнули из «недавних» или система убила задачу — планируем перезапуск через минуту.
     @Override
     public void onDestroy() {
-        if (!isChangingConfigurations()) {
+        if (!isChangingConfigurations() && !isFinishing()) {
             try { BootReceiver.scheduleRestart(getApplicationContext()); } catch (Throwable t) { Log.e(TAG, "scheduleRestart", t); }
         }
         super.onDestroy();

@@ -1,3 +1,4 @@
+import { safeUUID } from "@/lib/uuid";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useRef, useState, type PointerEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -79,7 +80,7 @@ export const FreeDrawing = () => {
       if (!draft.current) {
         const now = new Date();
         draft.current = {
-          id: crypto.randomUUID(),
+          id: safeUUID(),
           title: t(`Рисунок · ${now.toLocaleDateString("ru-RU")}`, `Drawing · ${now.toLocaleDateString("en-US")}`),
           image_data: canvas.toDataURL("image/png"),
           created_at: now.toISOString(),

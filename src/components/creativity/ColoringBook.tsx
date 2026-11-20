@@ -1,3 +1,4 @@
+import { safeUUID } from "@/lib/uuid";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -311,7 +312,7 @@ export const ColoringBook = () => {
     setSaveStatus("saving");
     try {
       const drawing = drafts.current[saveKey] ?? {
-        id: crypto.randomUUID(),
+        id: safeUUID(),
         title: t(`Раскраска · ${label(currentImage.name)}`, `Coloring page · ${label(currentImage.name)}`),
         image_data: await renderColoring(currentImage, coloredPaths, strokeWidth),
         created_at: new Date().toISOString(),

@@ -19,3 +19,11 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Сохраняем классы Capacitor и плагинов (на случай включения minify)
+-keep class com.getcapacitor.** { *; }
+-keep class app.lovable.umnilisenok.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keep class com.capacitorjs.** { *; }
+-keep class com.getcapacitor.community.** { *; }
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod

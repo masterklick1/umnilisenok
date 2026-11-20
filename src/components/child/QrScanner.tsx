@@ -1,6 +1,8 @@
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { Capacitor } from "@capacitor/core";
+import { Camera } from "@capacitor/camera";
 
 interface QrScannerProps {
   onScan: (text: string) => void;
@@ -15,11 +17,24 @@ export const QrScanner = ({ onScan, onError }: QrScannerProps) => {
 
   useEffect(() => {
     const elementId = "child-qr-reader";
-    const scanner = new Html5Qrcode(elementId);
-    scannerRef.current = scanner;
+    let cancelled = false;
+    let scanner: Html5Qrcode | null = null;
 
-    scanner
-      .start(
+    const run = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          let st = await Camera.checkPermissions();
+          if (st.camera !== "granted") st = await Camera.requestPermissions({ permissions: ["camera"] });
+          if (st.camera !== "granted") throw new Error(t("Нет доступа к камере. Введи код вручную.", "No camera access. Enter the code manually."));
+        } catch (e) {
+          throw e instanceof Error ? e : new Error(String(e));
+        }
+      }
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error(t("Камера не поддерживается. Введи код вручную.", "Camera not supported. Enter the code manually."));
+      if (cancelled) return;
+      scanner = new Html5Qrcode(elementId);
+      scannerRef.current = scanner;
+      await scanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 240, height: 240 } },
         (decoded) => {
@@ -28,7 +43,10 @@ export const QrScanner = ({ onScan, onError }: QrScannerProps) => {
           onScan(decoded);
         },
         () => {},
-      )
+      );
+    };
+
+    run()
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : t("Не удалось открыть камеру", "Couldn’t open the camera");
         onError?.(msg);
@@ -36,10 +54,12 @@ export const QrScanner = ({ onScan, onError }: QrScannerProps) => {
       .finally(() => setStarting(false));
 
     return () => {
-      scanner
-        .stop()
-        .then(() => scanner.clear())
-        .catch(() => {});
+      cancelled = true;
+      const s = scanner;
+      if (!s) return;
+      try {
+        s.stop().then(() => s.clear()).catch(() => {});
+      } catch { /* not started */ }
     };
   }, [onScan, onError]);
 

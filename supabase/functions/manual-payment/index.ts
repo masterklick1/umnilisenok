@@ -57,11 +57,13 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = body?.action;
-    const { data: rows } = await admin.from("manual_payments").select("id,status,created_at")
+    const { data: rows } = await admin.from("manual_payments").select("id,status,created_at,approved_at")
       .eq("user_id", user.id).order("created_at", { ascending: false }).limit(5);
     const approved = rows?.some((r) => r.status === "approved") ?? false;
     const pending = rows?.some((r) => r.status === "pending") ?? false;
-    if (action === "status") return json({ approved, pending });
+    const ok = rows?.find((r) => r.status === "approved");
+    const receipt = ok ? { id: ok.id, approved_at: ok.approved_at, email: user.email, amount: "10.00 TJS" } : null;
+    if (action === "status") return json({ approved, pending, receipt });
     if (action !== "request") return json({ error: "unknown_action" }, 400);
     if (approved) return json({ approved: true, pending: false });
 

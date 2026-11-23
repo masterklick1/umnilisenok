@@ -5,9 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 const CARD = "4713 3800 1322 1367";
 
-type Status = { approved: boolean; pending: boolean };
+export type Receipt = { id: string; approved_at: string | null; email: string | null; amount: string };
+export type Status = { approved: boolean; pending: boolean; receipt?: Receipt | null };
 
-async function call(action: "status" | "request"): Promise<Status> {
+export async function call(action: "status" | "request"): Promise<Status> {
   const { data, error } = await supabase.functions.invoke<Status & { error?: string }>("manual-payment", { body: { action } });
   if (error || !data) {
     const body = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null);
@@ -46,7 +47,13 @@ export default function ManualPaymentCard({ onApproved }: { onApproved?: (v: boo
     } finally { setSending(false); }
   }
 
-  if (status?.approved) return <p role="status" className="rounded-2xl bg-primary/10 p-4 font-semibold">✅ Полный доступ активен.</p>;
+  if (status?.approved) return (
+    <section className="space-y-3 rounded-2xl border bg-background p-4">
+      <p role="status" className="font-semibold text-primary">✅ Полный доступ активирован. Спасибо, что вы с нами!</p>
+      {status.receipt && <ReceiptView r={status.receipt} />}
+      <Button asChild variant="outline" className="w-full"><a href="/parent">Вернуться в кабинет</a></Button>
+    </section>
+  );
 
   return (
     <section className="space-y-4 rounded-2xl border bg-background p-4">
@@ -64,8 +71,13 @@ export default function ManualPaymentCard({ onApproved }: { onApproved?: (v: boo
         <Button asChild className="w-full"><a href="/auth?mode=login&next=checkout">Войти как родитель</a></Button>
       ) : status?.pending ? (
         <p role="status" className="rounded-xl bg-muted p-3 text-sm">
-          Спасибо! Заявка отправлена. Проверка перевода занимает 5–15 минут — доступ включится автоматически.
+          ⏳ Ожидает подтверждения. Мы проверяем перевод — обычно 5–15 минут, доступ включится автоматически.
         </p>
+      ) : null}
+      {status?.pending && (
+        <Button asChild variant="outline" className="w-full"><a href="/parent">Вернуться в кабинет</a></Button>
+      )}
+      {!status?.pending && user && !isDemo ? (
       ) : (
         <Button className="w-full" onClick={paid} disabled={sending || loading}>
           {sending ? "Отправляем…" : "Я оплатил(а)"}
@@ -73,5 +85,20 @@ export default function ManualPaymentCard({ onApproved }: { onApproved?: (v: boo
       )}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </section>
+  );
+}
+
+export function ReceiptView({ r }: { r: Receipt }) {
+  const d = r.approved_at ? new Date(r.approved_at).toLocaleString("ru-RU") : "—";
+  return (
+    <div id="receipt" className="space-y-1 rounded-xl border border-dashed p-4 text-sm">
+      <p className="text-center font-bold">🦊 Умный лисёнок — электронный чек</p>
+      <p>Номер заказа: <span className="font-mono">{r.id.slice(0, 8).toUpperCase()}</span></p>
+      <p>Дата: {d}</p>
+      <p>Покупатель: {r.email ?? "—"}</p>
+      <p>Услуга: Полный доступ (навсегда)</p>
+      <p className="font-bold">Сумма: {r.amount} · Оплачено</p>
+      <Button size="sm" variant="ghost" className="w-full print:hidden" onClick={() => window.print()}>Сохранить / распечатать чек</Button>
+    </div>
   );
 }

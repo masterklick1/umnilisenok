@@ -6,3 +6,7 @@ verify_jwt = false
 [functions.paddle-account]
 # The handler verifies the bearer token with Supabase Auth before querying billing data.
 verify_jwt = false
+
+[functions.manual-payment]
+# POST requests verify the user token in code; GET approve links are checked by a secret token.
+verify_jwt = false

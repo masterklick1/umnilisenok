@@ -551,6 +551,39 @@ export type Database = {
           },
         ]
       }
+      manual_payments: {
+        Row: {
+          amount: string
+          approve_token: string
+          approved_at: string | null
+          created_at: string
+          email: string | null
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount?: string
+          approve_token?: string
+          approved_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: string
+          approve_token?: string
+          approved_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       monitoring_requests: {
         Row: {
           child_id: string

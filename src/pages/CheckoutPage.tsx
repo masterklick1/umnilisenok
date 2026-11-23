@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { CheckoutEventNames, type Paddle } from "@paddle/paddle-js";
 import { Button } from "@/components/ui/button";
+import ManualPaymentCard from "@/components/ManualPaymentCard";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,6 +123,8 @@ export default function CheckoutPage() {
         </a>
         <h1 className="text-3xl font-bold">{t("Полный доступ", "Full access")}</h1>
         <p>{t("Уроки, сказки и игры «Умного Лисёнка» за один разовый платёж.", "Clever Little Fox lessons, stories and games for a one-time payment.")}</p>
+        {!isNative && <ManualPaymentCard />}
+        <h2 className="pt-2 text-lg font-semibold">{t("Зарубежная карта Visa / Mastercard", "International Visa / Mastercard")}</h2>
         {purchase.data?.paid ? (
           <>
             <p role="status">{t("Полный доступ активен.", "Full access is active.")}</p>

@@ -77,8 +77,7 @@ export default function ManualPaymentCard({ onApproved }: { onApproved?: (v: boo
       {status?.pending && (
         <Button asChild variant="outline" className="w-full"><a href="/parent">Вернуться в кабинет</a></Button>
       )}
-      {!status?.pending && user && !isDemo ? (
-      ) : (
+      {!status?.pending && user && !isDemo && (
         <Button className="w-full" onClick={paid} disabled={sending || loading}>
           {sending ? "Отправляем…" : "Я оплатил(а)"}
         </Button>

@@ -17,6 +17,7 @@ import { SafetyPanel } from "@/components/parental/SafetyPanel";
 import { InvitePanel } from "@/components/parental/InvitePanel";
 import { SelectedChildBar } from "@/components/parental/SelectedChildBar";
 import { FeedbackDialog } from "@/components/parental/FeedbackDialog";
+import { PaymentAccessStatus } from "@/components/parental/PaymentAccessStatus";
 import {
   ArrowLeft,
   Users,
@@ -492,11 +493,6 @@ export default function ParentDashboard() {
                 <span className="hidden sm:inline">{t("Заблокировано в браузере", "Blocked by browser")}</span>
               </span>
             )}
-            {!Capacitor.isNativePlatform() && (
-              <Button asChild variant="ghost" size="sm">
-                <a href="/checkout">{t("Полный доступ", "Full access")}</a>
-              </Button>
-            )}
             <FeedbackDialog />
             <Button variant="ghost" onClick={handleSignOut}>
               <LogOut className="w-5 h-5 mr-2" />
@@ -506,6 +502,8 @@ export default function ParentDashboard() {
         </div>
 
         <div className="mb-6 flex justify-start"><LanguageSwitcher /></div>
+
+        <PaymentAccessStatus />
 
         {/* Push subscription status card */}
         {pushPerm !== "unsupported" && (

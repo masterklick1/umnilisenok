@@ -14,6 +14,7 @@ export async function call(action: "status" | "request"): Promise<Status> {
     const body = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null);
     throw new Error(body?.error ?? "failed");
   }
+  if (data.error) throw new Error(data.error);
   return data;
 }
 
@@ -49,7 +50,7 @@ export default function ManualPaymentCard({ onApproved }: { onApproved?: (v: boo
 
   if (status?.approved) return (
     <section className="space-y-3 rounded-2xl border bg-background p-4">
-      <p role="status" className="font-semibold text-primary">✅ Полный доступ активирован. Спасибо, что вы с нами!</p>
+      <p role="status" className="font-semibold text-success">✅ Полный доступ активирован. Спасибо, что вы с нами!</p>
       {status.receipt && <ReceiptView r={status.receipt} />}
       <Button asChild variant="outline" className="w-full"><a href="/parent">Вернуться в кабинет</a></Button>
     </section>
@@ -70,7 +71,7 @@ export default function ManualPaymentCard({ onApproved }: { onApproved?: (v: boo
       {!loading && (!user || isDemo) ? (
         <Button asChild className="w-full"><a href="/auth?mode=login&next=checkout">Войти как родитель</a></Button>
       ) : status?.pending ? (
-        <p role="status" className="rounded-xl bg-muted p-3 text-sm">
+        <p role="status" className="rounded-xl bg-warning/10 p-3 text-sm text-warning">
           ⏳ Ожидает подтверждения. Мы проверяем перевод — обычно 5–15 минут, доступ включится автоматически.
         </p>
       ) : null}
@@ -91,13 +92,14 @@ export function ReceiptView({ r }: { r: Receipt }) {
   const d = r.approved_at ? new Date(r.approved_at).toLocaleString("ru-RU") : "—";
   return (
     <div id="receipt" className="space-y-1 rounded-xl border border-dashed p-4 text-sm">
-      <p className="text-center font-bold">🦊 Умный лисёнок — электронный чек</p>
+      <p className="text-center font-bold">🦊 Умный лисёнок — квитанция об оплате</p>
       <p>Номер заказа: <span className="font-mono">{r.id.slice(0, 8).toUpperCase()}</span></p>
       <p>Дата: {d}</p>
-      <p>Покупатель: {r.email ?? "—"}</p>
+      <p className="break-all">Покупатель: {r.email ?? "—"}</p>
       <p>Услуга: Полный доступ (навсегда)</p>
       <p className="font-bold">Сумма: {r.amount} · Оплачено</p>
-      <Button size="sm" variant="ghost" className="w-full print:hidden" onClick={() => window.print()}>Сохранить / распечатать чек</Button>
+      <p className="text-xs text-muted-foreground">Подтверждение перевода. Не является фискальным чеком.</p>
+      <Button size="sm" variant="ghost" className="w-full print:hidden" onClick={() => window.print()}>Сохранить / распечатать квитанцию</Button>
     </div>
   );
 }

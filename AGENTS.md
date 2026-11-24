@@ -29,3 +29,8 @@ local backend/database to start — running the Vite dev server is enough to exe
 ### Package manager
 - Use **npm** (`package-lock.json` is present; README documents npm). `bun.lock`/`bun.lockb` also
   exist but npm is the supported path here and `bun` is not installed.
+
+### Manual payment confirmation
+- Derive manual-payment access and receipts from server-owned payment rows; poll the authenticated status on both checkout and parent dashboard so activation follows the account across devices.
+- Approval links must show a confirmation form on GET and mutate only on explicit POST, with a conditional pending-to-approved update, because chat link previews must never activate purchases.
+- Payment receipts are non-fiscal confirmations of transfers, not tax receipts; read their amount, email and approval date from the original payment row.

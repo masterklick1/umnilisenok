@@ -39,12 +39,20 @@ import { App as CapApp } from "@capacitor/app";
 import { TOYS_LESSON_PATH } from "@/lib/toys-lesson";
 
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const SandboxPricingPage = lazy(() => import("./pages/SandboxPricingPage"));
+const SandboxBillingPage = lazy(() => import("./pages/SandboxBillingPage"));
 const CheckoutWelcomePage = lazy(() => import("./pages/CheckoutPage").then((module) => ({ default: module.CheckoutWelcomePage })));
 const PageReaderPage = lazy(() => import("./pages/PageReaderPage"));
 const VoiceTeacherPage = lazy(() => import("./pages/VoiceTeacherPage"));
 const ToysLessonPage = lazy(() => import("./pages/ToysLessonPage"));
 
 const queryClient = new QueryClient();
+
+function BillingWelcomePage() {
+  const location = useLocation();
+  const sandbox = new URLSearchParams(location.search).get('billing') === 'sandbox';
+  return sandbox ? <SandboxBillingPage /> : <CheckoutWelcomePage />;
+}
 
 // Перехват системной кнопки / жеста "Назад" на Android
 function AndroidBackButtonHandler() {
@@ -202,7 +210,9 @@ const AppContent = () => (
             {/* Публичные роуты */}
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/checkout" element={<Suspense fallback={<LoadingScreen />}><CheckoutPage /></Suspense>} />
-            <Route path="/welcome" element={<Suspense fallback={<LoadingScreen />}><CheckoutWelcomePage /></Suspense>} />
+            <Route path="/welcome" element={<Suspense fallback={<LoadingScreen />}><BillingWelcomePage /></Suspense>} />
+            <Route path="/sandbox/pricing" element={<Suspense fallback={<LoadingScreen />}><SandboxPricingPage /></Suspense>} />
+            <Route path="/sandbox/billing" element={<Suspense fallback={<LoadingScreen />}><SandboxBillingPage /></Suspense>} />
             <Route path={TOYS_LESSON_PATH} element={
               <Suspense fallback={<LoadingScreen />}>
                 <ToysLessonPage />

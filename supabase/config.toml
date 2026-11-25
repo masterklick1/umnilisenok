@@ -1,5 +1,13 @@
 project_id = "iekivmkxlpqwrfnakrbb"
 
+[functions.paddle-subscriptions]
+# Public config; all customer actions authenticate and authorize inside the handler.
+verify_jwt = false
+
+[functions.paddle-subscriptions-webhook]
+# Paddle SDK verifies the raw request's signature.
+verify_jwt = false
+
 [functions.paddle-webhook]
 verify_jwt = false
 
